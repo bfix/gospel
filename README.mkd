@@ -2,7 +2,7 @@
 Gospel: GO SPEcial Library
 ==========================
 
-(c) 2010 Bernd Fix   >Y<
+(c) 2010-2012 Bernd Fix   >Y<
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,7 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Packages
 --------
 
-- gospel/parser: Read/acces/write nested data structures
+- gospel/parser: Read/access/write nested data structures
+- gospel/network: Network-related functionality (services)
 
 Install
 -------
