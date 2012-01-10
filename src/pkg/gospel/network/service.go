@@ -69,7 +69,6 @@ func RunService (network, addr string, hdlr Service) os.Error {
 	}
 	
 	// handle connection requests
-	ch := make (chan net.Conn)
 	go func() {
 		for {
 			// wait for connection request
@@ -95,14 +94,9 @@ func RunService (network, addr string, hdlr Service) os.Error {
 			}
 			// connection accepted
 			log.Printf("[" + hdlr.GetName() + "] accepted %v\n", remote)
-			ch <- client
-		}
-	}()
-
-	// handle incoming client connections	
-	go func() {
-		for {
-			go hdlr.Process (<-ch)
+			
+			// start handler
+			go hdlr.Process (client)
 		}
 	}()
 
