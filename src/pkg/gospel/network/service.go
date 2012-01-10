@@ -59,7 +59,7 @@ type Service interface {
  * @param addr string - address:port specification of service
  * @param hdlr Service - implementation of service interface
  */
-func Run (network, addr string, hdlr Service) os.Error {
+func RunService (network, addr string, hdlr Service) os.Error {
 
 	// initialize control service	
 	service, err := net.Listen (network, addr)
@@ -78,27 +78,36 @@ func Run (network, addr string, hdlr Service) os.Error {
 				log.Println ("[" + hdlr.GetName() + "] Accept(): " + err.String())
 				continue
 			}
-			// check for TCP connection from localhost
+			// check if connection is allowed:
 			remote  := client.RemoteAddr().String()
 			protocol := client.RemoteAddr().Network()
+			// check for matching protocol
 			if !hdlr.CanHandle (protocol)  {
 				log.Printf("[" + hdlr.GetName() + "] rejected non-TCP connection from %v\n", protocol)
+				client.Close()
 				continue
 			}
+			// check for matching remote address
 			if !hdlr.IsAllowed (remote)  {
-				log.Printf("[" + hdlr.GetName() + "] rejected remote connection from %v\n", addr)
+				log.Printf("[" + hdlr.GetName() + "] rejected remote connection from %v\n", remote)
+				client.Close()
 				continue
 			}
 			// connection accepted
-			log.Printf("[" + hdlr.GetName() + "] accepted %v\n", addr)
+			log.Printf("[" + hdlr.GetName() + "] accepted %v\n", remote)
 			ch <- client
 		}
 	}()
 
 	// handle incoming client connections	
-	for {
-		go hdlr.Process (<-ch)
-	}
+	go func() {
+		for {
+			go hdlr.Process (<-ch)
+		}
+	}()
+
+	// report success	
+	log.Println ("[" + hdlr.GetName() + "] service started...")
 	return nil
 }
 
