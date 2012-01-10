@@ -82,18 +82,18 @@ func RunService (network, addr string, hdlr Service) os.Error {
 			protocol := client.RemoteAddr().Network()
 			// check for matching protocol
 			if !hdlr.CanHandle (protocol)  {
-				log.Printf("[" + hdlr.GetName() + "] rejected non-TCP connection from %v\n", protocol)
+				log.Printf("[" + hdlr.GetName() + "] rejected connection protocol '%s' from %s\n", protocol, remote)
 				client.Close()
 				continue
 			}
 			// check for matching remote address
 			if !hdlr.IsAllowed (remote)  {
-				log.Printf("[" + hdlr.GetName() + "] rejected remote connection from %v\n", remote)
+				log.Printf("[" + hdlr.GetName() + "] rejected connection from %s\n", remote)
 				client.Close()
 				continue
 			}
 			// connection accepted
-			log.Printf("[" + hdlr.GetName() + "] accepted %v\n", remote)
+			log.Printf("[" + hdlr.GetName() + "] accepted connection from %s\n", remote)
 			
 			// start handler
 			go hdlr.Process (client)
