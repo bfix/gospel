@@ -29,13 +29,6 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-// Pre-defined field values
-
-var _ZERO = big.NewInt (0)
-var _ONE  = big.NewInt (1)
-var _TWO  = big.NewInt (2)
-
-///////////////////////////////////////////////////////////////////////
 // PRNG
 
 var rnd	= rand.New (rand.NewSource (time.UTC().Nanoseconds()))
