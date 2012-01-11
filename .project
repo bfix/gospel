@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
 	<name>Gospel</name>
-	<comment></comment>
+	<comment>GO SPEcial Library: (c) 2010-2012 Bernd R. Fix</comment>
 	<projects>
 	</projects>
 	<buildSpec>
-		<buildCommand>
-			<name>com.googlecode.goclipse.goBuilder</name>
-			<arguments>
-			</arguments>
-		</buildCommand>
 	</buildSpec>
 	<natures>
-		<nature>goclipse.goNature</nature>
 	</natures>
 </projectDescription>
