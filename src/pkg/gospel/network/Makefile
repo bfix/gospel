@@ -1,7 +1,7 @@
 
 include $(GOROOT)/src/Make.inc
 
-TARG=gospel/parser
+TARG=gospel/network
 
 GOFILES=\
 	service.go \
