@@ -58,7 +58,7 @@ var (
 func TestParser (t *testing.T) {
 
 	fmt.Println ("********************************************************")
-	fmt.Println ("Parser_test")
+	fmt.Println ("parser/parser Test")
 	fmt.Println ("********************************************************")
 
 	data := GetTestData1()
