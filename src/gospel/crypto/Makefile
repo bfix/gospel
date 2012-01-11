@@ -4,6 +4,6 @@ include $(GOROOT)/src/Make.inc
 TARG=gospel/crypto
 
 GOFILES=\
-	share.go \
+	shared_secret.go \
 
 include $(GOROOT)/src/Make.pkg
