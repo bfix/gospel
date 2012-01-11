@@ -3,7 +3,7 @@
  * requests as a go-routine and call user-defined service handler as
  * a go-routine to handle client sessions. 
  *
- * (c) 2010 Bernd Fix   >Y<
+ * (c) 2010-2012 Bernd Fix   >Y<
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -108,6 +108,9 @@ func RunService (network, addr string, hdlr Service) os.Error {
 ///////////////////////////////////////////////////////////////////////
 //	Revision history:
 ///////////////////////////////////////////////////////////////////////
+//
+//	Revision 2.0  2012-01-11 08:19:55  brf
+//  First release as free software (GPL3+)
 //
 //	Revision 1.0  2010-11-18 23:17:06  brf
 //  Initial revision.
