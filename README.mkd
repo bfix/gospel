@@ -25,6 +25,7 @@ Packages
 - gospel/ecc: Elliptic curve cryptography (Secp256k1, as used by bitcoin)
 - gospel/math: Mathematical helpers (FFT, prime fields,...)
 - gospel/crypto: cryptographic helpers (secret sharing,...)
+- gospel/logger: logging facilities
 
 Install
 -------
