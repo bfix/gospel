@@ -113,6 +113,24 @@ func GetLogLevel() string {
 
 //---------------------------------------------------------------------
 /*
+ * Set logging level from symbolic name.
+ * @param name string - name of log level
+ */
+func SetLogLevelFromName (name string) {
+	switch name {
+		case "ERROR":		LogLevel = ERROR
+		case "WARN":		LogLevel = WARN
+		case "INFO":		LogLevel = INFO
+		case "DBG_HIGH":	LogLevel = DBG_HIGH
+		case "DBG":			LogLevel = DBG
+		case "DBG_ALL":		LogLevel = DBG_ALL
+	}
+	// report failure
+	Println (WARN, "[logger] Unknown loglevel '" + name + "' requested.")
+}
+
+//---------------------------------------------------------------------
+/*
  * Get loglevel tag as prefix for message
  * @param level int - log level
  * @return string - log tag
