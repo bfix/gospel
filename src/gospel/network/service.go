@@ -27,7 +27,7 @@ package network
 import (
 	"os"
 	"net"
-	"log"
+	"gospel/logger"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -64,7 +64,7 @@ func RunService (network, addr string, hdlr Service) os.Error {
 	// initialize control service	
 	service, err := net.Listen (network, addr)
 	if err != nil {
-		log.Println ("[" + hdlr.GetName() + "] service start-up failed: " + err.String())
+		logger.Println (logger.ERROR, "[" + hdlr.GetName() + "] service start-up failed: " + err.String())
 		return err
 	}
 	
@@ -74,7 +74,7 @@ func RunService (network, addr string, hdlr Service) os.Error {
 			// wait for connection request
 			client, err := service.Accept()
 			if err != nil {
-				log.Println ("[" + hdlr.GetName() + "] Accept(): " + err.String())
+				logger.Println (logger.INFO, "[" + hdlr.GetName() + "] Accept(): " + err.String())
 				continue
 			}
 			// check if connection is allowed:
@@ -82,18 +82,18 @@ func RunService (network, addr string, hdlr Service) os.Error {
 			protocol := client.RemoteAddr().Network()
 			// check for matching protocol
 			if !hdlr.CanHandle (protocol)  {
-				log.Printf("[" + hdlr.GetName() + "] rejected connection protocol '%s' from %s\n", protocol, remote)
+				logger.Printf (logger.WARN, "[" + hdlr.GetName() + "] rejected connection protocol '%s' from %s\n", protocol, remote)
 				client.Close()
 				continue
 			}
 			// check for matching remote address
 			if !hdlr.IsAllowed (remote)  {
-				log.Printf("[" + hdlr.GetName() + "] rejected connection from %s\n", remote)
+				logger.Printf (logger.WARN, "[" + hdlr.GetName() + "] rejected connection from %s\n", remote)
 				client.Close()
 				continue
 			}
 			// connection accepted
-			log.Printf("[" + hdlr.GetName() + "] accepted connection from %s\n", remote)
+			logger.Printf (logger.INFO, "[" + hdlr.GetName() + "] accepted connection from %s\n", remote)
 			
 			// start handler
 			go hdlr.Process (client)
@@ -101,7 +101,7 @@ func RunService (network, addr string, hdlr Service) os.Error {
 	}()
 
 	// report success	
-	log.Println ("[" + hdlr.GetName() + "] service started...")
+	logger.Println (logger.INFO, "[" + hdlr.GetName() + "] service started...")
 	return nil
 }
 
