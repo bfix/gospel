@@ -124,9 +124,8 @@ func SetLogLevelFromName (name string) {
 		case "DBG_HIGH":	LogLevel = DBG_HIGH
 		case "DBG":			LogLevel = DBG
 		case "DBG_ALL":		LogLevel = DBG_ALL
+		default:			Println (WARN, "[logger] Unknown loglevel '" + name + "' requested.")
 	}
-	// report failure
-	Println (WARN, "[logger] Unknown loglevel '" + name + "' requested.")
 }
 
 //---------------------------------------------------------------------
