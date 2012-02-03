@@ -31,7 +31,7 @@ func TestKeys (t *testing.T) {
 	p := nextPrime (s)	// TEST ONLY!!! 'p' should be a random prime >> 's'!!!
 	shares := Split (s, p, n, k)
 	for i,sh := range shares {
-		fmt.Printf ("Share #%v = (%v,%v,%v)\n", i+1, sh.x, sh.y, sh.p) 
+		fmt.Printf ("Share #%v = (%v,%v,%v)\n", i+1, sh.X, sh.Y, sh.P) 
 	}
 	fmt.Println()
 	

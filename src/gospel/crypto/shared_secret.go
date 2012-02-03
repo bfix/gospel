@@ -37,7 +37,7 @@ import (
  * A Share is a partial secret.
  */
 type Share struct {
-	x,y,p		*big.Int
+	X,Y,P		*big.Int
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -91,9 +91,9 @@ func Reconstruct (shares []Share) *big.Int {
 	// compute value of Lagrangian polynominal at 0
 	k := len (shares)
 	y := big.NewInt (0)
-	f := &math.FieldP { shares[0].p }
+	f := &math.FieldP { shares[0].P }
 	for i,s := range shares {
-		if s.p.Cmp (f.P) != 0 {
+		if s.P.Cmp (f.P) != 0 {
 			return nil
 		}
 		li := big.NewInt (1)
@@ -101,11 +101,11 @@ func Reconstruct (shares []Share) *big.Int {
 			if j == i {
 				continue
 			}
-			a := f.Neg (shares[j].x)
-			b := f.Sub (s.x, shares[j].x)
+			a := f.Neg (shares[j].X)
+			b := f.Sub (s.X, shares[j].X)
 			li = f.Mul (li, f.Div (a, b))
 		}
-		y = f.Add (y, f.Mul (s.y, li))
+		y = f.Add (y, f.Mul (s.Y, li))
 	}
 	return y
 }
