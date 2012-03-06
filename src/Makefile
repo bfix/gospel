@@ -27,7 +27,7 @@ install:
 	$(MAKE) -C gospel/parser install
 
 test:
-	$(MAKE) -C gospel/logger test
+#	$(MAKE) -C gospel/logger test
 	$(MAKE) -C gospel/math test
 	$(MAKE) -C gospel/crypto test
 	$(MAKE) -C gospel/ecc test
@@ -35,7 +35,7 @@ test:
 	$(MAKE) -C gospel/parser test
 
 bench:
-	$(MAKE) -C gospel/logger bench
+#	$(MAKE) -C gospel/logger bench
 	$(MAKE) -C gospel/math bench
 	$(MAKE) -C gospel/crypto bench
 	$(MAKE) -C gospel/ecc bench
