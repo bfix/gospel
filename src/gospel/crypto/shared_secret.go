@@ -29,7 +29,6 @@ package crypto
 
 import (
 	"big"
-	"gospel/math"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -54,7 +53,7 @@ type Share struct {
  */
 func Split (secret, p *big.Int, n, k int) []Share {
 
-	f := &math.FieldP { p }
+	f := &FieldP { p }
 	// coefficients for a k-1 polynominal
 	a := make ([]*big.Int, k)
 	a[0] = secret
@@ -91,7 +90,7 @@ func Reconstruct (shares []Share) *big.Int {
 	// compute value of Lagrangian polynominal at 0
 	k := len (shares)
 	y := big.NewInt (0)
-	f := &math.FieldP { shares[0].P }
+	f := &FieldP { shares[0].P }
 	for i,s := range shares {
 		if s.P.Cmp (f.P) != 0 {
 			return nil
