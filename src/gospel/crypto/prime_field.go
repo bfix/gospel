@@ -44,7 +44,7 @@ type FieldP struct {
  * @return *big.Int - random value in field
  */
 func (f *FieldP) Random () *big.Int {
-	return rndBigInt (big.NewInt(0), new(big.Int).Sub (f.P, big.NewInt(1)))
+	return RandBigInt (big.NewInt(0), new(big.Int).Sub (f.P, big.NewInt(1)))
 } 
 
 //---------------------------------------------------------------------
