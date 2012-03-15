@@ -1,4 +1,3 @@
-
 //*********************************************************************
 //*   PGMID.        TEST NESTED DATA STRUCTURE IMPLEMENTATION.        *
 //*   AUTHOR.       BERND R. FIX   >Y<                                *
@@ -15,9 +14,8 @@ package parser
 // Import external declarations
 
 import (
-	"fmt"
 	"bufio"
-	"os"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -31,45 +29,45 @@ import (
  * @param t *testing.T - test handler
  */
 //---------------------------------------------------------------------
-func TestData (t *testing.T) {
+func TestData(t *testing.T) {
 
-	fmt.Println ("********************************************************")
-	fmt.Println ("parser/data Test")
-	fmt.Println ("********************************************************")
+	fmt.Println("********************************************************")
+	fmt.Println("parser/data Test")
+	fmt.Println("********************************************************")
 
 	//=================================================================
 	// Basic 
 	//=================================================================
-	testCase1 ("Simple=Test", "/Simple", "", "Simple=\"Test\"", t, "111")
-	testCase1 ("Test", "/#1", "", "\"Test\"", t, "111")
-	testCase1 ("\"Test\"", "/#1", "", "", t, "111")
-	testCase1 ("Simple=\"Test\"", "/Simple", "", "", t, "111")
-	testCase1 ("Simple=\"Test mit Spaces\"", "/#1", "/Simple", "", t, "111")
-	testCase1 ("Simple=\"Test,mit=Spaces{}\"", "/Simple", "", "", t, "111")
-	
-	testCase1 ("Simple=Test,", "/Simple", "", "Simple=\"Test\"", t, "111")
-	testCase1 ("Simple=Test,Muster", "/#2", "", "\"Muster\"", t, "111")
-	testCase1 ("Simple=Test", "/#3", "", "", t, "10X")
-	testCase1 ("Simple=Test", "/#-1", "", "", t, "10X")
-	
-	testCase1 ("List={Entry1=Value1,Entry2=Value2}", "/List", "", "List={}", t, "111")
-	testCase1 ("List={Entry1=Value1,Entry2=Value2}", "/List/#1", "/List/Entry1", "Entry1=\"Value1\"", t, "111")
-	testCase1 ("List={Entry1=Value1,{{", "", "", "", t, "0XX")
-	testCase1 ("List={Entry1=Value1,{{}", "", "", "", t, "0XX")
-	testCase1 ("List={Entry1=Value1,{{}}", "", "", "", t, "0XX")
-	testCase1 ("List={Entry1=Value1,,{}}", "/List/#2", "", "~", t, "111")
-	testCase1 ("List={}", "/List", "", "", t, "111")
-	testCase1 ("List={{}}", "/List", "", "List={}", t, "111")
-	testCase1 ("List={,,,}", "/List/#1", "", "~", t, "111")
-	testCase1 ("List={,,,}", "/List/#2", "", "~", t, "111")
-	testCase1 ("List={,,,}", "/List/#3", "", "~", t, "111")
-	testCase1 ("List={,,,}", "/List/#4", "", "~", t, "111")
+	testCase1("Simple=Test", "/Simple", "", "Simple=\"Test\"", t, "111")
+	testCase1("Test", "/#1", "", "\"Test\"", t, "111")
+	testCase1("\"Test\"", "/#1", "", "", t, "111")
+	testCase1("Simple=\"Test\"", "/Simple", "", "", t, "111")
+	testCase1("Simple=\"Test mit Spaces\"", "/#1", "/Simple", "", t, "111")
+	testCase1("Simple=\"Test,mit=Spaces{}\"", "/Simple", "", "", t, "111")
+
+	testCase1("Simple=Test,", "/Simple", "", "Simple=\"Test\"", t, "111")
+	testCase1("Simple=Test,Muster", "/#2", "", "\"Muster\"", t, "111")
+	testCase1("Simple=Test", "/#3", "", "", t, "10X")
+	testCase1("Simple=Test", "/#-1", "", "", t, "10X")
+
+	testCase1("List={Entry1=Value1,Entry2=Value2}", "/List", "", "List={}", t, "111")
+	testCase1("List={Entry1=Value1,Entry2=Value2}", "/List/#1", "/List/Entry1", "Entry1=\"Value1\"", t, "111")
+	testCase1("List={Entry1=Value1,{{", "", "", "", t, "0XX")
+	testCase1("List={Entry1=Value1,{{}", "", "", "", t, "0XX")
+	testCase1("List={Entry1=Value1,{{}}", "", "", "", t, "0XX")
+	testCase1("List={Entry1=Value1,,{}}", "/List/#2", "", "~", t, "111")
+	testCase1("List={}", "/List", "", "", t, "111")
+	testCase1("List={{}}", "/List", "", "List={}", t, "111")
+	testCase1("List={,,,}", "/List/#1", "", "~", t, "111")
+	testCase1("List={,,,}", "/List/#2", "", "~", t, "111")
+	testCase1("List={,,,}", "/List/#3", "", "~", t, "111")
+	testCase1("List={,,,}", "/List/#4", "", "~", t, "111")
 }
 
 ///////////////////////////////////////////////////////////////////////
 //	private helper methods
 
-var err os.Error
+var err error
 
 //---------------------------------------------------------------------
 /**
@@ -79,11 +77,11 @@ var err os.Error
  * @return *Data - parsed data object 
  */
 //---------------------------------------------------------------------
-func getData (s string, t *testing.T) *Data {
+func getData(s string, t *testing.T) *Data {
 
-	rdr := bufio.NewReader (strings.NewReader (s))
-	d := new (Data)
-	err = d.Read (rdr)
+	rdr := bufio.NewReader(strings.NewReader(s))
+	d := new(Data)
+	err = d.Read(rdr)
 	if err != nil {
 		return nil
 	}
@@ -101,7 +99,7 @@ func getData (s string, t *testing.T) *Data {
  * @param flags string - condition flags  
  */
 //---------------------------------------------------------------------
-func testCase1 (data,access,path,elem string, t *testing.T, flags string) {
+func testCase1(data, access, path, elem string, t *testing.T, flags string) {
 
 	if len(elem) == 0 {
 		elem = data
@@ -109,41 +107,41 @@ func testCase1 (data,access,path,elem string, t *testing.T, flags string) {
 	if len(path) == 0 {
 		path = access
 	}
-	
-	fmt.Printf ("<Read>")
-	d := getData (data, t)
+
+	fmt.Printf("<Read>")
+	d := getData(data, t)
 	if (flags[0] == '1') != (d != nil) {
-		fmt.Println (" *Failed*")
+		fmt.Println(" *Failed*")
 		if err != nil {
-			fmt.Printf ("*** %v\n", err)	
+			fmt.Printf("*** %v\n", err)
 		}
 		t.Fail()
 		return
 	}
 	if d != nil {
-	
-		e := d.Lookup (access)
+
+		e := d.Lookup(access)
 		p := ""
 		if e != nil {
 			p = e.GetPath()
 		}
-		fmt.Printf (", Path: \"%s\"", p)
+		fmt.Printf(", Path: \"%s\"", p)
 		if (flags[1] == '1') != (p == path) {
-			fmt.Println (" *Failed*")
+			fmt.Println(" *Failed*")
 			t.Fail()
 			return
 		}
 		if e != nil {
-			p = e.toString()
-			fmt.Printf (", Elem: %s", p)
+			p = e.String()
+			fmt.Printf(", Elem: %s", p)
 			if (flags[2] == '1') != (p == ("`" + elem + "`")) {
-				fmt.Println (" *Failed*")
+				fmt.Println(" *Failed*")
 				t.Fail()
 				return
 			}
 		}
 	}
-	fmt.Println (" [O.K.]")
+	fmt.Println(" [O.K.]")
 }
 
 ///////////////////////////////////////////////////////////////////////

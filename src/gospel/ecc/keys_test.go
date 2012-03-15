@@ -1,4 +1,3 @@
-
 package ecc
 
 ///////////////////////////////////////////////////////////////////////
@@ -12,38 +11,38 @@ import (
 ///////////////////////////////////////////////////////////////////////
 //	public test method
 
-func TestKeys (t *testing.T) {
+func TestKeys(t *testing.T) {
 
-	fmt.Println ("********************************************************")
-	fmt.Println ("ecc/keys Test")
-	fmt.Println ("********************************************************")
+	fmt.Println("********************************************************")
+	fmt.Println("ecc/keys Test")
+	fmt.Println("********************************************************")
 
 	var prv *PrivateKey
-	
+
 	// check 32 keys
-	fmt.Println ("Checking if public key point is on curve and consistent:")
-	fmt.Print ("    ")
+	fmt.Println("Checking if public key point is on curve and consistent:")
+	fmt.Print("    ")
 	failed := false
 	for i := 0; i < 32; i++ {
-	
+
 		// generate new key
 		prv = GenerateKeys()
 		// get public key point
 		pnt := prv.PublicKey.q
-		tst := scalarMultBase (prv.d) 
-			
-		if !(isOnCurve (pnt) && isEqual (pnt, tst))  {
+		tst := scalarMultBase(prv.d)
+
+		if !(isOnCurve(pnt) && isEqual(pnt, tst)) {
 			failed = true
-			fmt.Print ("-")	
+			fmt.Print("-")
 		} else {
-			fmt.Print ("+")	
+			fmt.Print("+")
 		}
 	}
-	
+
 	if failed {
 		t.Fail()
-		fmt.Println (" Failed")
+		fmt.Println(" Failed")
 	} else {
-		fmt.Println (" O.K.")
+		fmt.Println(" O.K.")
 	}
 }

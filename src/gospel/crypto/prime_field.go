@@ -23,16 +23,15 @@ package crypto
 // import external declarations
 
 import (
-	"big"
+	"math/big"
 )
-
 
 ///////////////////////////////////////////////////////////////////////
 /*
  * Prime field
  */
 type FieldP struct {
-	P	*big.Int
+	P *big.Int
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -43,9 +42,9 @@ type FieldP struct {
  * Generate random field value
  * @return *big.Int - random value in field
  */
-func (f *FieldP) Random () *big.Int {
-	return RandBigInt (big.NewInt(0), new(big.Int).Sub (f.P, big.NewInt(1)))
-} 
+func (f *FieldP) Random() *big.Int {
+	return RandBigInt(big.NewInt(0), new(big.Int).Sub(f.P, big.NewInt(1)))
+}
 
 //---------------------------------------------------------------------
 /*
@@ -53,9 +52,9 @@ func (f *FieldP) Random () *big.Int {
  * @param a,b *big.Int - numbers to be added
  * @return *big.Int - resulting number
  */
-func (f *FieldP)  Add (a, b *big.Int) *big.Int {
-	c := new(big.Int).Add (a, b)
-	return new(big.Int).Mod (c, f.P)
+func (f *FieldP) Add(a, b *big.Int) *big.Int {
+	c := new(big.Int).Add(a, b)
+	return new(big.Int).Mod(c, f.P)
 }
 
 //---------------------------------------------------------------------
@@ -64,10 +63,10 @@ func (f *FieldP)  Add (a, b *big.Int) *big.Int {
  * @param a,b *big.Int - numbers to be subtracted
  * @return *big.Int - resulting number
  */
-func (f *FieldP) Sub (a, b *big.Int) *big.Int {
-	c := new(big.Int).Add (f.P, a)
-	d := new(big.Int).Sub (c, b)
-	return new(big.Int).Mod (d, f.P)
+func (f *FieldP) Sub(a, b *big.Int) *big.Int {
+	c := new(big.Int).Add(f.P, a)
+	d := new(big.Int).Sub(c, b)
+	return new(big.Int).Mod(d, f.P)
 }
 
 //---------------------------------------------------------------------
@@ -76,8 +75,8 @@ func (f *FieldP) Sub (a, b *big.Int) *big.Int {
  * @param a *big.Int - numbers to be negated
  * @return *big.Int - resulting number
  */
-func (f *FieldP) Neg (a *big.Int) *big.Int {
-	return new(big.Int).Sub (f.P, a)
+func (f *FieldP) Neg(a *big.Int) *big.Int {
+	return new(big.Int).Sub(f.P, a)
 }
 
 //---------------------------------------------------------------------
@@ -86,9 +85,9 @@ func (f *FieldP) Neg (a *big.Int) *big.Int {
  * @param a,b *big.Int - numbers to be multiplied
  * @return *big.Int - resulting number
  */
-func (f *FieldP)  Mul (a, b *big.Int) *big.Int {
-	c := new(big.Int).Mul (a, b)
-	return new(big.Int).Mod (c, f.P)
+func (f *FieldP) Mul(a, b *big.Int) *big.Int {
+	c := new(big.Int).Mul(a, b)
+	return new(big.Int).Mod(c, f.P)
 }
 
 //---------------------------------------------------------------------
@@ -97,10 +96,10 @@ func (f *FieldP)  Mul (a, b *big.Int) *big.Int {
  * @param a,b *big.Int - numbers to be divided
  * @return *big.Int - resulting number
  */
-func (f *FieldP) Div (a, b *big.Int) *big.Int {
-	c := new(big.Int).ModInverse (b, f.P)
-	return f.Mul (a, c)
-} 
+func (f *FieldP) Div(a, b *big.Int) *big.Int {
+	c := new(big.Int).ModInverse(b, f.P)
+	return f.Mul(a, c)
+}
 
 ///////////////////////////////////////////////////////////////////////
 //	Revision history:

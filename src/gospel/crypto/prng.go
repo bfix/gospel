@@ -24,14 +24,14 @@ package crypto
 // Import external declarations.
 
 import (
-	"rand"
-	"big"
+	"math/big"
+	"math/rand"
 )
 
 ///////////////////////////////////////////////////////////////////////
 // Random number generator instance
 
-var rnd = rand.New (NewPrngSource())
+var rnd = rand.New(NewPrngSource())
 
 ///////////////////////////////////////////////////////////////////////
 // Public Methods to generate randomized objects
@@ -42,7 +42,7 @@ var rnd = rand.New (NewPrngSource())
  * @param upper int - upper bound (exclusive)
  * @return int - random number (in given range)
  */
-func RandInt (lower, upper int) int {
+func RandInt(lower, upper int) int {
 	return lower + (rnd.Int() % (upper - lower + 1))
 }
 
@@ -52,8 +52,8 @@ func RandInt (lower, upper int) int {
  * @param n int - size of resulting byte array
  * @return []byte - byte array with random content
  */
-func RandBytes (n int) []byte {
-	data := make ([]byte, n)
+func RandBytes(n int) []byte {
+	data := make([]byte, n)
 	for n := 0; n < n; n++ {
 		data[n] = byte(rnd.Int() & 0xFF)
 	}
@@ -67,9 +67,9 @@ func RandBytes (n int) []byte {
  * @param upper *big.Int - upper bound (exclusive)
  * @return *big.Int - random number (in given range)
  */
-func RandBigInt (lower, upper *big.Int) *big.Int {
-	span := new(big.Int).Sub (upper, lower)
-	span = new(big.Int).Add (span, big.NewInt (1))
-	ofs := new(big.Int).Rand (rnd, span)
-	return new(big.Int).Add (lower, ofs)
-} 
+func RandBigInt(lower, upper *big.Int) *big.Int {
+	span := new(big.Int).Sub(upper, lower)
+	span = new(big.Int).Add(span, big.NewInt(1))
+	ofs := new(big.Int).Rand(rnd, span)
+	return new(big.Int).Add(lower, ofs)
+}

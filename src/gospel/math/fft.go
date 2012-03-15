@@ -23,8 +23,8 @@ package math
 // Import external declarations
 
 import (
-	"os"
 	"math"
+	"errors"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -35,11 +35,10 @@ import (
  * Transformer type declaration (worker object for FF transformations).
  */
 type Transformer struct {
-
-	depth	int				// depth of binary field
-	size	int				// helper: 2^depth
-	twiddle []complex128	// helper: factor constants [0..size/2[
-	scale	complex128		// helper: scale constant
+	depth   int          // depth of binary field
+	size    int          // helper: 2^depth
+	twiddle []complex128 // helper: factor constants [0..size/2[
+	scale   complex128   // helper: scale constant
 }
 
 //---------------------------------------------------------------------
@@ -56,27 +55,27 @@ type Field []complex128
  * Create a new transformer worker instance.
  * @param n int - handle fields of size 2^n
  * @return *Transformer - new worker instance
- * @return os.Error - error encountered (or nil if successful)
+ * @return error - error encountered (or nil if successful)
  */
-func NewTransformer (n int) (*Transformer, os.Error) {
-	
+func NewTransformer(n int) (*Transformer, error) {
+
 	// check for valid argument
 	if n < 1 {
-		return nil, os.NewError ("NewTransformer - invalid exponent")
+		return nil, errors.New("NewTransformer - invalid exponent")
 	}
-	
+
 	// allocate new worker instance and preset scalars
-	t := new (Transformer)
+	t := new(Transformer)
 	t.depth = n
 	t.size = 1 << uint(n)
-	t.scale = complex (math.Sqrt (float64(t.size)), 0)
-	
+	t.scale = complex(math.Sqrt(float64(t.size)), 0)
+
 	// precompute constants
-	p0 := 2*math.Pi/float64(n)
-	t.twiddle = make ([]complex128, t.size/2)
+	p0 := 2 * math.Pi / float64(n)
+	t.twiddle = make([]complex128, t.size/2)
 	for k := 0; k < t.size/2; k++ {
 		x := float64(k) * p0
-		t.twiddle[k] = complex (math.Cos (x), -math.Sin (x))
+		t.twiddle[k] = complex(math.Cos(x), -math.Sin(x))
 	}
 	// return worker instance
 	return t, nil
@@ -98,36 +97,36 @@ func (t *Transformer) GetSize() int {
  * @this t *Transformer - worker instance for transformation
  * @param in Field - input data for transformation
  * @return Field - output data for transformation
- * @return os.Error - processing status (nil = O.K.)
+ * @return error - processing status (nil = O.K.)
  */
-func (t *Transformer) Time2Freq (in Field) (Field, os.Error) {
+func (t *Transformer) Time2Freq(in Field) (Field, error) {
 
-    // check for matching array length
-    if (len (in) != t.size) {
-		return nil, os.NewError ("Time2Freq: invalid imput field size")
-    }
+	// check for matching array length
+	if len(in) != t.size {
+		return nil, errors.New("Time2Freq: invalid input field size")
+	}
 
-    // preset output with input
-    out := make (Field, t.size)
-    copy (out, in)
+	// preset output with input
+	out := make(Field, t.size)
+	copy(out, in)
 
-    // perform reduction
-    n := t.size/2;
-    for i := 0; i < t.depth; i++ {
+	// perform reduction
+	n := t.size / 2
+	for i := 0; i < t.depth; i++ {
 		for j := 0; j < t.size; j++ {
-			k := t.index (j, n)
+			k := t.index(j, n)
 			z := t.twiddle[k] * out[n+j]
-            out[n+j] = out[j] - z
-            out[j]   = out[j] + z
-			if ((n+j+1) == (j/n + 2)*n) {
-				j += n;
-            }
-        }
-        n >>= 1
-    }
-    // re-order array
-    for j := 0; j < t.size; j++ {
-		k := t.index (j, 1)
+			out[n+j] = out[j] - z
+			out[j] = out[j] + z
+			if (n + j + 1) == (j/n+2)*n {
+				j += n
+			}
+		}
+		n >>= 1
+	}
+	// re-order array
+	for j := 0; j < t.size; j++ {
+		k := t.index(j, 1)
 		if k > j {
 			z := out[j]
 			out[j] = out[k]
@@ -135,9 +134,9 @@ func (t *Transformer) Time2Freq (in Field) (Field, os.Error) {
 		}
 		// scale down transformed values.
 		out[j] = out[j] / t.scale
-    }
-    // return result
-    return out, nil;
+	}
+	// return result
+	return out, nil
 }
 
 //---------------------------------------------------------------------
@@ -146,46 +145,46 @@ func (t *Transformer) Time2Freq (in Field) (Field, os.Error) {
  * @this t *Transformer - worker instance for transformation
  * @param in Field - input data for transformation
  * @return Field - output data for transformation
- * @return os.Error - processing status (nil = O.K.)
+ * @return error - processing status (nil = O.K.)
  */
-func (t *Transformer) Freq2Time (in Field) (Field, os.Error) {
+func (t *Transformer) Freq2Time(in Field) (Field, error) {
 
 	// check for matching array length
-	if len (in) != t.size {
-		return nil, os.NewError ("Freq2Time: invalid input field size")
+	if len(in) != t.size {
+		return nil, errors.New ("Freq2Time: invalid input field size")
 	}
-	
+
 	// pre-set output with input
-    out := make (Field, t.size)
-    copy (out, in)
-	
+	out := make(Field, t.size)
+	copy(out, in)
+
 	// re-order input array
 	for j := 0; j < t.size; j++ {
-		k := t.index (j, 1)
-        if k <= j {
-			continue;
+		k := t.index(j, 1)
+		if k <= j {
+			continue
 		}
-        z := out[j]
-        out[j] = out[k]
-        out[k] = z
+		z := out[j]
+		out[j] = out[k]
+		out[k] = z
 	}
 	// perform composition
-	n := 1;
+	n := 1
 	for i := 0; i < t.depth; i++ {
-        for j := 0; j < t.size; j++ {
-            k := t.index (j, n)
-            out[j]   = (out[n+j] + out[j]  ) / 2.
-            out[n+j] = (out[j]   - out[n+j]) / t.twiddle[k]
-            if (n+j+1) == (j/n + 2)*n {
-                j += n
-            }
-        }
+		for j := 0; j < t.size; j++ {
+			k := t.index(j, n)
+			out[j] = (out[n+j] + out[j]) / 2.
+			out[n+j] = (out[j] - out[n+j]) / t.twiddle[k]
+			if (n + j + 1) == (j/n+2)*n {
+				j += n
+			}
+		}
 		n <<= 1
 	}
-    // re-scale array
-    for j := 0; j < t.size; j++ {
+	// re-scale array
+	for j := 0; j < t.size; j++ {
 		out[j] *= t.scale
-    }
+	}
 	// return result
 	return out, nil
 }
@@ -198,14 +197,14 @@ func (t *Transformer) Freq2Time (in Field) (Field, os.Error) {
  * @oaram n int - current sub-field size
  * @return int - associated index
  */
-func (t *Transformer) index (j, n int) int {
-    a := j/n;
-    d := 0;
-    for k := 0; k < t.depth; k++ {
+func (t *Transformer) index(j, n int) int {
+	a := j / n
+	d := 0
+	for k := 0; k < t.depth; k++ {
 		d = 2*d + (a & 1)
-		a >>= 1;
+		a >>= 1
 	}
-	return d;
+	return d
 }
 
 ///////////////////////////////////////////////////////////////////////

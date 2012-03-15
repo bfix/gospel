@@ -22,8 +22,9 @@ package ecc
 ///////////////////////////////////////////////////////////////////////
 // Import external declarations
 
-import "big"
-
+import (
+	"math/big"
+)
 
 ///////////////////////////////////////////////////////////////////////
 /*
@@ -33,27 +34,27 @@ import "big"
  * @param hash []byte - hash value to be signed
  * @return r,s *big.Int - signature values
  */
-func Sign (key *PrivateKey, hash []byte) (r,s *big.Int) {
+func Sign(key *PrivateKey, hash []byte) (r, s *big.Int) {
 
 	var k, kInv *big.Int
 	for {
 		// compute value of 'r' as x-coordinate of k*G with random k
 		for {
 			// get random value
-			k = n_rnd (three)
+			k = n_rnd(three)
 			// get its modular inverse
-			kInv = n_inv (k)
-			
+			kInv = n_inv(k)
+
 			// compute k*G
-			pnt := scalarMultBase (k)
-			r = n_mod (pnt.x)
+			pnt := scalarMultBase(k)
+			r = n_mod(pnt.x)
 			if r.Sign() != 0 {
 				break
 			}
 		}
 		// compute value of 's := (rd + e)/k'
-		e := convertHash (hash)
-		s = n_mul (_add (n_mul (key.d, r), e), kInv)
+		e := convertHash(hash)
+		s = n_mul(_add(n_mul(key.d, r), e), kInv)
 		if s.Sign() != 0 {
 			break
 		}
@@ -70,7 +71,7 @@ func Sign (key *PrivateKey, hash []byte) (r,s *big.Int) {
  * @param r,s *big.Int - signature values
  * @return bool - correct signature?
  */
-func Verify (key *PublicKey, hash []byte, r,s *big.Int) bool {
+func Verify(key *PublicKey, hash []byte, r, s *big.Int) bool {
 
 	// sanity checks for arguments
 	if r.Sign() == 0 || s.Sign() == 0 {
@@ -80,28 +81,27 @@ func Verify (key *PublicKey, hash []byte, r,s *big.Int) bool {
 		return false
 	}
 	// check signature
-	e := convertHash (hash)
-	w := n_inv (s)
+	e := convertHash(hash)
+	w := n_inv(s)
 
 	u1 := e.Mul(e, w)
 	u2 := w.Mul(r, w)
 
-	p1 := scalarMultBase (u1)
-	p2 := scalarMult ( key.q, u2)
+	p1 := scalarMultBase(u1)
+	p2 := scalarMult(key.q, u2)
 	if p1.x.Cmp(p2.x) == 0 {
 		return false
 	}
-	p3 := add (p1, p2)
-	rr := n_mod (p3.x)
-	return rr.Cmp (r) == 0
+	p3 := add(p1, p2)
+	rr := n_mod(p3.x)
+	return rr.Cmp(r) == 0
 }
-
 
 ///////////////////////////////////////////////////////////////////////
 // convert hash value to integer
 // [http://www.secg.org/download/aid-780/sec1-v2.pdf]
 
-func convertHash (hash []byte) *big.Int {
+func convertHash(hash []byte) *big.Int {
 
 	// trim hash value (if required)
 	maxSize := (curve_n.BitLen() + 7) / 8
@@ -110,7 +110,7 @@ func convertHash (hash []byte) *big.Int {
 	}
 
 	// convert to integer
-	val := new(big.Int).SetBytes (hash)
-	val.Rsh (val, uint(maxSize*8 - curve_n.BitLen()))
+	val := new(big.Int).SetBytes(hash)
+	val.Rsh(val, uint(maxSize*8-curve_n.BitLen()))
 	return val
 }

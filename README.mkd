@@ -21,15 +21,29 @@ Packages
 --------
 
 - gospel/parser: Read/access/write nested data structures
-- gospel/network: Network-related functionality (services,...)
+- gospel/network: Network-related functionality (services,TOR,...)
 - gospel/ecc: Elliptic curve cryptography (Secp256k1, as used by bitcoin)
 - gospel/math: Mathematical helpers (FFT, prime fields,...)
-- gospel/crypto: cryptographic helpers (secret sharing,...)
+- gospel/crypto: cryptographic helpers (secret sharing,...), PRNG
 - gospel/logger: logging facilities
+- gospel/data: useful data structures like stacks, vectors,...
 
 Install
 -------
 
-I highly recommend to used the GB build tool found at
-http://code.google.com/p/go-gb/. Using this tool you can simply install
-and build the library by running `gb -i` in the base directory.
+This version is designed for Go release 1.
+
+(1) Let '<gospel>' be the base directory of this repository, i.e. the
+    directory where this 'README.mkd' file is located. Export a variable
+    for the build process:
+    
+    	$ export GOPATH=<gospel>
+     
+(2) Change into the 'src/' directory and enter 'make install'. This will
+    compile and install all library files locally.
+    
+(3) If you want to use the libraries just like standard Go libraries, you
+    have to copy the directory (and all sub-directories with files) to the
+    standard location:
+    
+    	$ cp -r <gospel>/pkg/* ${GOROOT}/pkg

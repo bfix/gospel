@@ -23,8 +23,8 @@ package crypto
 // Import external declarations.
 
 import (
-	"big"
 	"crypto/rand"
+	"math/big"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -43,9 +43,9 @@ type prng struct {
  */
 func (p *prng) Int63() int64 {
 
-	val,err := rand.Int (rand.Reader, new(big.Int).Lsh (big.NewInt(1), 63))
+	val, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 63))
 	if err != nil {
-		panic ("PRNG failure: " + err.String())
+		panic("PRNG failure: " + err.Error())
 	}
 	return val.Int64()
 }
@@ -57,7 +57,7 @@ func (p *prng) Int63() int64 {
  * secure PRNG algorithm.
  * @param seed int64 - seeding value
  */
-func (p *prng) Seed (seed int64) {
+func (p *prng) Seed(seed int64) {
 	// intentionally not implemented
 }
 

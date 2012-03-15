@@ -37,9 +37,9 @@ import (
  * @param dport int - destination port (usually port of this instance) 
  * @return bool - TOR exit node involved?
  */
-func IsTorExitToDest (src, dst net.IP, dport int) bool {
+func IsTorExitToDest(src, dst net.IP, dport int) bool {
 	name := revAddr(src) + "." + strconv.Itoa(dport) + "." + revAddr(dst)
-	return checkTor (name)
+	return checkTor(name)
 }
 
 //---------------------------------------------------------------------
@@ -48,8 +48,8 @@ func IsTorExitToDest (src, dst net.IP, dport int) bool {
  * @param src net.IP - source address to be checked for TOR exit node 
  * @return bool - TOR exit node involved?
  */
-func IsTorExit (src net.IP) bool {
-	return checkTor (revAddr(src) + ".80.1.2.3.4")
+func IsTorExit(src net.IP) bool {
+	return checkTor(revAddr(src) + ".80.1.2.3.4")
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -62,12 +62,12 @@ func IsTorExit (src net.IP) bool {
  * @param name string - TOR specification
  * @return bool - TOR exit node involved?
  */
-func checkTor (name string) bool {
-	addrs,err := net.LookupHost (name + ".ip-port.exitlist.torproject.org")
+func checkTor(name string) bool {
+	addrs, err := net.LookupHost(name + ".ip-port.exitlist.torproject.org")
 	if err != nil {
 		return false
 	}
-	for _,addr := range(addrs) {
+	for _, addr := range addrs {
 		if addr == "127.0.0.2" {
 			return true
 		}
@@ -81,12 +81,12 @@ func checkTor (name string) bool {
  * @param ip net.IP - network address (a.b.c.d)
  * @return string - reversed address ("d.c.b.a")
  */
-func revAddr (ip net.IP) string {
+func revAddr(ip net.IP) string {
 	if addr := ip.To4(); addr != nil {
-		return	strconv.Itoa (int(addr[3])) + "." +
-				strconv.Itoa (int(addr[2])) + "." + 
-				strconv.Itoa (int(addr[1])) + "." + 
-				strconv.Itoa (int(addr[0]))
+		return strconv.Itoa(int(addr[3])) + "." +
+			strconv.Itoa(int(addr[2])) + "." +
+			strconv.Itoa(int(addr[1])) + "." +
+			strconv.Itoa(int(addr[0]))
 	}
 	return "0.0.0.0"
 }

@@ -25,9 +25,8 @@ package network
 // Import external declarations.
 
 import (
-	"os"
-	"net"
 	"gospel/logger"
+	"net"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -44,10 +43,10 @@ import (
  *       be served by the service handler.
  */
 type Service interface {
-	Process (conn net.Conn)				// main handler routine
-	GetName() string					// get symbolic name of service
-	CanHandle (protocol string) bool	// check network protocol
-	IsAllowed (remote string) bool		// check remote address
+	Process(conn net.Conn)          // main handler routine
+	GetName() string                // get symbolic name of service
+	CanHandle(protocol string) bool // check network protocol
+	IsAllowed(remote string) bool   // check remote address
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -58,50 +57,51 @@ type Service interface {
  * @param network string - network identifier (TCP/UDP on IPv4/v6)
  * @param addr string - address:port specification of service
  * @param hdlr Service - implementation of service interface
+ * @return error - error object (or nil)
  */
-func RunService (network, addr string, hdlr Service) os.Error {
+func RunService(network, addr string, hdlr Service) error {
 
 	// initialize control service	
-	service, err := net.Listen (network, addr)
+	service, err := net.Listen(network, addr)
 	if err != nil {
-		logger.Println (logger.ERROR, "[" + hdlr.GetName() + "] service start-up failed: " + err.String())
+		logger.Println(logger.ERROR, "["+hdlr.GetName()+"] service start-up failed: " + err.Error())
 		return err
 	}
-	
+
 	// handle connection requests
 	go func() {
 		for {
 			// wait for connection request
 			client, err := service.Accept()
 			if err != nil {
-				logger.Println (logger.INFO, "[" + hdlr.GetName() + "] Accept(): " + err.String())
+				logger.Println(logger.INFO, "["+hdlr.GetName()+"] Accept(): " + err.Error())
 				continue
 			}
 			// check if connection is allowed:
-			remote  := client.RemoteAddr().String()
+			remote := client.RemoteAddr().String()
 			protocol := client.RemoteAddr().Network()
 			// check for matching protocol
-			if !hdlr.CanHandle (protocol)  {
-				logger.Printf (logger.WARN, "[" + hdlr.GetName() + "] rejected connection protocol '%s' from %s\n", protocol, remote)
+			if !hdlr.CanHandle(protocol) {
+				logger.Printf(logger.WARN, "["+hdlr.GetName()+"] rejected connection protocol '%s' from %s\n", protocol, remote)
 				client.Close()
 				continue
 			}
 			// check for matching remote address
-			if !hdlr.IsAllowed (remote)  {
-				logger.Printf (logger.WARN, "[" + hdlr.GetName() + "] rejected connection from %s\n", remote)
+			if !hdlr.IsAllowed(remote) {
+				logger.Printf(logger.WARN, "["+hdlr.GetName()+"] rejected connection from %s\n", remote)
 				client.Close()
 				continue
 			}
 			// connection accepted
-			logger.Printf (logger.INFO, "[" + hdlr.GetName() + "] accepted connection from %s\n", remote)
-			
+			logger.Printf(logger.INFO, "["+hdlr.GetName()+"] accepted connection from %s\n", remote)
+
 			// start handler
-			go hdlr.Process (client)
+			go hdlr.Process(client)
 		}
 	}()
 
 	// report success	
-	logger.Println (logger.INFO, "[" + hdlr.GetName() + "] service started...")
+	logger.Println(logger.INFO, "["+hdlr.GetName()+"] service started...")
 	return nil
 }
 

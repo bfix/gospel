@@ -1,11 +1,12 @@
 
-include $(GOROOT)/src/Make.inc
+all:
+	go build
+	
+install:
+	go install
+	
+clean:
+	go clean
 
-TARG=gospel/parser
-
-GOFILES=\
-	parser.go \
-	data.go \
-	doc.go \
-
-include $(GOROOT)/src/Make.pkg
+test:
+	go test
