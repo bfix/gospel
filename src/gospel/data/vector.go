@@ -78,7 +78,7 @@ func (self *Vector) Insert(i int, v interface{}) {
 		app[idx-1] = v
 		self.data = append(self.data, app...)
 	} else {
-		pre := self.data[:i-1]
+		pre := self.data[:i]
 		app := self.data[i:]
 		self.data = append(append(pre, v), app...)
 	}
