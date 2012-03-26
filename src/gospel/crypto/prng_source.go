@@ -1,5 +1,6 @@
 /*
- * Cryptographically strong source of randomness.  
+ * Cryptographically strong source of randomness: Based on the
+ * io.Reader instance assigned to "rand.Reader"; usually "/dev/urandom"  
  *
  * (c) 2012 Bernd Fix   >Y<
  *
@@ -34,6 +35,7 @@ import (
  * Source of randomness: 
  */
 type prng struct {
+	mask	*big.Int
 }
 
 //=====================================================================
@@ -43,7 +45,7 @@ type prng struct {
  */
 func (p *prng) Int63() int64 {
 
-	val,err := rand.Int (rand.Reader, new(big.Int).Lsh (big.NewInt(1), 63))
+	val,err := rand.Int (rand.Reader, mask)
 	if err != nil {
 		panic ("PRNG failure: " + err.String())
 	}
@@ -67,5 +69,7 @@ func (p *prng) Seed (seed int64) {
  * @return *prng - reference to rand.Source instance
  */
 func NewPrngSource() *prng {
-	return &prng{}
+	return &prng {
+		mask:	new(big.Int).Lsh (big.NewInt(1), 63),
+	}
 }
