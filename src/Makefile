@@ -19,6 +19,7 @@ GOCLEAN :=
 endif
 
 install:
+	@echo GOPATH=$(GOPATH)
 	$(MAKE) -C gospel/data install
 	$(MAKE) -C gospel/logger install
 	$(MAKE) -C gospel/math install
