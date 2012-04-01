@@ -45,7 +45,7 @@ type prng struct {
  */
 func (p *prng) Int63() int64 {
 
-	val,err := rand.Int (rand.Reader, mask)
+	val,err := rand.Int (rand.Reader, p.mask)
 	if err != nil {
 		panic("PRNG failure: " + err.Error())
 	}
