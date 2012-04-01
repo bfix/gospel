@@ -28,7 +28,7 @@ package crypto
 // import external declarations
 
 import (
-	"big"
+	"math/big"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -36,7 +36,7 @@ import (
  * A Share is a partial secret.
  */
 type Share struct {
-	X,Y,P		*big.Int
+	X, Y, P *big.Int
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -51,29 +51,29 @@ type Share struct {
  * @param k int - number of shares needed to reconstruct secret
  * @return []Share - generated list of shares
  */
-func Split (secret, p *big.Int, n, k int) []Share {
+func Split(secret, p *big.Int, n, k int) []Share {
 
-	f := &FieldP { p }
+	f := &FieldP{p}
 	// coefficients for a k-1 polynominal
-	a := make ([]*big.Int, k)
+	a := make([]*big.Int, k)
 	a[0] = secret
 	// generate remaining coefficients
 	for i := 1; i < k; i++ {
 		a[i] = f.Random()
 	}
-	
+
 	// construct shares
-	shares := make ([]Share, n)
-	for i,_ := range shares {
+	shares := make([]Share, n)
+	for i, _ := range shares {
 		x := f.Random()
 		y := a[0]
 		xi := x
 		for j := 1; j < k; j++ {
-			yi := f.Mul (a[j], xi)
-			y = f.Add (y, yi)
-			xi = f.Mul (xi, x)
+			yi := f.Mul(a[j], xi)
+			y = f.Add(y, yi)
+			xi = f.Mul(xi, x)
 		}
-		shares[i] = Share { x, y, f.P }
+		shares[i] = Share{x, y, f.P}
 	}
 	return shares
 }
@@ -85,26 +85,26 @@ func Split (secret, p *big.Int, n, k int) []Share {
  * @param shares []Share - (sufficient) number of shares to reconstruct secret
  * @return *big.Int - reconstructed secret
  */
-func Reconstruct (shares []Share) *big.Int {
+func Reconstruct(shares []Share) *big.Int {
 
 	// compute value of Lagrangian polynominal at 0
-	k := len (shares)
-	y := big.NewInt (0)
-	f := &FieldP { shares[0].P }
-	for i,s := range shares {
-		if s.P.Cmp (f.P) != 0 {
+	k := len(shares)
+	y := big.NewInt(0)
+	f := &FieldP{shares[0].P}
+	for i, s := range shares {
+		if s.P.Cmp(f.P) != 0 {
 			return nil
 		}
-		li := big.NewInt (1)
+		li := big.NewInt(1)
 		for j := 0; j < k; j++ {
 			if j == i {
 				continue
 			}
-			a := f.Neg (shares[j].X)
-			b := f.Sub (s.X, shares[j].X)
-			li = f.Mul (li, f.Div (a, b))
+			a := f.Neg(shares[j].X)
+			b := f.Sub(s.X, shares[j].X)
+			li = f.Mul(li, f.Div(a, b))
 		}
-		y = f.Add (y, f.Mul (s.Y, li))
+		y = f.Add(y, f.Mul(s.Y, li))
 	}
 	return y
 }

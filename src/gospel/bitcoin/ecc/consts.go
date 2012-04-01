@@ -23,51 +23,46 @@ package ecc
 // Import external declarations
 
 import (
-	"big"
-	"rand"
-	"time"
+	"math/big"
 )
 
 ///////////////////////////////////////////////////////////////////////
 // Number constants.
 
-var zero	= big.NewInt (0)
-var one		= big.NewInt (1)
-var two		= big.NewInt (2)
-var three	= big.NewInt (3)
-var seven	= big.NewInt (7)
-var eight	= big.NewInt (8)
+var zero = big.NewInt(0)
+var one = big.NewInt(1)
+var two = big.NewInt(2)
+var three = big.NewInt(3)
+var seven = big.NewInt(7)
+var eight = big.NewInt(8)
 
 ///////////////////////////////////////////////////////////////////////
 // Curve constants.
 
 // order of underlying field "F_p"
 // p = 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
-var curve_p		= fromHex ("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F")
+var curve_p = fromHex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F")
 
 // curve parameter (=7)
-var curve_b		= seven
+var curve_b = seven
 
 // base point
-var curve_gx	= fromHex ("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
-var curve_gy	= fromHex ("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8")
+var curve_gx = fromHex("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
+var curve_gy = fromHex("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8")
 
 // order of G
-var curve_n		= fromHex ("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141")
+var curve_n = fromHex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141")
 
 // cofactor
-var curve_h		= one
+var curve_h = one
 
 // bitsize
-var curve_bits	= 256
-
-// random number generator
-var rnd	= rand.New (rand.NewSource (time.UTC().Nanoseconds()))
+var curve_bits = 256
 
 ///////////////////////////////////////////////////////////////////////
 // helper for initialization of bignum from hex string
 
-func fromHex (s string) *big.Int {
-	val, _  := new(big.Int).SetString (s, 16)
+func fromHex(s string) *big.Int {
+	val, _ := new(big.Int).SetString(s, 16)
 	return val
 }

@@ -17,34 +17,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 package logger
 
 ///////////////////////////////////////////////////////////////////////
 // Import external declarations
 
 import (
+	"fmt"
 	"log"
 	"os"
-	"fmt"
 )
 
 ///////////////////////////////////////////////////////////////////////
 // Logging constants
 
 const (
-	ERROR = iota		// errors
-	WARN				// warnings
-	INFO				// info
-	DBG_HIGH			// debug (high prio)
-	DBG					// debug (normal)
-	DBG_ALL				// debug (all)
+	ERROR    = iota // errors
+	WARN            // warnings
+	INFO            // info
+	DBG_HIGH        // debug (high prio)
+	DBG             // debug (normal)
+	DBG_ALL         // debug (all)
 )
 
 ///////////////////////////////////////////////////////////////////////
 // Public variables
 
-var LogLevel = DBG		// current logging verbosity
+var LogLevel = DBG // current logging verbosity
 
 ///////////////////////////////////////////////////////////////////////
 // Public logging functions.
@@ -54,9 +53,9 @@ var LogLevel = DBG		// current logging verbosity
  * @param level int - associated logging level
  * @param line string - information to be logged
  */
-func Println (level int, line string) {
+func Println(level int, line string) {
 	if level <= LogLevel {
-		log.Println (getTag(level) + line)
+		log.Println(getTag(level) + line)
 	}
 }
 
@@ -67,9 +66,9 @@ func Println (level int, line string) {
  * @param format string - format definition
  * @param v ...interface{} - list of variables to be formatted
  */
-func Printf (level int, format string, v ...interface{}) {
+func Printf(level int, format string, v ...interface{}) {
 	if level <= LogLevel {
-		log.Print (getTag(level) + fmt.Sprintf (format, v...))
+		log.Print(getTag(level) + fmt.Sprintf(format, v...))
 	}
 }
 
@@ -81,13 +80,13 @@ func Printf (level int, format string, v ...interface{}) {
  * Start logging to file.
  * @param filename string - name of logfile
  */
-func LogToFile (filename string) bool {
-	Println (INFO, "[log] file-based logging to '" + filename + "'")
-	if f,err := os.Create (filename); err == nil {
-		log.SetOutput (f)
+func LogToFile(filename string) bool {
+	Println(INFO, "[log] file-based logging to '"+filename+"'")
+	if f, err := os.Create(filename); err == nil {
+		log.SetOutput(f)
 		return true
 	}
-	Println (ERROR, "[log] can't enable file-based logging!")
+	Println(ERROR, "[log] can't enable file-based logging!")
 	return false
 }
 
@@ -101,12 +100,18 @@ func LogToFile (filename string) bool {
  */
 func GetLogLevel() string {
 	switch LogLevel {
-		case ERROR:		return "ERROR"
-		case WARN:		return "WARN"
-		case INFO:		return "INFO"
-		case DBG_HIGH:	return "DBG_HIGH"
-		case DBG:		return "DBG"
-		case DBG_ALL:	return "DBG_ALL"
+	case ERROR:
+		return "ERROR"
+	case WARN:
+		return "WARN"
+	case INFO:
+		return "INFO"
+	case DBG_HIGH:
+		return "DBG_HIGH"
+	case DBG:
+		return "DBG"
+	case DBG_ALL:
+		return "DBG_ALL"
 	}
 	return "???"
 }
@@ -116,15 +121,22 @@ func GetLogLevel() string {
  * Set logging level from symbolic name.
  * @param name string - name of log level
  */
-func SetLogLevelFromName (name string) {
+func SetLogLevelFromName(name string) {
 	switch name {
-		case "ERROR":		LogLevel = ERROR
-		case "WARN":		LogLevel = WARN
-		case "INFO":		LogLevel = INFO
-		case "DBG_HIGH":	LogLevel = DBG_HIGH
-		case "DBG":			LogLevel = DBG
-		case "DBG_ALL":		LogLevel = DBG_ALL
-		default:			Println (WARN, "[logger] Unknown loglevel '" + name + "' requested.")
+	case "ERROR":
+		LogLevel = ERROR
+	case "WARN":
+		LogLevel = WARN
+	case "INFO":
+		LogLevel = INFO
+	case "DBG_HIGH":
+		LogLevel = DBG_HIGH
+	case "DBG":
+		LogLevel = DBG
+	case "DBG_ALL":
+		LogLevel = DBG_ALL
+	default:
+		Println(WARN, "[logger] Unknown loglevel '"+name+"' requested.")
 	}
 }
 
@@ -134,14 +146,20 @@ func SetLogLevelFromName (name string) {
  * @param level int - log level
  * @return string - log tag
  */
-func getTag (level int) string {
+func getTag(level int) string {
 	switch level {
-		case ERROR:		return "{E}"
-		case WARN:		return "{W}"
-		case INFO:		return "{I}"
-		case DBG_HIGH:	return "{D2}"
-		case DBG:		return "{D1}"
-		case DBG_ALL:	return "{D0}"
+	case ERROR:
+		return "{E}"
+	case WARN:
+		return "{W}"
+	case INFO:
+		return "{I}"
+	case DBG_HIGH:
+		return "{D2}"
+	case DBG:
+		return "{D1}"
+	case DBG_ALL:
+		return "{D0}"
 	}
 	return "{?}"
 }

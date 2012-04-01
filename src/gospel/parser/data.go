@@ -19,16 +19,14 @@
 
 package parser
 
-
 ///////////////////////////////////////////////////////////////////////
 // Import external declarations.
 
 import (
 	"bufio"
-	"container/vector"
-	"os"
-	"strings"
+	"gospel/data"
 	"strconv"
+	"strings"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -36,8 +34,8 @@ import (
 
 type Data struct {
 	Parameter
-	vector.Vector
-	parent	*Data
+	data.Vector
+	parent *Data
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -48,17 +46,17 @@ type Data struct {
  * structure.
  * @this d *Data - pointer to data object
  * @param rdr *bufio.Reader - stream reader
- * @return os.Error - error (or nil)
+ * @return error - error object (or nil)
  */
-func (d *Data) Read (rdr *bufio.Reader) os.Error {
+func (d *Data) Read(rdr *bufio.Reader) error {
 
 	// variable during parsing
-	stack := new (vector.Vector)	// state stack
-	curr := d						// current data reference
+	stack := data.NewVector() // tree of data
+	curr := d                 // current data reference
 
 	// define callback method (as closure)
-	callback := func (mode int, param *Parameter) bool {
-	
+	callback := func(mode int, param *Parameter) bool {
+
 		// check for terminating parser...
 		if param == nil {
 			if mode == ERROR {
@@ -69,46 +67,49 @@ func (d *Data) Read (rdr *bufio.Reader) os.Error {
 		} else {
 			// no: handle parameter
 			switch mode {
-				// handle list operations
-				case LIST: {
+			// handle list operations
+			case LIST:
+				{
 					// start new sub-list
 					if param.Value == "{" {
 						// start new list object
 						param.Value = "{}"
-						next := curr.addToList (param)
+						next := curr.addToList(param)
 						// remember parent object
-						stack.Push (curr)
+						stack.Add(curr)
 						curr = next
 					} else if param.Value == "}" {
 						// end sub-list: pop current object from stack
-						curr = stack.Pop().(*Data)
+						curr = stack.Drop().(*Data)
 					}
 				}
-				// handle named parameters
-				case VAR: {
+			// handle named parameters
+			case VAR:
+				{
 					// trim quoted string
 					val := param.Value
-					size := len(val) 
+					size := len(val)
 					if val[0] == '"' && val[size-1] == '"' {
-						param.Value = val[1:size-1]
+						param.Value = val[1 : size-1]
 					}
 					// add parameter to current list
-					curr.addToList (param)
+					curr.addToList(param)
 				}
-				// handle empty parameters
-				case EMPTY: {
+			// handle empty parameters
+			case EMPTY:
+				{
 					// add parameter to current list
 					param.Value = "~"
-					curr.addToList (param)
+					curr.addToList(param)
 				}
 			}
 		}
 		// report success
 		return true
-	} 
+	}
 
 	// start parser
-	return Parser (rdr, callback)
+	return Parser(rdr, callback)
 }
 
 //---------------------------------------------------------------------
@@ -117,8 +118,8 @@ func (d *Data) Read (rdr *bufio.Reader) os.Error {
  * @this d *Data - pointer to data object
  * @param wrt *bufio.Writer - stream writer
  */
-func (d *Data) Write (wrt *bufio.Writer) {
-	d.writeData (wrt, 0)
+func (d *Data) Write(wrt *bufio.Writer) {
+	d.writeData(wrt, 0)
 }
 
 //---------------------------------------------------------------------
@@ -128,7 +129,7 @@ func (d *Data) Write (wrt *bufio.Writer) {
  * @param n int - list index
  * @return *Data - index element (or nil)
  */
-func (d *Data) Elem (n int) *Data {
+func (d *Data) Elem(n int) *Data {
 	// check range of index
 	if n < 0 || n > d.Len()-1 {
 		return nil
@@ -154,13 +155,13 @@ func (d *Data) GetPath() string {
 	if len(path) > 1 {
 		path += "/"
 	}
-	
+
 	// return named element reference
 	if len(d.Name) > 0 {
-		return  path + d.Name;
+		return path + d.Name
 	}
 	// return indexed element reference
-	for n:= 0; n < d.parent.Len(); n++ {
+	for n := 0; n < d.parent.Len(); n++ {
 		if d.parent.At(n) == d {
 			return path + "#" + strconv.Itoa(n+1)
 		}
@@ -177,29 +178,29 @@ func (d *Data) GetPath() string {
  * @param path string - path description
  * @return *Data - addressed element (or nil)
  */
-func (d *Data) Lookup (path string) *Data {
+func (d *Data) Lookup(path string) *Data {
 
 	// leading slash means "start from real root"
 	if path[0] == '/' {
-		return d.getRoot().Lookup (path[1:])
+		return d.getRoot().Lookup(path[1:])
 	}
 
 	// split path into current level reference
 	// and follow-up reference 
-	list := strings.SplitN (path, "/", 2)
+	list := strings.SplitN(path, "/", 2)
 	curr := list[0]
-	
+
 	// sanity check
 	if len(curr) == 0 {
 		return nil
 	}
-	
+
 	// get addressed sub-element
 	var elem *Data = nil
 	if curr[0] == '#' {
 		// indexed access
-		if idx,err := strconv.Atoi (curr[1:]); err == nil {
-			elem = d.Elem(idx-1)
+		if idx, err := strconv.Atoi(curr[1:]); err == nil {
+			elem = d.Elem(idx - 1)
 		}
 		if elem == nil {
 			return nil
@@ -208,11 +209,11 @@ func (d *Data) Lookup (path string) *Data {
 		// named access
 		found := false
 		for idx := 0; idx < d.Len(); idx++ {
-			elem = d.Elem (idx)
+			elem = d.Elem(idx)
 			// look for matching names
 			if elem.Name == curr {
 				found = true
-				break;
+				break
 			}
 		}
 		// check if named element was found
@@ -225,16 +226,16 @@ func (d *Data) Lookup (path string) *Data {
 		next := list[1]
 		if len(next) > 0 {
 			// recursive lookup	
-			return elem.Lookup (next)
+			return elem.Lookup(next)
 		}
 	}
-	
+
 	// check for reference resolution
 	if elem.Value[0] == '@' {
 		// get linked path
 		link := elem.Value[1:]
 		// lookup reference
-		return d.Lookup (link)
+		return d.Lookup(link)
 	}
 	// return found element directly
 	return elem
@@ -250,37 +251,37 @@ func (d *Data) Lookup (path string) *Data {
  * @param wrt *bufio.Writer - stream writer
  * @param level int - nesting level of lists
  */
-func (d *Data) writeData (wrt *bufio.Writer, level int) {
+func (d *Data) writeData(wrt *bufio.Writer, level int) {
 
 	// emit name (if defined)
 	if len(d.Name) > 0 {
-		wrt.WriteString (d.Name)
-		wrt.WriteRune ('=');
+		wrt.WriteString(d.Name)
+		wrt.WriteRune('=')
 	}
 	// handle value..
 	if d.Len() == 0 {
 		// .. as direct value
-		wrt.WriteRune ('"');
-		wrt.WriteString (d.Value)
-		wrt.WriteRune ('"');
+		wrt.WriteRune('"')
+		wrt.WriteString(d.Value)
+		wrt.WriteRune('"')
 	} else {
 		// .. as list of data
 		if level > 0 {
-			wrt.WriteRune ('{');
+			wrt.WriteRune('{')
 		}
 		// handle all list elements...
 		count := d.Len()
 		for n := 0; n < count; n++ {
 			// emit delimiter
 			if n > 0 {
-				wrt.WriteRune (',')
+				wrt.WriteRune(',')
 			}
 			// recursively write list element
 			s := d.At(n).(*Data)
-			s.writeData (wrt, level+1)
+			s.writeData(wrt, level+1)
 		}
-		if level > 0 {	
-			wrt.WriteRune ('}');
+		if level > 0 {
+			wrt.WriteRune('}')
 		}
 	}
 }
@@ -291,8 +292,8 @@ func (d *Data) writeData (wrt *bufio.Writer, level int) {
  * @this d *Data - pointer to data object
  * @return *Data - root instance
  */
-func (d *Data) getRoot () *Data {
-	p := d;
+func (d *Data) getRoot() *Data {
+	p := d
 	for p.parent != nil {
 		p = p.parent
 	}
@@ -307,17 +308,17 @@ func (d *Data) getRoot () *Data {
  * @param value string - parameter value (or nil)
  * @return *Data - newly allocated element
  */
-func (d *Data) addToList (param *Parameter) *Data {
+func (d *Data) addToList(param *Parameter) *Data {
 
 	// start new list object
-	elem := new (Data)
+	elem := new(Data)
 	elem.Name = param.Name
 	elem.Value = param.Value
 	// link back to parent
 	elem.parent = d
-	
+
 	// add to list of sub-elements
-	d.Push (elem);
+	d.Add(elem)
 	return elem
 }
 

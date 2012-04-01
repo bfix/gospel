@@ -22,8 +22,9 @@ package ecc
 ///////////////////////////////////////////////////////////////////////
 // Import external declarations
 
-import "big"
-
+import (
+	"math/big"
+)
 
 ///////////////////////////////////////////////////////////////////////
 /*
@@ -32,7 +33,7 @@ import "big"
  * factor (private key)
  */
 type PublicKey struct {
-	q		*point
+	q *point
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -42,7 +43,7 @@ type PublicKey struct {
  */
 type PrivateKey struct {
 	PublicKey
-	d		*big.Int
+	d *big.Int
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -54,17 +55,17 @@ type PrivateKey struct {
  */
 func GenerateKeys() *PrivateKey {
 
-	prv := new (PrivateKey)
+	prv := new(PrivateKey)
 	for {
 		// generate factor in range [3..n-1]
-		prv.d = n_rnd (three)
+		prv.d = n_rnd(three)
 		// generate point p = d*G 
-		prv.PublicKey.q = scalarMultBase (prv.d)
-		
+		prv.PublicKey.q = scalarMultBase(prv.d)
+
 		// check for valid key
-		if !isInf (prv.PublicKey.q) {
-			break;
+		if !isInf(prv.PublicKey.q) {
+			break
 		}
-	}	
+	}
 	return prv
 }

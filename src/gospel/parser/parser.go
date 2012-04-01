@@ -23,23 +23,24 @@ package parser
 // Import external declarations.
 
 import (
-	"container/vector"
 	"bufio"
-	"os"
-	"unicode"
+	"errors"
+	"gospel/data"
+	"io"
 	"strconv"
+	"unicode"
 )
 
 ///////////////////////////////////////////////////////////////////////
 // Define public constants (pair types).
 
 const (
-	DONE = iota		// not defined
-	ERROR			// signal error to callback
-	EMPTY			// empty parameter
-	VAR				// generic parameter
-	VALUE			// parameter value
-	LIST			// parameter list
+	DONE  = iota // not defined
+	ERROR        // signal error to callback
+	EMPTY        // empty parameter
+	VAR          // generic parameter
+	VALUE        // parameter value
+	LIST         // parameter list
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -49,8 +50,8 @@ const (
  * Parameter type declaration.
  */
 type Parameter struct {
-	Name	string		// name of parameter
-	Value	string		// value of parameter (encoded as string)
+	Name  string // name of parameter
+	Value string // value of parameter (encoded as string)
 }
 
 //---------------------------------------------------------------------
@@ -58,7 +59,7 @@ type Parameter struct {
  * Reset parameter instance.
  * @this p *Parameter
  */
-func (p *Parameter) reset () {
+func (p *Parameter) reset() {
 	p.Name = ""
 	p.Value = ""
 }
@@ -69,7 +70,7 @@ func (p *Parameter) reset () {
  * @this p *Parameter
  * @return string - printable parameter
  */
-func (p *Parameter) toString () string {
+func (p *Parameter) String() string {
 	val := p.Value
 	if val != "{}" && val != "~" {
 		val = "\"" + val + "\""
@@ -84,7 +85,7 @@ func (p *Parameter) toString () string {
 /*
  * Callback prototype
  */
-type Callback func (mode int, param *Parameter) bool
+type Callback func(mode int, param *Parameter) bool
 
 ///////////////////////////////////////////////////////////////////////
 // Public methods
@@ -93,48 +94,48 @@ type Callback func (mode int, param *Parameter) bool
  * Parse data definition from reader and pass parameters to callback.
  * @param rdr *bufio.Reader - stream reader
  * @param cb Callback - callback function
- * @return os.Error - error encountered (or nil if successful)
+ * @return error - error encountered (or nil if successful)
  */
-func Parser (rdr *bufio.Reader, cb Callback) os.Error {
+func Parser(rdr *bufio.Reader, cb Callback) error {
 
-	state := 1						// current state in state machine
-	skip := true					// skip white spaces (outside string)?
-	escaped := false				// last character was escape?
-	comment := false				// we are inside commnent
-	buf := ""						// buffer for string assembly
-	param := new (Parameter)		// parameter instance
-	stack := new (vector.IntVector)	// stack for nested values
-	line, offset := 1, 0			// line/offset in current stream
-	
+	state := 1                  // current state in state machine
+	skip := true                // skip white spaces (outside string)?
+	escaped := false            // last character was escape?
+	comment := false            // we are inside commnent
+	buf := ""                   // buffer for string assembly
+	param := new(Parameter)     // parameter instance
+	stack := data.NewIntStack() // stack for nested values
+	line, offset := 1, 0        // line/offset in current stream
+
 	// execute state machine
 	param.reset()
 	for state != 0 {
 		//=============================================================
 		// read next rune; skip whitespaces and quit if error occurs
 		//=============================================================
-		r,_,err := rdr.ReadRune();
+		r, _, err := rdr.ReadRune()
 		offset++
-		if  err != nil {
-			if err == os.EOF {
+		if err != nil {
+			if err == io.EOF {
 				// check for pending element
 				if stack.Len() > 0 {
-					if stack.Last() == VALUE {
+					if stack.Peek() == VALUE {
 						// yes: named parameter
 						param.Value = buf
-						cb (VAR, param)
-					} else if stack.Last() == VAR {
+						cb(VAR, param)
+					} else if stack.Peek() == VAR {
 						// yes: unnamed parameter
 						param.Name = ""
 						param.Value = buf
-						cb (VAR, param)
+						cb(VAR, param)
 					} else if stack.Len() > 1 {
 						// signal parser error
-						cb (ERROR, nil)
-						return error ("Pre-mature end of data", line, offset)
+						cb(ERROR, nil)
+						return mkError("Pre-mature end of data", line, offset)
 					}
 				}
 				// notify end of processing
-				cb (DONE, nil)
+				cb(DONE, nil)
 				return nil
 			}
 			return err
@@ -156,7 +157,7 @@ func Parser (rdr *bufio.Reader, cb Callback) os.Error {
 			continue
 		}
 		// skip whitechars if not within string
-		if skip && unicode.IsSpace (r) {
+		if skip && unicode.IsSpace(r) {
 			continue
 		}
 		if !escaped && r == '"' {
@@ -173,206 +174,217 @@ func Parser (rdr *bufio.Reader, cb Callback) os.Error {
 		//	execute state logic
 		//=============================================================
 		switch state {
-			//---------------------------------------------------------
-			// next parameter: can be named or unnamed, value or list
-			//---------------------------------------------------------
-			case 1: {
+		//---------------------------------------------------------
+		// next parameter: can be named or unnamed, value or list
+		//---------------------------------------------------------
+		case 1:
+			{
 				handled := false
 				// operations on unnamed lists outside of string values
 				if skip && !escaped {
 					if r == '{' {
 						// check for pending empty parameter
-						if stack.Len() > 0 && stack.Last() == EMPTY {
+						if stack.IsTop(EMPTY) {
 							stack.Pop()
 						}
 						// start unnamed list 
-						param.Name = ""		// unnamed parameter
-						rdr.UnreadRune ()	// putback first character
-						state = 3			// read value
+						param.Name = ""  // unnamed parameter
+						rdr.UnreadRune() // putback first character
+						state = 3        // read value
 						handled = true
 					} else if r == '}' {
 						// check for pending empty parameter
-						if stack.Len() > 0 && stack.Last() == EMPTY {
+						if stack.IsTop(EMPTY) {
 							stack.Pop()
 							param.reset()
-							cb (EMPTY, param)
+							cb(EMPTY, param)
 						}
 						// end unnamed list
-						rdr.UnreadRune ()	// putback first character
-						state = 5			// read delimiter
+						rdr.UnreadRune() // putback first character
+						state = 5        // read delimiter
 						handled = true
 					} else if r == ',' {
 						// end unnamed empty parameter
-						if stack.Len() == 0 || stack.Last() != EMPTY {
-							stack.Push (EMPTY)
+						if !stack.IsTop(EMPTY) {
+							stack.Push(EMPTY)
 						}
 						param.reset()
-						cb (EMPTY, param)
+						cb(EMPTY, param)
 						handled = true
 					}
 				}
 				// check start of name
 				if !handled {
 					// check for pending empty parameter
-					if stack.Len() > 0 && stack.Last() == EMPTY {
+					if stack.IsTop(EMPTY) {
 						stack.Pop()
 					}
 					// named parameter; check first character
-					if !unicode.IsLetter (r) && r != '"' {
-						cb (ERROR, nil)
-						return error ("Invalid parameter name", line, offset)
-					} 
+					if !unicode.IsLetter(r) && r != '"' {
+						cb(ERROR, nil)
+						return mkError("Invalid parameter name", line, offset)
+					}
 					// save initial character
 					buf += string(r)
 					// push VAR mode
-					stack.Push (VAR)
+					stack.Push(VAR)
 					state = 2
 				}
 			}
-			//---------------------------------------------------------
-			// parse parameter name			
-			//---------------------------------------------------------
-			case 2: {
-				switch (r) {
-				
-					// assignment found?
-					case '=':
-						// start parsing value
-						param.Name = buf
-						state = 3
-						
-					// delimiter, opening or closing brace?
-					case '{','}',',':
-						// assign to value.
-						param.Name = ""
-						param.Value = buf 
-						// notify value complete
-						cb (VAR, param)
-						param.reset()
-						// pop VAR tag
-						stack.Pop()
-						// restart
-						rdr.UnreadRune ()
-						state = 5						 				
-				
-					// else collect char in name buffer
-					default:
-						buf += string(r)
+		//---------------------------------------------------------
+		// parse parameter name			
+		//---------------------------------------------------------
+		case 2:
+			{
+				switch r {
+
+				// assignment found?
+				case '=':
+					// start parsing value
+					param.Name = buf
+					state = 3
+
+				// delimiter, opening or closing brace?
+				case '{', '}', ',':
+					// assign to value.
+					param.Name = ""
+					param.Value = buf
+					// notify value complete
+					cb(VAR, param)
+					param.reset()
+					// pop VAR tag
+					stack.Pop()
+					// restart
+					rdr.UnreadRune()
+					state = 5
+
+				// else collect char in name buffer
+				default:
+					buf += string(r)
 				}
 			}
-			//---------------------------------------------------------
-			// read generic value
-			//---------------------------------------------------------
-			case 3: {
+		//---------------------------------------------------------
+		// read generic value
+		//---------------------------------------------------------
+		case 3:
+			{
 				// test for value types:
 				switch r {
-					// begin of new list
-					case '{': {
+				// begin of new list
+				case '{':
+					{
 						// drop VAR tag from named list.
-						if stack.Last() == VAR {
-							stack.Pop() 
+						if stack.IsTop(VAR) {
+							stack.Pop()
 						}
 						// push LIST mode
-						stack.Push (LIST)
-						param.Value="{"
-						cb (LIST, param)
+						stack.Push(LIST)
+						param.Value = "{"
+						cb(LIST, param)
 						param.reset()
 					}
-					// empty parameter
-					case ',': {
+				// empty parameter
+				case ',':
+					{
 						// named empty parameter?
-						if stack.Last() == VAR {
+						if stack.IsTop(VAR) {
 							// yes: add empty parameter
-							stack.Pop() 
+							stack.Pop()
 							param.Value = ""
-							cb (VAR, param)
+							cb(VAR, param)
 						} else {
-							rdr.UnreadRune ()	// unread character
-							state = 1			// start of parameter
+							rdr.UnreadRune() // unread character
+							state = 1        // start of parameter
 						}
 					}
-					// begin new value or parameter
-					default: {
+				// begin new value or parameter
+				default:
+					{
 						// check for parameter tag on top of stack...
-						if stack.Last() == VAR {
+						if stack.IsTop(VAR) {
 							// parse value for defined parameter
-							stack.Push (VALUE)
-							buf = string (r)
+							stack.Push(VALUE)
+							buf = string(r)
 							state = 4
 						} else {
 							// parse new parameter
-							buf = string (r)
+							buf = string(r)
 							state = 1
 						}
 					}
 				}
 			}
-			//---------------------------------------------------------
-			// read parameter value
-			//---------------------------------------------------------
-			case 4: {
+		//---------------------------------------------------------
+		// read parameter value
+		//---------------------------------------------------------
+		case 4:
+			{
 				// drop escapes: use escaped character directly.
 				if !escaped {
 					// check for termination of value
 					if skip && (r == '}' || r == ',') {
 						// notify value complete
 						param.Value = buf
-						cb (VAR, param)
+						cb(VAR, param)
 						param.reset()
-						
+
 						// pop VALUE and VAR tags
 						stack.Pop()
 						stack.Pop()
-						
-						rdr.UnreadRune ()	// restore read character
-						state = 5;			// read/handle delimiter
+
+						rdr.UnreadRune() // restore read character
+						state = 5        // read/handle delimiter
 					} else {
 						buf += string(r)
 					}
 				}
 			}
-			//---------------------------------------------------------
-			// handle delimiter between parameters				
-			//---------------------------------------------------------
-			case 5: {
+		//---------------------------------------------------------
+		// handle delimiter between parameters				
+		//---------------------------------------------------------
+		case 5:
+			{
 				switch r {
-					// end of list
-					case '}': {
+				// end of list
+				case '}':
+					{
 						// check for correct parent type
-						if stack.Last() != LIST {
-							cb (ERROR, nil)
-							return error ("Invalid structure '}'", line, offset)
+						if !stack.IsTop(LIST) {
+							cb(ERROR, nil)
+							return mkError("Invalid structure '}'", line, offset)
 						}
 						// notify callback
 						param.Value = "}"
-						cb (LIST, param)
+						cb(LIST, param)
 						param.reset()
-						
+
 						stack.Pop()
 					}
-					// non-delimiting character: "unread" character
-					// and start new parameter expression
-					default: {
+				// non-delimiting character: "unread" character
+				// and start new parameter expression
+				default:
+					{
 						if stack.Len() > 0 {
-							if stack.Last() != VAR {
-								cb (ERROR, nil)
-								return error ("Invalid structure.", line, offset)
+							if stack.Peek() != VAR {
+								cb(ERROR, nil)
+								return mkError("Invalid structure.", line, offset)
 							}
 							stack.Pop()
 						}
-						rdr.UnreadRune ()
+						rdr.UnreadRune()
 					}
 					fallthrough
-					
-					// sibling delimiter
-					case ',': {
-						buf = ""		// reset buffer
-						state = 1		// restart with new parameter
+
+				// sibling delimiter
+				case ',':
+					{
+						buf = ""  // reset buffer
+						state = 1 // restart with new parameter
 					}
 				}
 			}
 		}
-	} 
+	}
 	// report success.
 	return nil
 }
@@ -387,11 +399,11 @@ func Parser (rdr *bufio.Reader, cb Callback) os.Error {
  * @param offset int - offset into line
  * @return os.Error - error object
  */
-func error (msg string, line int, offset int) os.Error {
-	out := msg + " (Line:" + strconv.Itoa(line);
-	out += ", Offset:" + strconv.Itoa(offset) + ")";
-	return os.NewError (out)
-} 
+func mkError(msg string, line int, offset int) error {
+	out := msg + " (Line:" + strconv.Itoa(line)
+	out += ", Offset:" + strconv.Itoa(offset) + ")"
+	return errors.New(out)
+}
 
 ///////////////////////////////////////////////////////////////////////
 //	Revision history:
