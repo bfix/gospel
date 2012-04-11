@@ -56,15 +56,15 @@ type Service interface {
  * Run TCP/UDP network service with user-defined session handler.
  * @param network string - network identifier (TCP/UDP on IPv4/v6)
  * @param addr string - address:port specification of service
- * @param hdlr Service - implementation of service interface
+ * @param hdlr []Service - implementations of service interface
  * @return error - error object (or nil)
  */
-func RunService(network, addr string, hdlr Service) error {
+func RunService(network, addr string, hdlr []Service) error {
 
 	// initialize control service	
 	service, err := net.Listen(network, addr)
 	if err != nil {
-		logger.Println(logger.ERROR, "["+hdlr.GetName()+"] service start-up failed: " + err.Error())
+		logger.Println(logger.ERROR, "[network] service start-up failed for '" + network + "/" + addr + "': " + err.Error())
 		return err
 	}
 
@@ -74,34 +74,42 @@ func RunService(network, addr string, hdlr Service) error {
 			// wait for connection request
 			client, err := service.Accept()
 			if err != nil {
-				logger.Println(logger.INFO, "["+hdlr.GetName()+"] Accept(): " + err.Error())
+				logger.Println(logger.ERROR, "[network] accept failed for '" + network + "/" + addr + "': " + err.Error())
 				continue
 			}
-			// check if connection is allowed:
-			remote := client.RemoteAddr().String()
-			protocol := client.RemoteAddr().Network()
-			// check for matching protocol
-			if !hdlr.CanHandle(protocol) {
-				logger.Printf(logger.WARN, "["+hdlr.GetName()+"] rejected connection protocol '%s' from %s\n", protocol, remote)
+			// find service interface that can handle the request
+			accepted := false
+			for _,srv := range hdlr {
+				// check if connection is allowed:
+				remote := client.RemoteAddr().String()
+				protocol := client.RemoteAddr().Network()
+				// check for matching protocol
+				if !srv.CanHandle(protocol) {
+					logger.Printf(logger.WARN, "["+srv.GetName()+"] rejected connection protocol '%s' from %s\n", protocol, remote)
+					continue
+				}
+				// check for matching remote address
+				if !srv.IsAllowed(remote) {
+					logger.Printf(logger.WARN, "["+srv.GetName()+"] rejected connection from %s\n", remote)
+					continue
+				}
+				// connection accepted
+				logger.Printf(logger.INFO, "["+srv.GetName()+"] accepted connection from %s\n", remote)
+				accepted = true
+	
+				// start handler
+				go srv.Process(client)
+				break
+			}
+			// close unhandled connections
+			if !accepted {
 				client.Close()
-				continue
 			}
-			// check for matching remote address
-			if !hdlr.IsAllowed(remote) {
-				logger.Printf(logger.WARN, "["+hdlr.GetName()+"] rejected connection from %s\n", remote)
-				client.Close()
-				continue
-			}
-			// connection accepted
-			logger.Printf(logger.INFO, "["+hdlr.GetName()+"] accepted connection from %s\n", remote)
-
-			// start handler
-			go hdlr.Process(client)
 		}
 	}()
 
 	// report success	
-	logger.Println(logger.INFO, "["+hdlr.GetName()+"] service started...")
+	logger.Println(logger.INFO, "[network] service started on '" + network + "/" + addr + "'...")
 	return nil
 }
 
