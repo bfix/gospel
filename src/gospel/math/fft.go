@@ -23,8 +23,8 @@ package math
 // Import external declarations
 
 import (
-	"math"
 	"errors"
+	"math"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -151,7 +151,7 @@ func (t *Transformer) Freq2Time(in Field) (Field, error) {
 
 	// check for matching array length
 	if len(in) != t.size {
-		return nil, errors.New ("Freq2Time: invalid input field size")
+		return nil, errors.New("Freq2Time: invalid input field size")
 	}
 
 	// pre-set output with input

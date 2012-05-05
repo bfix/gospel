@@ -35,7 +35,7 @@ import (
  * Source of randomness: 
  */
 type prng struct {
-	mask	*big.Int
+	mask *big.Int
 }
 
 //=====================================================================
@@ -45,7 +45,7 @@ type prng struct {
  */
 func (p *prng) Int63() int64 {
 
-	val,err := rand.Int (rand.Reader, p.mask)
+	val, err := rand.Int(rand.Reader, p.mask)
 	if err != nil {
 		panic("PRNG failure: " + err.Error())
 	}
@@ -69,7 +69,7 @@ func (p *prng) Seed(seed int64) {
  * @return *prng - reference to rand.Source instance
  */
 func NewPrngSource() *prng {
-	return &prng {
-		mask:	new(big.Int).Lsh (big.NewInt(1), 63),
+	return &prng{
+		mask: new(big.Int).Lsh(big.NewInt(1), 63),
 	}
 }

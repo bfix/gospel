@@ -51,7 +51,7 @@ func TestVector(t *testing.T) {
 	if vec.Len() != 10 {
 		t.Fail()
 	}
-	vec.Insert (5, "pp") // "mm" nil nil "aa" "bb" "pp" "cc" "dd" "ff" "gg" "hh" "ii" "kk" nil nil "nn"
+	vec.Insert(5, "pp") // "mm" nil nil "aa" "bb" "pp" "cc" "dd" "ff" "gg" "hh" "ii" "kk" nil nil "nn"
 	if vec.Len() != 11 {
 		t.Fail()
 	}

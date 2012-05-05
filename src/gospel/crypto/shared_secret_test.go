@@ -74,14 +74,3 @@ func nextPrime(p *big.Int) *big.Int {
 	}
 	return p
 }
-
-///////////////////////////////////////////////////////////////////////
-//	Revision history:
-///////////////////////////////////////////////////////////////////////
-//
-//	Revision 2.0  2012-01-11 03:02:41  brf
-//  First release as free software (GPL3+)
-//
-//	Revision 1.2  2011-12-21 23:33:19  brf
-//	Comments added. Code clean-up.
-//

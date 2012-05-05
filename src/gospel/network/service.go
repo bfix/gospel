@@ -64,7 +64,7 @@ func RunService(network, addr string, hdlr []Service) error {
 	// initialize control service	
 	service, err := net.Listen(network, addr)
 	if err != nil {
-		logger.Println(logger.ERROR, "[network] service start-up failed for '" + network + "/" + addr + "': " + err.Error())
+		logger.Println(logger.ERROR, "[network] service start-up failed for '"+network+"/"+addr+"': "+err.Error())
 		return err
 	}
 
@@ -74,12 +74,12 @@ func RunService(network, addr string, hdlr []Service) error {
 			// wait for connection request
 			client, err := service.Accept()
 			if err != nil {
-				logger.Println(logger.ERROR, "[network] accept failed for '" + network + "/" + addr + "': " + err.Error())
+				logger.Println(logger.ERROR, "[network] accept failed for '"+network+"/"+addr+"': "+err.Error())
 				continue
 			}
 			// find service interface that can handle the request
 			accepted := false
-			for _,srv := range hdlr {
+			for _, srv := range hdlr {
 				// check if connection is allowed:
 				remote := client.RemoteAddr().String()
 				protocol := client.RemoteAddr().Network()
@@ -96,7 +96,7 @@ func RunService(network, addr string, hdlr []Service) error {
 				// connection accepted
 				logger.Printf(logger.INFO, "["+srv.GetName()+"] accepted connection from %s\n", remote)
 				accepted = true
-	
+
 				// start handler
 				go srv.Process(client)
 				break
@@ -109,7 +109,7 @@ func RunService(network, addr string, hdlr []Service) error {
 	}()
 
 	// report success	
-	logger.Println(logger.INFO, "[network] service started on '" + network + "/" + addr + "'...")
+	logger.Println(logger.INFO, "[network] service started on '"+network+"/"+addr+"'...")
 	return nil
 }
 

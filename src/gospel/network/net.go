@@ -31,9 +31,9 @@ import (
 ///////////////////////////////////////////////////////////////////////
 // Global attributes
 
-var Delay,_ = time.ParseDuration("1ms")
+var Delay, _ = time.ParseDuration("1ms")
 var Retries = 1000
-var Timeout,_ = time.ParseDuration("100us")
+var Timeout, _ = time.ParseDuration("100us")
 
 ///////////////////////////////////////////////////////////////////////
 // Public functions
