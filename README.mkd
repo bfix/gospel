@@ -21,12 +21,24 @@ Packages
 --------
 
 - gospel/parser: Read/access/write nested data structures
-- gospel/network: Network-related functionality (services,TOR,...)
-- gospel/bitcoin/ecc: Elliptic curve crypto (Secp256k1, as used by bitcoin)
-- gospel/math: Mathematical helpers (FFT,...)
-- gospel/crypto: cryptographic helpers (secret sharing, prime fields, PRNG)
+- gospel/network: Network-related functionality
+    * services
+    * packet handling
+    * TOR
+- gospel/bitcoin/ecc: Elliptic curve crypto
+    * Secp256k1, as used by bitcoin
+- gospel/math: Mathematical helpers
+    * Fast Fourier Transformation
+- gospel/crypto: cryptographic helpers
+    * secret sharing
+    * prime fields
+    * PRNG
+    * Paillier crypto scheme
+    * cryptographic counters
 - gospel/logger: logging facilities
-- gospel/data: useful data structures like stacks, vectors,...
+- gospel/data: useful data structures like
+    * stacks
+    * vectors
 
 Install
 -------
@@ -38,9 +50,10 @@ This version is designed for the Go1 release.
      
 (2) Change into the '<gospel>/src/' directory and enter one of the following
     commands:
-	* 'make install': This will compile and install all archives locally.
-	* 'make test':    Run unit tests.
-	* 'make clean':   Remove build archives.
+    
+* 'make install': This will compile and install all archives locally.
+* 'make test':    Run unit tests.
+* 'make clean':   Remove build archives.
     
 (3) If you want to use the libraries in another project, you need to add this
     project to the GOPATH:
