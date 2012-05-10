@@ -61,7 +61,7 @@ func test_counter(priv *PaillierPrivateKey) bool {
 		}
 	}
 	t := cnt.Get()
-	t,err = priv.Decrypt (t)
+	t, err = priv.Decrypt(t)
 	if err != nil {
 		return false
 	}
@@ -69,6 +69,6 @@ func test_counter(priv *PaillierPrivateKey) bool {
 	if v == inc {
 		return true
 	}
-	fmt.Printf ("Counter mismatch: %d -- %d\n", v, inc)
+	fmt.Printf("Counter mismatch: %d -- %d\n", v, inc)
 	return false
 }
