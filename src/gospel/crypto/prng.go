@@ -54,8 +54,8 @@ func RandInt(lower, upper int) int {
  */
 func RandBytes(n int) []byte {
 	data := make([]byte, n)
-	for n := 0; n < n; n++ {
-		data[n] = byte(rnd.Int() & 0xFF)
+	for i := 0; i < n; i++ {
+		data[i] = byte(rnd.Int() & 0xFF)
 	}
 	return data
 }
