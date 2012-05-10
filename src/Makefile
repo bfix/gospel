@@ -6,7 +6,7 @@ ifneq ($(shell basename $(PWD)), src)
 $(error Not in source directory - you are here: '${PWD}')
 endif
 
-install:
+install:	fmt
 	GOPATH=$(BASE) go install -v ./...
 
 test:
@@ -14,3 +14,6 @@ test:
 
 clean:
 	GOPATH=$(BASE) go clean -i ./...
+	
+fmt:
+	go fmt ./...
