@@ -39,7 +39,7 @@ var rnd = rand.New(NewPrngSource())
 /*
  * Return a random integer value with given range.
  * @param lower int - lower bound (inclusive)
- * @param upper int - upper bound (exclusive)
+ * @param upper int - upper bound (inclusive)
  * @return int - random number (in given range)
  */
 func RandInt(lower, upper int) int {
