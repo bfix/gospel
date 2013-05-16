@@ -1,5 +1,5 @@
 /*
- * TOR (The Onion Router) helper methods. 
+ * TOR (The Onion Router) helper methods.
  *
  * (c) 2010-2012 Bernd Fix   >Y<
  *
@@ -32,9 +32,9 @@ import (
 
 /*
  * Check if source is a TOR exit node that can connect to dst:dport
- * @param src net.IP - source address to be checked for TOR exit node 
- * @param dst net.IP - destination address (usually addr of this instance) 
- * @param dport int - destination port (usually port of this instance) 
+ * @param src net.IP - source address to be checked for TOR exit node
+ * @param dst net.IP - destination address (usually addr of this instance)
+ * @param dport int - destination port (usually port of this instance)
  * @return bool - TOR exit node involved?
  */
 func IsTorExitToDest(src, dst net.IP, dport int) bool {
@@ -45,7 +45,7 @@ func IsTorExitToDest(src, dst net.IP, dport int) bool {
 //---------------------------------------------------------------------
 /*
  * Check if source is a TOR exit node
- * @param src net.IP - source address to be checked for TOR exit node 
+ * @param src net.IP - source address to be checked for TOR exit node
  * @return bool - TOR exit node involved?
  */
 func IsTorExit(src net.IP) bool {

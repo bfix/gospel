@@ -1,5 +1,5 @@
 /*
- * Constants for elliptic curve 'Secp256k1'. 
+ * Constants for elliptic curve 'Secp256k1'.
  *
  * (c) 2011-2012 Bernd Fix   >Y<
  *

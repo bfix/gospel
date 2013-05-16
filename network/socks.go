@@ -1,5 +1,5 @@
 /*
- * Connect through SOCKS5 proxy as specified in RFC 1928. 
+ * Connect through SOCKS5 proxy as specified in RFC 1928.
  *
  * (c) 2012 Bernd Fix   >Y<
  *
@@ -93,7 +93,7 @@ func Socks5Connect(proto string, addr string, port int, proxy string) (net.Conn,
 	dn := []byte(addr)
 	size := len(dn)
 
-	data[0] = 5          // SOCKS versions	
+	data[0] = 5          // SOCKS versions
 	data[1] = 1          // connect to target
 	data[2] = 0          // reserved
 	data[3] = 3          // domain name specified
@@ -116,6 +116,6 @@ func Socks5Connect(proto string, addr string, port int, proxy string) (net.Conn,
 		return nil, err
 	}
 
-	//return connection	
+	//return connection
 	return conn, nil
 }

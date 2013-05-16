@@ -1,7 +1,7 @@
 /*
  * Run TCP/UDP service loop: Create listener for incoming connection
  * requests as a go-routine and call user-defined service handler as
- * a go-routine to handle client sessions. 
+ * a go-routine to handle client sessions.
  *
  * (c) 2010-2012 Bernd Fix   >Y<
  *
@@ -61,7 +61,7 @@ type Service interface {
  */
 func RunService(network, addr string, hdlr []Service) error {
 
-	// initialize control service	
+	// initialize control service
 	service, err := net.Listen(network, addr)
 	if err != nil {
 		logger.Println(logger.ERROR, "[network] service start-up failed for '"+network+"/"+addr+"': "+err.Error())
@@ -108,7 +108,7 @@ func RunService(network, addr string, hdlr []Service) error {
 		}
 	}()
 
-	// report success	
+	// report success
 	logger.Println(logger.INFO, "[network] service started on '"+network+"/"+addr+"'...")
 	return nil
 }

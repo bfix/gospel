@@ -3,7 +3,7 @@
  *
  * (c) 2012 Bernd Fix   >Y<
  *
- *---------------------------------------------------------------------  
+ *---------------------------------------------------------------------
  * #### Key generation
  *
  * The key used in the Paillier crypto system consists of four integer
@@ -37,11 +37,11 @@
  *
  * The decryption function in the Paillier crypto scheme is:
  *
- *   m = D(c) = ((((c^l mod n^2)-1)/n) * u) mod n 
+ *   m = D(c) = ((((c^l mod n^2)-1)/n) * u) mod n
  *
  * N.B. As in the key generation process the division by n is integer
  *      based and rounds toward zero!
- *---------------------------------------------------------------------  
+ *---------------------------------------------------------------------
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -127,7 +127,7 @@ func NewPaillierPrivateKey(bits int) (key *PaillierPrivateKey, err error) {
 		return nil, err
 	}
 
-	// compute private key parameters	
+	// compute private key parameters
 	p1 := new(big.Int).Sub(p, one)
 	q1 := new(big.Int).Sub(q, one)
 	l := new(big.Int).Mul(q1, p1)
@@ -169,7 +169,7 @@ func (self *PaillierPrivateKey) GetPublicKey() *PaillierPublicKey {
 /*
  * Decrypt message with private key.
  * @param c *big.Int - encrypted message
- * @return m *big.Int - decrypted message 
+ * @return m *big.Int - decrypted message
  * @return err error - error object (or nil if successful)
  */
 func (self *PaillierPrivateKey) Decrypt(c *big.Int) (m *big.Int, err error) {
@@ -194,7 +194,7 @@ func (self *PaillierPrivateKey) Decrypt(c *big.Int) (m *big.Int, err error) {
 /*
  * Encrypt message with private key.
  * @param m *big.Int - plaintext message
- * @return c *big.Int - encrypted message 
+ * @return c *big.Int - encrypted message
  * @return err error - error object (or nil if successful)
  */
 func (self *PaillierPublicKey) Encrypt(m *big.Int) (c *big.Int, err error) {

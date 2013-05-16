@@ -1,6 +1,6 @@
 /*
  * Cryptographically strong source of randomness: Based on the
- * io.Reader instance assigned to "rand.Reader"; usually "/dev/urandom"  
+ * io.Reader instance assigned to "rand.Reader"; usually "/dev/urandom"
  *
  * (c) 2012 Bernd Fix   >Y<
  *
@@ -29,10 +29,10 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-// Cryptographically strong source of random bits 
+// Cryptographically strong source of random bits
 
 /*
- * Source of randomness: 
+ * Source of randomness:
  */
 type prng struct {
 	mask *big.Int

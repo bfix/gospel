@@ -1,5 +1,5 @@
 /*
- * Prime field implementation. 
+ * Prime field implementation.
  *
  * (c) 2011-2012 Bernd Fix   >Y<
  *

@@ -1,5 +1,5 @@
 /*
- * Elliptic curve cryptography key handling. 
+ * Elliptic curve cryptography key handling.
  *
  * (c) 2011-2012 Bernd Fix   >Y<
  *
@@ -39,7 +39,7 @@ type PublicKey struct {
 ///////////////////////////////////////////////////////////////////////
 /*
  * PrivateKey is a random factor 'd' for the base point that yields
- * the associated PublicKey (point on the curve (x,y) = d*G) 
+ * the associated PublicKey (point on the curve (x,y) = d*G)
  */
 type PrivateKey struct {
 	PublicKey
@@ -59,7 +59,7 @@ func GenerateKeys() *PrivateKey {
 	for {
 		// generate factor in range [3..n-1]
 		prv.d = n_rnd(three)
-		// generate point p = d*G 
+		// generate point p = d*G
 		prv.PublicKey.q = scalarMultBase(prv.d)
 
 		// check for valid key

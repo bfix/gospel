@@ -186,7 +186,7 @@ func (d *Data) Lookup(path string) *Data {
 	}
 
 	// split path into current level reference
-	// and follow-up reference 
+	// and follow-up reference
 	list := strings.SplitN(path, "/", 2)
 	curr := list[0]
 
@@ -225,7 +225,7 @@ func (d *Data) Lookup(path string) *Data {
 	if len(list) > 1 {
 		next := list[1]
 		if len(next) > 0 {
-			// recursive lookup	
+			// recursive lookup
 			return elem.Lookup(next)
 		}
 	}

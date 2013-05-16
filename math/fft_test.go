@@ -40,7 +40,7 @@ func TestTransform(test *testing.T) {
 	size := t.GetSize()
 	fmt.Printf("Size is %d\n", size)
 
-	// allocate and fill input data field	
+	// allocate and fill input data field
 	in := make(Field, size)
 	for i := 0; i < size; i++ {
 		in[i] = complex(float64(i), 0.)

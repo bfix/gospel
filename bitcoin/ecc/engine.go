@@ -1,5 +1,5 @@
 /*
- * Elliptic curve 'Secp256k1' engine for ECDSA. 
+ * Elliptic curve 'Secp256k1' engine for ECDSA.
  *
  * (c) 2011-2012 Bernd Fix   >Y<
  *

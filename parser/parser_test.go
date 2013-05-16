@@ -119,7 +119,7 @@ func GetTestData1() string {
 //---------------------------------------------------------------------
 /**
  * Handle callback from parser.
- * @param mode int - parameter mode 
+ * @param mode int - parameter mode
  * @param param *Parameter - reference to new parameter
  * @return bool - successful operation?
  */

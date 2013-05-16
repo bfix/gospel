@@ -1,5 +1,5 @@
 /*
- * Elliptic curve 'Secp256k1' methods. 
+ * Elliptic curve 'Secp256k1' methods.
  *
  * (c) 2011-2012 Bernd Fix   >Y<
  *
@@ -210,7 +210,7 @@ func scalarMult_(p *point_, k *big.Int) *point_ {
 }
 
 ///////////////////////////////////////////////////////////////////////
-// helper methods for arithmetic operations on curve points 
+// helper methods for arithmetic operations on curve points
 
 //---------------------------------------------------------------------
 //	modulus

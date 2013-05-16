@@ -44,7 +44,7 @@ const (
 )
 
 ///////////////////////////////////////////////////////////////////////
-// Public types 
+// Public types
 
 /*
  * Parameter type declaration.
@@ -187,7 +187,7 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 						if stack.IsTop(EMPTY) {
 							stack.Pop()
 						}
-						// start unnamed list 
+						// start unnamed list
 						param.Name = ""  // unnamed parameter
 						rdr.UnreadRune() // putback first character
 						state = 3        // read value
@@ -232,7 +232,7 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 				}
 			}
 		//---------------------------------------------------------
-		// parse parameter name			
+		// parse parameter name
 		//---------------------------------------------------------
 		case 2:
 			{
@@ -340,7 +340,7 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 				}
 			}
 		//---------------------------------------------------------
-		// handle delimiter between parameters				
+		// handle delimiter between parameters
 		//---------------------------------------------------------
 		case 5:
 			{

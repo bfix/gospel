@@ -21,7 +21,7 @@
  *  parsing worker object.
  *
  * --------------------------------------------------------------------
- *  [1] Usage: 
+ *  [1] Usage:
  * --------------------------------------------------------------------
  *     A Parser method can traverse data definitions according to
  *  the format described in section [2] as BNF. The methods has two
@@ -40,7 +40,7 @@
  *  parsing events via the callback.
  *     The callback method can be nicely defined as a 'closure' in a
  *  parsing worker object.
- * 
+ *
  * --------------------------------------------------------------------
  *  [2] Data format:
  * --------------------------------------------------------------------
@@ -59,7 +59,7 @@
  *
  *  N.B.: Top-level parameters of form 'name=value' MUST always be
  *  terminated by a comma character (',') except if it is the very
- *  last parameter in a stream! 
+ *  last parameter in a stream!
  * --------------------------------------------------------------------
  *
  * (c) 2010 Bernd Fix   >Y<

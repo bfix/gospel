@@ -4,7 +4,7 @@
  * --------------------------------------------------------------------
  * Split a secret number into 'n' shares where any 'k' combined shares
  * yield the original secret number. The underlying prime field needs a
- * generator that is larger than the secret to be shared.   
+ * generator that is larger than the secret to be shared.
  *
  * (c) 2011-2012 Bernd Fix   >Y<
  *

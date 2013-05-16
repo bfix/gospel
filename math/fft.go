@@ -1,5 +1,5 @@
 /*
- * Fast Fourier Transformation. 
+ * Fast Fourier Transformation.
  *
  * (c) 2011-2012 Bernd Fix   >Y<
  *
@@ -28,7 +28,7 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-// Public types 
+// Public types
 
 //---------------------------------------------------------------------
 /*

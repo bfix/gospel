@@ -38,7 +38,7 @@ func TestPrng(t *testing.T) {
 		tab[i] = 0
 	}
 
-	// initial table	
+	// initial table
 	q := 1
 	for count := v; count > 0; q++ {
 		i := RandInt(0, v-1)

@@ -140,7 +140,7 @@ func (self *IntStack) Peek() (v int) {
 
 //---------------------------------------------------------------------
 /*
- * Compare last element with given value. 
+ * Compare last element with given value.
  * @param v int - value to compare to
  * @return bool - do value and top element match?
  */

@@ -36,7 +36,7 @@ func TestData(t *testing.T) {
 	fmt.Println("********************************************************")
 
 	//=================================================================
-	// Basic 
+	// Basic
 	//=================================================================
 	testCase1("Simple=Test", "/Simple", "", "Simple=\"Test\"", t, "111")
 	testCase1("Test", "/#1", "", "\"Test\"", t, "111")
@@ -74,7 +74,7 @@ var err error
  * Parse string into data object.
  * @param s string - data definition
  * @param t *testing.T - test handler
- * @return *Data - parsed data object 
+ * @return *Data - parsed data object
  */
 //---------------------------------------------------------------------
 func getData(s string, t *testing.T) *Data {
@@ -91,12 +91,12 @@ func getData(s string, t *testing.T) *Data {
 //---------------------------------------------------------------------
 /**
  * Run test case.
- * @param data string - data definition 
- * @param access string - lookup key  
- * @param path string - expected path of lookup element  
- * @param elem string - printable lookup element  
+ * @param data string - data definition
+ * @param access string - lookup key
+ * @param path string - expected path of lookup element
+ * @param elem string - printable lookup element
  * @param t *testing.T - test handler
- * @param flags string - condition flags  
+ * @param flags string - condition flags
  */
 //---------------------------------------------------------------------
 func testCase1(data, access, path, elem string, t *testing.T, flags string) {

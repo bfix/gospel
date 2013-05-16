@@ -39,7 +39,7 @@ func TestCounter(t *testing.T) {
 
 ///////////////////////////////////////////////////////////////////////
 /*
- * Test Counter 
+ * Test Counter
  */
 func test_counter(priv *PaillierPrivateKey) bool {
 

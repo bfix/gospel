@@ -1,5 +1,5 @@
 /*
- * Logging-related functions. 
+ * Logging-related functions.
  *
  * (c) 2011-2012 Bernd Fix   >Y<
  *
