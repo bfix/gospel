@@ -2,7 +2,7 @@
 Gospel: GO SPEcial Library
 ==========================
 
-(c) 2010-2012 Bernd Fix   >Y<
+(c) 2010-2013 Bernd Fix   >Y<
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -44,19 +44,9 @@ Packages
 Install
 -------
 
-This version is designed for the Go1 release.
+This version is designed for the Go1.1 release.
 
-(1) Let '<gospel>' be the base directory of this repository, i.e. the
-    directory where this 'README.mkd' file is located.
-     
-(2) Change into the '<gospel>/src/' directory and enter one of the following
-    commands:
-    
-* 'make install': This will compile and install all archives locally.
-* 'make test':    Run unit tests.
-* 'make clean':   Remove build archives.
-    
-(3) If you want to use the libraries in another project, you need to add this
-    project to the GOPATH:
-    
-    	$ export GOPATH=${GOPATH}:<gospel>
+Make sure that your Go environment - especially ${GOPATH} - is set up and
+enter the following command:
+
+    $ go get github.com/bfix/gospel

@@ -25,7 +25,7 @@ package network
 // Import external declarations.
 
 import (
-	"gospel/logger"
+	"github.com/bfix/gospel/logger"
 	"net"
 )
 

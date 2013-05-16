@@ -23,7 +23,7 @@ package ecc
 // Import external declarations
 
 import (
-	"gospel/crypto"
+	"github.com/bfix/gospel/crypto"
 	"math/big"
 )
 

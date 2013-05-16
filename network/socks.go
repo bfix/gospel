@@ -24,7 +24,7 @@ package network
 
 import (
 	"errors"
-	"gospel/logger"
+	"github.com/bfix/gospel/logger"
 	"net"
 )
 

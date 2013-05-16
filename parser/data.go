@@ -24,7 +24,7 @@ package parser
 
 import (
 	"bufio"
-	"gospel/data"
+	"github.com/bfix/gospel/data"
 	"strconv"
 	"strings"
 )
