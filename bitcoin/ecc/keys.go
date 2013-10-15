@@ -23,7 +23,9 @@ package ecc
 // Import external declarations
 
 import (
+	"errors"
 	"math/big"
+	"github.com/bfix/gospel/math"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -33,7 +35,29 @@ import (
  * factor (private key)
  */
 type PublicKey struct {
-	q *point
+	Q *point
+}
+
+///////////////////////////////////////////////////////////////////////
+/*
+ * Get byte representation of public key.
+ * @param compressed bool - compressed representation?
+ * @return []byte - byte array representing a public key
+ */
+func (k *PublicKey) Bytes(compressed bool) []byte {
+	return pointAsBytes(k.Q, compressed)
+}
+
+///////////////////////////////////////////////////////////////////////
+/*
+ * Get public key from byte representation.
+ */
+func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
+	pnt, err := pointFromBytes(b)
+	if err != nil {
+		return nil, err
+	}
+	return &PublicKey{ pnt }, nil 
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -43,7 +67,31 @@ type PublicKey struct {
  */
 type PrivateKey struct {
 	PublicKey
-	d *big.Int
+	D *big.Int
+}
+
+///////////////////////////////////////////////////////////////////////
+/*
+ * Get byte representation of private key.
+ * @return []byte - byte array representing a private key
+ */
+func (k *PrivateKey) Bytes() []byte {
+	return coordAsBytes(k.D)
+}
+
+///////////////////////////////////////////////////////////////////////
+/*
+ * Get private key from byte representation.
+ */
+func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
+	if b[0] != 0 {
+		return nil, errors.New("Invalid private key")
+	}
+	key := &PrivateKey{}
+	key.D = new(big.Int).SetBytes(b[1:])
+	g := GetBasePoint ()
+	key.Q = scalarMult(g, key.D) 
+	return key, nil 
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -58,12 +106,12 @@ func GenerateKeys() *PrivateKey {
 	prv := new(PrivateKey)
 	for {
 		// generate factor in range [3..n-1]
-		prv.d = n_rnd(three)
+		prv.D = n_rnd(math.THREE)
 		// generate point p = d*G
-		prv.PublicKey.q = scalarMultBase(prv.d)
+		prv.PublicKey.Q = ScalarMultBase(prv.D)
 
 		// check for valid key
-		if !isInf(prv.PublicKey.q) {
+		if !isInf(prv.PublicKey.Q) {
 			break
 		}
 	}

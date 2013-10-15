@@ -1,7 +1,7 @@
 /*
  * Elliptic curve 'Secp256k1' methods.
  *
- * (c) 2011-2012 Bernd Fix   >Y<
+ * (c) 2011-2013 Bernd Fix   >Y<
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,9 @@ package ecc
 // Import external declarations
 
 import (
+	"errors"
 	"github.com/bfix/gospel/crypto"
+	"github.com/bfix/gospel/math"
 	"math/big"
 )
 
@@ -34,13 +36,103 @@ type point struct { // exported point type
 	x, y *big.Int // coordinate values
 }
 
-// point at infinity
-var inf = &point{zero, zero}
+// instaniate a new point
+func NewPoint(a, b *big.Int) *point {
+	p := &point{}
+	p.x = new(big.Int).Set(a)
+	p.y = new(big.Int).Set(b)
+	return p
+}
 
-///////////////////////////////////////////////////////////////////////
+// point at infinity
+var inf = NewPoint(math.ZERO, math.ZERO)
+
+// get base point
+func GetBasePoint() *point {
+	return NewPoint(curve_gx, curve_gy)
+}
+
+/////////////////////////////////////////////////////////////////////
+// get byte representation of point (compressed or uncompressed).
+
+func pointAsBytes(p *point, compressed bool) []byte {
+	if IsEqual(p, inf) {
+		return []byte { 0 }
+	}
+	res := make([]byte, 0)
+	if compressed {
+		rc:= byte(2)
+		if p.y.Bit(0) == 1 {
+			rc = 3
+		}
+		res = append(res, rc)
+		res = append(res, coordAsBytes(p.x)...)
+	} else {
+		res = append(res, 4)
+		res = append(res, coordAsBytes(p.x)...)
+		res = append(res, coordAsBytes(p.y)...)
+	}
+	return res
+}
+
+// helper: convert coordinate to byte array of correct length
+func coordAsBytes(v *big.Int) []byte {
+	bv := v.Bytes()
+	plen := 32 - len(bv)
+	if plen == 0 {
+		return bv
+	}
+	b := make([]byte, plen)
+	return append(b, bv...)
+}
+
+/////////////////////////////////////////////////////////////////////
+// reconstruct point from binary representation
+
+func pointFromBytes(b []byte) (p *point, err error) {
+	p = NewPoint(math.ZERO,math.ZERO)
+	err = nil
+	switch b[0] {
+		case 0:
+		case 4:
+			p.x.SetBytes(b[1:33])
+			p.y.SetBytes(b[33:])
+		case 3:
+			p.x.SetBytes(b[1:])
+			p.y, err = computeY(p.x, 1)
+			if err != nil {
+				return
+			}
+		case 2:
+			p.x.SetBytes(b[1:])
+			p.y, err = computeY(p.x, 0)
+			if err != nil {
+				return
+			}
+		default:
+			err = errors.New("Invalid binary point representation")
+	}
+	return 
+}
+
+// helper: reconstruct y-coordinate of point
+func computeY(x *big.Int, m uint) (y *big.Int, err error) {
+	y = big.NewInt(0)
+	err = nil
+	y2 := p_add(p_cub(x), curve_b)
+	y, err = math.Sqrt_modP(y2, curve_p)
+	if err == nil {
+		if y.Bit(0) != m {
+			y = new(big.Int).Sub(curve_p, y)
+		}
+	}
+	return
+} 
+
+/////////////////////////////////////////////////////////////////////
 // check if two points are equal
 
-func isEqual(p1, p2 *point) bool {
+func IsEqual(p1, p2 *point) bool {
 	return p1.x.Cmp(p2.x) == 0 && p1.y.Cmp(p2.y) == 0
 }
 
@@ -48,13 +140,13 @@ func isEqual(p1, p2 *point) bool {
 // check if a point is at infinity
 
 func isInf(p *point) bool {
-	return p.x.Cmp(zero) == 0 && p.y.Cmp(zero) == 0
+	return p.x.Cmp(math.ZERO) == 0 && p.y.Cmp(math.ZERO) == 0
 }
 
 ///////////////////////////////////////////////////////////////////////
 // check if a point (x,y) is on the curve
 
-func isOnCurve(p *point) bool {
+func IsOnCurve(p *point) bool {
 	// y² = x³ + 7
 	y2 := p_sqr(p.y)
 	x3 := p_cub(p.x)
@@ -65,17 +157,17 @@ func isOnCurve(p *point) bool {
 // Add two points on the curve
 
 func add(p1, p2 *point) *point {
-	if isEqual(p1, p2) {
+	if IsEqual(p1, p2) {
 		return double(p1)
 	}
-	if isEqual(p1, inf) {
+	if IsEqual(p1, inf) {
 		return p2
 	}
-	if isEqual(p2, inf) {
+	if IsEqual(p2, inf) {
 		return p1
 	}
-	_p1 := &point_{p1.x, p1.y, one}
-	_p2 := &point_{p2.x, p2.y, one}
+	_p1 := NewPoint_(p1.x, p1.y, math.ONE)
+	_p2 := NewPoint_(p2.x, p2.y, math.ONE)
 	return conv(add_(_p1, _p2))
 }
 
@@ -83,10 +175,10 @@ func add(p1, p2 *point) *point {
 // Double a point on the curve
 
 func double(p *point) *point {
-	if isEqual(p, inf) {
+	if IsEqual(p, inf) {
 		return inf
 	}
-	return conv(double_(&point_{p.x, p.y, one}))
+	return conv(double_(NewPoint_(p.x, p.y, math.ONE)))
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -94,14 +186,14 @@ func double(p *point) *point {
 // a Montgomery multiplication approach
 
 func scalarMult(p *point, k *big.Int) *point {
-	return conv(scalarMult_(&point_{p.x, p.y, one}, k))
+	return conv(scalarMult_(NewPoint_(p.x, p.y, math.ONE), k))
 }
 
 ///////////////////////////////////////////////////////////////////////
 // Multiply the base point of the curve with a scalar value k
 
-func scalarMultBase(k *big.Int) *point {
-	return scalarMult(&point{curve_gx, curve_gy}, k)
+func ScalarMultBase(k *big.Int) *point {
+	return scalarMult(GetBasePoint(), k)
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -113,14 +205,23 @@ type point_ struct { // internal point type
 	x, y, z *big.Int // using Jacobian coordinates
 }
 
+// instaniate a new point
+func NewPoint_(a, b, c *big.Int) *point_ {
+	p := &point_{}
+	p.x = new(big.Int).Set(a)
+	p.y = new(big.Int).Set(b)
+	p.z = new(big.Int).Set(c)
+	return p
+}
+
 // point at infinity
-var inf_ = &point_{inf.x, inf.y, one}
+var inf_ = NewPoint_(inf.x, inf.y, math.ONE)
 
 ///////////////////////////////////////////////////////////////////////
 // check if a point is at infinity
 
 func isInf_(p *point_) bool {
-	return p.x.Cmp(zero) == 0 && p.y.Cmp(zero) == 0
+	return p.x.Cmp(math.ZERO) == 0 && p.y.Cmp(math.ZERO) == 0
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -130,7 +231,7 @@ func conv(p *point_) *point {
 	zi := p_inv(p.z)
 	x := p_mul(p.x, p_sqr(zi))
 	y := p_mul(p.y, p_cub(zi))
-	return &point{x, y}
+	return NewPoint(x, y)
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -151,15 +252,15 @@ func add_(p1, p2 *point_) *point_ {
 	s1 := p_mul(p_mul(p1.y, p2.z), z2z2)
 	s2 := p_mul(p_mul(p2.y, p1.z), z1z1)
 	h := p_sub(u2, u1)
-	i := p_sqr(p_mul(two, h))
+	i := p_sqr(p_mul(math.TWO, h))
 	j := p_mul(h, i)
-	r := p_mul(two, p_sub(s2, s1))
+	r := p_mul(math.TWO, p_sub(s2, s1))
 	v := p_mul(u1, i)
 	w := p_add(p1.z, p2.z)
-	x := p_sub(p_sub(p_sqr(r), j), p_mul(two, v))
-	y := p_sub(p_mul(r, p_sub(v, x)), p_mul(two, p_mul(s1, j)))
+	x := p_sub(p_sub(p_sqr(r), j), p_mul(math.TWO, v))
+	y := p_sub(p_mul(r, p_sub(v, x)), p_mul(math.TWO, p_mul(s1, j)))
 	z := p_mul(p_sub(p_sub(p_sqr(w), z1z1), z2z2), h)
-	return &point_{x, y, z}
+	return NewPoint_(x, y, z)
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -174,13 +275,13 @@ func double_(p *point_) *point_ {
 	b := p_sqr(p.y)
 	zz := p_sqr(p.z)
 	c := p_sqr(b)
-	d := p_mul(two, p_sub(p_sub(p_sqr(_add(p.x, b)), a), c))
-	e := p_mul(three, a)
+	d := p_mul(math.TWO, p_sub(p_sub(p_sqr(_add(p.x, b)), a), c))
+	e := p_mul(math.THREE, a)
 	f := p_sqr(e)
-	x := p_sub(f, p_mul(two, d))
-	y := p_sub(p_mul(e, p_sub(d, x)), p_mul(eight, c))
+	x := p_sub(f, p_mul(math.TWO, d))
+	y := p_sub(p_mul(e, p_sub(d, x)), p_mul(math.EIGHT, c))
 	z := p_sub(p_sub(p_sqr(p_add(p.y, p.z)), b), zz)
-	return &point_{x, y, z}
+	return NewPoint_(x, y, z)
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -192,7 +293,7 @@ func scalarMult_(p *point_, k *big.Int) *point_ {
 	if isInf_(p) {
 		return p
 	}
-	if k.Cmp(zero) == 0 {
+	if k.Cmp(math.ZERO) == 0 {
 		return inf_
 	}
 

@@ -23,6 +23,7 @@ package ecc
 // Import external declarations
 
 import (
+	"github.com/bfix/gospel/math"
 	"math/big"
 )
 
@@ -41,12 +42,12 @@ func Sign(key *PrivateKey, hash []byte) (r, s *big.Int) {
 		// compute value of 'r' as x-coordinate of k*G with random k
 		for {
 			// get random value
-			k = n_rnd(three)
+			k = n_rnd(math.THREE)
 			// get its modular inverse
 			kInv = n_inv(k)
 
 			// compute k*G
-			pnt := scalarMultBase(k)
+			pnt := ScalarMultBase(k)
 			r = n_mod(pnt.x)
 			if r.Sign() != 0 {
 				break
@@ -54,7 +55,7 @@ func Sign(key *PrivateKey, hash []byte) (r, s *big.Int) {
 		}
 		// compute value of 's := (rd + e)/k'
 		e := convertHash(hash)
-		s = n_mul(_add(n_mul(key.d, r), e), kInv)
+		s = n_mul(_add(n_mul(key.D, r), e), kInv)
 		if s.Sign() != 0 {
 			break
 		}
@@ -87,8 +88,8 @@ func Verify(key *PublicKey, hash []byte, r, s *big.Int) bool {
 	u1 := e.Mul(e, w)
 	u2 := w.Mul(r, w)
 
-	p1 := scalarMultBase(u1)
-	p2 := scalarMult(key.q, u2)
+	p1 := ScalarMultBase(u1)
+	p2 := scalarMult(key.Q, u2)
 	if p1.x.Cmp(p2.x) == 0 {
 		return false
 	}

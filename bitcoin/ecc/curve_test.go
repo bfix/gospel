@@ -4,7 +4,9 @@ package ecc
 // Import external declarations
 
 import (
+	"encoding/hex"
 	"fmt"
+	"github.com/bfix/gospel/math"
 	"math/big"
 	"testing"
 )
@@ -25,8 +27,13 @@ func TestCurve(t *testing.T) {
 	if !isOnCurve(g) {
 		fmt.Printf("Failed")
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
+	}
+	if !testInOut(g) {
+		t.Fail()
+		return
 	}
 
 	fmt.Print("Computing infinity '0 = n*g': ")
@@ -34,8 +41,13 @@ func TestCurve(t *testing.T) {
 	if !isEqual(p1, inf) {
 		fmt.Printf("Failed: %s\n", p1.emit())
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
+	}
+	if !testInOut(p1) {
+		t.Fail()
+		return
 	}
 
 	fmt.Print("Computing infinity '0 = (-g) + g': ")
@@ -43,6 +55,7 @@ func TestCurve(t *testing.T) {
 	if !isEqual(p1, inf) {
 		fmt.Printf("Failed: %s\n", p1.emit())
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
 	}
@@ -53,26 +66,33 @@ func TestCurve(t *testing.T) {
 	if !isEqual(p1, g) {
 		fmt.Printf("Failed: %s != %s\n", p1.emit(), g.emit())
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
 	}
 	fmt.Print("    k*0 = 0: ")
-	p1 = scalarMult(inf, eight)
+	p1 = scalarMult(inf, math.EIGHT)
 	if !isEqual(p1, inf) {
 		fmt.Printf("Failed: %s != (0,0)\n", p1.emit())
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
 	}
 
 	fmt.Print("Checking for 'double(x) == scalarMult(x,2)': ")
 	p1 = double(g)
-	p2 := scalarMult(g, two)
+	p2 := scalarMult(g, math.TWO)
 	if !isEqual(p1, p2) {
 		fmt.Println("Failed")
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
+	}
+	if !testInOut(p2) {
+		t.Fail()
+		return
 	}
 
 	fmt.Print("Checking for 'p+q = q+p': ")
@@ -82,18 +102,28 @@ func TestCurve(t *testing.T) {
 	if !isEqual(p2, p3) {
 		fmt.Println("Failed")
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
+	}
+	if !testInOut(p3) {
+		t.Fail()
+		return
 	}
 
 	fmt.Print("Checking for 'add(double(x),x) == scalarMult(x,3)': ")
 	p1 = add(double(g), g)
-	p2 = scalarMult(g, three)
+	p2 = scalarMult(g, math.THREE)
 	if !isEqual(p1, p2) {
 		fmt.Println("Failed")
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
+	}
+	if !testInOut(p3) {
+		t.Fail()
+		return
 	}
 
 	fmt.Print("Checking if point '2*g' is on curve: ")
@@ -101,43 +131,63 @@ func TestCurve(t *testing.T) {
 	if !isOnCurve(pnt) {
 		fmt.Println("Failed")
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
+	}
+	if !testInOut(pnt) {
+		t.Fail()
+		return
 	}
 
 	fmt.Print("Checking if point '3*g' is on curve: ")
-	pnt = scalarMult(g, three)
+	pnt = scalarMult(g, math.THREE)
 	if !isOnCurve(pnt) {
 		fmt.Println("Failed")
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
+	}
+	if !testInOut(pnt) {
+		t.Fail()
+		return
 	}
 
 	fmt.Print("Checking if point '7*g' is on curve: ")
-	pnt = scalarMult(g, seven)
+	pnt = scalarMult(g, math.SEVEN)
 	if !isOnCurve(pnt) {
 		fmt.Println("Failed")
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
 	}
+	if !testInOut(pnt) {
+		t.Fail()
+		return
+	}
 
 	fmt.Print("Checking if point '8*g' is on curve: ")
-	pnt = scalarMult(g, eight)
+	pnt = scalarMult(g, math.EIGHT)
 	if !isOnCurve(pnt) {
 		fmt.Println("Failed")
 		t.Fail()
+		return
 	} else {
 		fmt.Println("O.K.")
+	}
+	if !testInOut(pnt) {
+		t.Fail()
+		return
 	}
 
 	fmt.Println("Checking curve: 'aG + bG = cG if a + b = c")
 	fmt.Print("    ")
 	failed := false
 	for n := 0; n < 32; n++ {
-		a := n_rnd(zero)
-		b := n_rnd(zero)
+		a := n_rnd(math.ZERO)
+		b := n_rnd(math.ZERO)
 		c := new(big.Int).Add(a, b)
 		p := scalarMult(g, a)
 		q := scalarMult(g, b)
@@ -169,6 +219,7 @@ func TestCurve(t *testing.T) {
 	}
 	if failed {
 		t.Fail()
+		return
 		fmt.Println(" Failed")
 	} else {
 		fmt.Println(" O.K.")
@@ -212,10 +263,15 @@ func TestCurve(t *testing.T) {
 		} else {
 			fmt.Print("+")
 		}
+		if !testInOut(p1) {
+			t.Fail()
+			return
+		}
 	}
 	if failed {
 		t.Fail()
 		fmt.Println(" Failed")
+		return
 	} else {
 		fmt.Println(" O.K.")
 	}
@@ -226,4 +282,20 @@ func TestCurve(t *testing.T) {
 
 func (p *point) emit() string {
 	return "(" + p.x.String() + "," + p.y.String() + ")"
+}
+
+// test binary conversion for point
+func testInOut(p *point) bool {
+	cmpr := p.x.Bit(0) == 0
+	b := pointAsBytes(p, cmpr)
+	pp, err := pointFromBytes(b)
+	rc := (err == nil && isEqual(pp, p))
+	if !rc {
+		fmt.Printf (">> %s\n", p.emit()) 
+		fmt.Printf (">> %v\n", cmpr) 
+		fmt.Printf (">> %s\n", hex.EncodeToString(b)) 
+		fmt.Printf (">> %s\n", pp.emit()) 
+		fmt.Println ("BinRep() failed!")
+	}
+	return rc
 }

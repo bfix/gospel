@@ -24,17 +24,8 @@ package ecc
 
 import (
 	"math/big"
+	"github.com/bfix/gospel/math"
 )
-
-///////////////////////////////////////////////////////////////////////
-// Number constants.
-
-var zero = big.NewInt(0)
-var one = big.NewInt(1)
-var two = big.NewInt(2)
-var three = big.NewInt(3)
-var seven = big.NewInt(7)
-var eight = big.NewInt(8)
 
 ///////////////////////////////////////////////////////////////////////
 // Curve constants.
@@ -44,7 +35,7 @@ var eight = big.NewInt(8)
 var curve_p = fromHex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F")
 
 // curve parameter (=7)
-var curve_b = seven
+var curve_b = math.SEVEN
 
 // base point
 var curve_gx = fromHex("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
@@ -54,7 +45,7 @@ var curve_gy = fromHex("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08F
 var curve_n = fromHex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141")
 
 // cofactor
-var curve_h = one
+var curve_h = math.ONE
 
 // bitsize
 var curve_bits = 256
