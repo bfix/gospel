@@ -24,8 +24,8 @@ package util
 
 import (
 	"code.google.com/p/go.crypto/ripemd160"
-	"github.com/bfix/gospel/bitcoin/ecc"
 	"crypto/sha256"
+	"github.com/bfix/gospel/bitcoin/ecc"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -35,13 +35,13 @@ type Address string
 
 ///////////////////////////////////////////////////////////////////////
 // compute address from public key for either the "real" bitcoin
-// network or the test network 
+// network or the test network
 
-func MakeAddress (key ecc.PublicKey) Address {
+func MakeAddress(key *ecc.PublicKey) Address {
 	return buildAddr(key, 0)
 }
 
-func MakeTestAddress (key ecc.PublicKey) Address {
+func MakeTestAddress(key *ecc.PublicKey) Address {
 	return buildAddr(key, 111)
 }
 
@@ -49,25 +49,27 @@ func MakeTestAddress (key ecc.PublicKey) Address {
 // helper: compute address from public key using different (nested)
 // hashes and identifiers.
 
-func buildAddr (key ecc.PublicKey, version byte) Address {
+func buildAddr(key *ecc.PublicKey, version byte) Address {
 
 	addr := make([]byte, 0)
 	addr = append(addr, version)
 
-	sha256 := sha256.New()
-	sha256.Write(key.Bytes(false))
-	h := sha256.Sum(nil)
-	
-	ripemd160 := ripemd160.New()
-	ripemd160.Write(h)
-	kh := ripemd160.Sum(nil)
-	
-	sha256.Reset()
-	sha256.Write(h)
-	cs := sha256.Sum(nil)
-	
+	sha2 := sha256.New()
+	sha2.Write(key.Bytes(true))
+	h := sha2.Sum(nil)
+
+	ripemd := ripemd160.New()
+	ripemd.Write(h)
+	kh := ripemd.Sum(nil)
 	addr = append(addr, kh...)
+
+	sha2.Reset()
+	sha2.Write(addr)
+	h = sha2.Sum(nil)
+	sha2.Reset()
+	sha2.Write(h)
+	cs := sha2.Sum(nil)
 	addr = append(addr, cs[:4]...)
-	
+
 	return Address(Base58Encode(addr))
 }
