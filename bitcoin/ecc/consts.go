@@ -23,8 +23,8 @@ package ecc
 // Import external declarations
 
 import (
-	"math/big"
 	"github.com/bfix/gospel/math"
+	"math/big"
 )
 
 ///////////////////////////////////////////////////////////////////////

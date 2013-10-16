@@ -57,11 +57,11 @@ func GetBasePoint() *point {
 
 func pointAsBytes(p *point, compressed bool) []byte {
 	if IsEqual(p, inf) {
-		return []byte { 0 }
+		return []byte{0}
 	}
 	res := make([]byte, 0)
 	if compressed {
-		rc:= byte(2)
+		rc := byte(2)
 		if p.y.Bit(0) == 1 {
 			rc = 3
 		}
@@ -90,29 +90,29 @@ func coordAsBytes(v *big.Int) []byte {
 // reconstruct point from binary representation
 
 func pointFromBytes(b []byte) (p *point, err error) {
-	p = NewPoint(math.ZERO,math.ZERO)
+	p = NewPoint(math.ZERO, math.ZERO)
 	err = nil
 	switch b[0] {
-		case 0:
-		case 4:
-			p.x.SetBytes(b[1:33])
-			p.y.SetBytes(b[33:])
-		case 3:
-			p.x.SetBytes(b[1:])
-			p.y, err = computeY(p.x, 1)
-			if err != nil {
-				return
-			}
-		case 2:
-			p.x.SetBytes(b[1:])
-			p.y, err = computeY(p.x, 0)
-			if err != nil {
-				return
-			}
-		default:
-			err = errors.New("Invalid binary point representation")
+	case 0:
+	case 4:
+		p.x.SetBytes(b[1:33])
+		p.y.SetBytes(b[33:])
+	case 3:
+		p.x.SetBytes(b[1:])
+		p.y, err = computeY(p.x, 1)
+		if err != nil {
+			return
+		}
+	case 2:
+		p.x.SetBytes(b[1:])
+		p.y, err = computeY(p.x, 0)
+		if err != nil {
+			return
+		}
+	default:
+		err = errors.New("Invalid binary point representation")
 	}
-	return 
+	return
 }
 
 // helper: reconstruct y-coordinate of point
@@ -127,7 +127,7 @@ func computeY(x *big.Int, m uint) (y *big.Int, err error) {
 		}
 	}
 	return
-} 
+}
 
 /////////////////////////////////////////////////////////////////////
 // check if two points are equal

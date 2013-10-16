@@ -32,7 +32,7 @@ import (
 // Uses the Shanks-Tonelli algorithm to compute the square root
 // see (http://en.wikipedia.org/wiki/Shanks%E2%80%93Tonelli_algorithm)
 
-func Sqrt_modP (a, p *big.Int) (r *big.Int, err error) {
+func Sqrt_modP(a, p *big.Int) (r *big.Int, err error) {
 	r = ZERO
 	err = nil
 	if !isQuadraticResidue(a, p) {
@@ -59,12 +59,12 @@ func Sqrt_modP (a, p *big.Int) (r *big.Int, err error) {
 	if s < 2 {
 		return
 	}
-	
+
 	pow := new(big.Int).Lsh(ONE, uint(s-2))
 	for i := 1; i < s; i++ {
 		c2 := new(big.Int).Mul(c, c)
 		uu := new(big.Int).Exp(u, pow, p)
-		if uu.Cmp(p1) == 0 {		
+		if uu.Cmp(p1) == 0 {
 			u.Mul(u, c2)
 			r.Mul(r, c)
 			pow.Rsh(pow, 1)

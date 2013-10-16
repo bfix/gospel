@@ -4,12 +4,11 @@ package math
 // Import external declarations
 
 import (
-	"fmt"
 	"crypto/rand"
+	"fmt"
 	"math/big"
 	"testing"
 )
-
 
 ///////////////////////////////////////////////////////////////////////
 //	Public test method
@@ -25,12 +24,12 @@ func TestSqrt(t *testing.T) {
 		t.Fail()
 		return
 	}
-	
+
 	count := 0
 	for i := 0; i < 1000; i++ {
 		g, err := rand.Int(rand.Reader, p)
 		if err != nil {
-			fmt.Println (err.Error())
+			fmt.Println(err.Error())
 			t.Fail()
 			return
 		}
@@ -38,13 +37,13 @@ func TestSqrt(t *testing.T) {
 			count++
 			h, err := Sqrt_modP(g, p)
 			if err != nil {
-				fmt.Println (err.Error())
+				fmt.Println(err.Error())
 				t.Fail()
 				return
 			}
 			gg := new(big.Int).Exp(h, TWO, p)
 			if gg.Cmp(g) != 0 {
-				fmt.Printf ("%d: %v == %v\n", i+1, g, gg)
+				fmt.Printf("%d: %v == %v\n", i+1, g, gg)
 				t.Fail()
 				return
 			}

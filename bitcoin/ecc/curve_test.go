@@ -291,11 +291,11 @@ func testInOut(p *point) bool {
 	pp, err := pointFromBytes(b)
 	rc := (err == nil && isEqual(pp, p))
 	if !rc {
-		fmt.Printf (">> %s\n", p.emit()) 
-		fmt.Printf (">> %v\n", cmpr) 
-		fmt.Printf (">> %s\n", hex.EncodeToString(b)) 
-		fmt.Printf (">> %s\n", pp.emit()) 
-		fmt.Println ("BinRep() failed!")
+		fmt.Printf(">> %s\n", p.emit())
+		fmt.Printf(">> %v\n", cmpr)
+		fmt.Printf(">> %s\n", hex.EncodeToString(b))
+		fmt.Printf(">> %s\n", pp.emit())
+		fmt.Println("BinRep() failed!")
 	}
 	return rc
 }

@@ -23,70 +23,70 @@ package util
 // Import external declarations
 
 import (
+	"bytes"
 	"fmt"
-	"testing"
 	"github.com/bfix/gospel/crypto"
 	"math/big"
-	"bytes"
+	"testing"
 )
 
 ///////////////////////////////////////////////////////////////////////
 //	public test method
 
-func TestBase58 (t *testing.T) {
+func TestBase58(t *testing.T) {
 
-	fmt.Println ("********************************************************")
-	fmt.Println ("bitcoin/util/base58 Test")
-	fmt.Println ("********************************************************")
+	fmt.Println("********************************************************")
+	fmt.Println("bitcoin/util/base58 Test")
+	fmt.Println("********************************************************")
 
-	fmt.Println ("Checking Base58 conversion functions:")
-	
-	one := big.NewInt (1)
-		
-	if !test1 (big.NewInt (57)) {
-			t.Fail()
+	fmt.Println("Checking Base58 conversion functions:")
+
+	one := big.NewInt(1)
+
+	if !test1(big.NewInt(57)) {
+		t.Fail()
 	}
-	if !test1 (big.NewInt (58)) {
-			t.Fail()
+	if !test1(big.NewInt(58)) {
+		t.Fail()
 	}
-	if !test1 (big.NewInt (255)) {
-			t.Fail()
+	if !test1(big.NewInt(255)) {
+		t.Fail()
 	}
-	if !test2 ([]byte{ 0, 255}) {
-			t.Fail()
+	if !test2([]byte{0, 255}) {
+		t.Fail()
 	}
-	if !test2 ([]byte{ 0, 0, 255}) {
-			t.Fail()
+	if !test2([]byte{0, 0, 255}) {
+		t.Fail()
 	}
-	bound := big.NewInt (256)
+	bound := big.NewInt(256)
 	for n := 0; n < 128; n++ {
-		if !test1 (crypto.RandBigInt(one, bound)) {
+		if !test1(crypto.RandBigInt(one, bound)) {
 			t.Fail()
 		}
-		bound = new(big.Int).Lsh (bound, 1)
+		bound = new(big.Int).Lsh(bound, 1)
 	}
 }
 
 ///////////////////////////////////////////////////////////////////////
 // test helper function
 
-func test1 (x *big.Int) bool {
-	s := Base58Encode (x.Bytes())
-	b, err := Base58Decode (s)
+func test1(x *big.Int) bool {
+	s := Base58Encode(x.Bytes())
+	b, err := Base58Decode(s)
 	if err != nil {
 		return false
 	}
-	y := new(big.Int).SetBytes (b)
+	y := new(big.Int).SetBytes(b)
 	res := x.Cmp(y) == 0
 	return res
 }
 
-func test2 (x []byte) bool {
-	s := Base58Encode (x)
-	y, err := Base58Decode (s)
+func test2(x []byte) bool {
+	s := Base58Encode(x)
+	y, err := Base58Decode(s)
 	if err != nil {
 		return false
 	}
-	res := bytes.Equal (x, y)
+	res := bytes.Equal(x, y)
 	return res
 }

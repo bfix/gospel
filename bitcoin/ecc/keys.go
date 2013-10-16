@@ -24,8 +24,8 @@ package ecc
 
 import (
 	"errors"
-	"math/big"
 	"github.com/bfix/gospel/math"
+	"math/big"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -57,7 +57,7 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PublicKey{ pnt }, nil 
+	return &PublicKey{pnt}, nil
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -89,9 +89,9 @@ func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 	}
 	key := &PrivateKey{}
 	key.D = new(big.Int).SetBytes(b[1:])
-	g := GetBasePoint ()
-	key.Q = scalarMult(g, key.D) 
-	return key, nil 
+	g := GetBasePoint()
+	key.Q = scalarMult(g, key.D)
+	return key, nil
 }
 
 ///////////////////////////////////////////////////////////////////////
