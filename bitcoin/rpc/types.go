@@ -48,7 +48,7 @@ type Info struct {
  * Block (element of the Bitcoin blockchain)
  */
 type Block struct {
-	TxIDs             []string
+	IdList            []string
 	Time              int
 	Height            int
 	Nonce             int
@@ -72,11 +72,20 @@ type Transaction struct {
 	Fee           float64
 	BlockIndex    int
 	Confirmations int
-	TxID          string
+	Id            string
 	BlockHash     string
-	Time int
-	BlockTime int
-	TimeReceived int
+	Time          int
+	BlockTime     int
+	TimeReceived  int
+}
+
+//---------------------------------------------------------------------
+/*
+ * Transaction output
+ */
+type Output struct {
+	Id   string
+	Vout int
 }
 
 //---------------------------------------------------------------------
@@ -84,8 +93,7 @@ type Transaction struct {
  * Unspent transactions for accounts
  */
 type Unspent struct {
-	Id            string
-	Vout          int
+	Output
 	ScriptPubkey  string
 	Amount        float64
 	Confirmations int
@@ -122,5 +130,5 @@ type Validity struct {
  */
 type Balance struct {
 	Address string
-	Amount float64
+	Amount  float64
 }
