@@ -495,6 +495,19 @@ func (s *Session) GetTransaction(hash string) (*Transaction, error) {
 
 //---------------------------------------------------------------------
 /*
+ * Refill keypool.
+ * Remarks: Requires unlocked wallet
+ */
+func (s *Session) KeypoolRefill() error {
+	_, err := s.call("getnewaddress", nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//---------------------------------------------------------------------
+/*
  * Method: importprivkey
  * Parameters: (String privateKey)
  * Description: Import a private key into your bitcoin wallet. Private key
