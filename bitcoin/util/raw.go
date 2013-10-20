@@ -60,52 +60,76 @@ import (
  *      0 | LOCKTIME    |    4    | 00000000 = locktime
  *  ------+-------------+---------+---------------------------------
  */
+func InjectData(raw string, data []byte, cost int) (string, error) {
 
-func InjectData(raw string, data []byte) (string, error) {
-	if len(data) > 200 {
-		return "", errors.New("too much data to inject")
+	// limit costs to 2^16-1 satoshis
+	if cost > 65535 {
+		cost = 65535
 	}
+	// decode raw string from hex
 	in_raw, err := hex.DecodeString(raw)
 	if err != nil {
 		return "", err
 	}
-	out_raw := make([]byte, 0)
-
-	//-----------------------------------------------------------------
-	// script commands for additional info
-	//-----------------------------------------------------------------
-	//		<data>		; push <data> to stack, contains addition info
-	//		OP_DROP		; drop info (not needed in computation)
-	//-----------------------------------------------------------------
-	xtra := make([]byte, 0)
 	size := len(data)
+
+	out_raw := make([]byte, 0)
+	yscript := make([]byte, 0)
+
+	// handle data depending on length
 	switch {
-	case size <= 75:
-		xtra = append(xtra, byte(size&0xFF))
-		xtra = append(xtra, data...)
-	case size < 256:
-		xtra = append(xtra, 76)
-		xtra = append(xtra, byte(size&0xFF))
-		xtra = append(xtra, data...)
-	case size < 65536:
-		xtra = append(xtra, 77)
-		xtra = append(xtra, byte((size>>8)&0xFF))
-		xtra = append(xtra, byte(size&0xFF))
-		xtra = append(xtra, data...)
+	// too much data
+	case size > 200:
+		return "", errors.New("too much data to inject")
+
+	// no data at all
+	case size == 0:
+		return "", errors.New("no data to inject")
+
+	// small data (works on live Bitcoin network
+	case size <= 20:
+		// create a fake "PayToScriptHash"
+		yscript = append(yscript, 0xa9)
+		yscript = append(yscript, 0x14)
+		yscript = append(yscript, data...)
+		for n := size; n < 20; n++ {
+			yscript = append(yscript, 0)
+		}
+		yscript = append(yscript, 0x87)
+
+	// handle more data - works only on testnet!
 	default:
-		xtra = append(xtra, 78)
-		xtra = append(xtra, byte((size>>24)&0xFF))
-		xtra = append(xtra, byte((size>>16)&0xFF))
-		xtra = append(xtra, byte((size>>8)&0xFF))
-		xtra = append(xtra, byte(size&0xFF))
-		xtra = append(xtra, data...)
+		//---------------------------------------------------------
+		//		<data>		; push <data> to stack, contains info
+		//		OP_DROP		; drop info (not needed in computation)
+		//---------------------------------------------------------
+		switch {
+		case size <= 75:
+			yscript = append(yscript, byte(size&0xFF))
+			yscript = append(yscript, data...)
+		case size < 256:
+			yscript = append(yscript, 76)
+			yscript = append(yscript, byte(size&0xFF))
+			yscript = append(yscript, data...)
+		case size < 65536:
+			yscript = append(yscript, 77)
+			yscript = append(yscript, byte((size>>8)&0xFF))
+			yscript = append(yscript, byte(size&0xFF))
+			yscript = append(yscript, data...)
+		default:
+			yscript = append(yscript, 78)
+			yscript = append(yscript, byte((size>>24)&0xFF))
+			yscript = append(yscript, byte((size>>16)&0xFF))
+			yscript = append(yscript, byte((size>>8)&0xFF))
+			yscript = append(yscript, byte(size&0xFF))
+			yscript = append(yscript, data...)
+		}
+		yscript = append(yscript, 117)
+		yscript = append(yscript, 81)
 	}
-	xtra = append(xtra, 117)
-	xtra = append(xtra, 81)
 
 	//-----------------------------------------------------------------
-	// dissect raw transaction and inject data
-	zero := []byte{0, 0, 0, 0}
+	// dissect raw transaction and inject fake VOUT
 	pos := 4
 	n_vout := int(in_raw[pos])
 	pos++
@@ -128,10 +152,11 @@ func InjectData(raw string, data []byte) (string, error) {
 	}
 	out_raw = append(out_raw, in_raw[lastPos:pos]...)
 
-	out_raw = append(out_raw, zero...)
-	out_raw = append(out_raw, zero...)
-	out_raw = append(out_raw, byte(len(xtra)))
-	out_raw = append(out_raw, xtra...)
+	out_raw = append(out_raw, byte(cost&0xFF))
+	out_raw = append(out_raw, byte((cost>>8)&0xFF))
+	out_raw = append(out_raw, []byte{0, 0, 0, 0, 0, 0}...)
+	out_raw = append(out_raw, byte(len(yscript)))
+	out_raw = append(out_raw, yscript...)
 
 	out_raw = append(out_raw, in_raw[pos:]...)
 
