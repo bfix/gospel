@@ -104,6 +104,14 @@ func TestRPC(t *testing.T) {
 		return
 	}
 
+	//-----------------------------------------------------  KeypoolRefill
+	err = sess.KeypoolRefill()
+	if err != nil {
+		fmt.Println("KeypoolRefill(): " + err.Error())
+		t.Fail()
+		return
+	}
+
 	if NEW_ACCOUNTS {
 		//-------------------------------------------------  ImportPrivateKey
 		err = sess.ImportPrivateKey(PRV_KEY)
@@ -364,7 +372,7 @@ func TestRPC(t *testing.T) {
 			return
 		}
 	}
-	
+
 	//-----------------------------------------------------  ListSinceBlock
 	txlist, _, err = sess.ListSinceBlock("", 1)
 	if err != nil {
@@ -377,7 +385,7 @@ func TestRPC(t *testing.T) {
 		t.Fail()
 		return
 	}
-	
+
 	//-----------------------------------------------------  SetTxFee
 	err = sess.SetTxFee(0.0001)
 	if err != nil {
