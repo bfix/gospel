@@ -23,7 +23,6 @@ package ecc
 // Import external declarations
 
 import (
-	"errors"
 	"github.com/bfix/gospel/math"
 	"math/big"
 )
@@ -84,11 +83,8 @@ func (k *PrivateKey) Bytes() []byte {
  * Get private key from byte representation.
  */
 func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
-	if b[0] != 0 {
-		return nil, errors.New("Invalid private key")
-	}
 	key := &PrivateKey{}
-	key.D = new(big.Int).SetBytes(b[1:])
+	key.D = new(big.Int).SetBytes(b)
 	g := GetBasePoint()
 	key.Q = scalarMult(g, key.D)
 	return key, nil
