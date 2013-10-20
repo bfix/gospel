@@ -24,7 +24,6 @@ package rpc
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -164,14 +163,14 @@ func (s *Session) call(methodname string, args []RPC_Data) (result *RPC_Response
 	if response.Error.Code != 0 {
 		return nil, errors.New(response.Error.Message)
 	}
-	fmt.Printf("")
 	return response, nil
 }
 
 ///////////////////////////////////////////////////////////////////////
 // Session methods (Bitcoin JSON-RPC API calls)
-// Method descriptions from "http://blockchain.info/api/json_rpc_api"
-// (with corrections from me, where required)
+// Method descriptions from "http://blockchain.info/api/json_rpc_api" and
+// "https://en.bitcoin.it/wiki/Raw_Transactions" (with corrections from
+// the author, where required)
 
 /*
  * Method: backupwallet
@@ -184,6 +183,50 @@ func (s *Session) call(methodname string, args []RPC_Data) (result *RPC_Response
 func (s *Session) BackupWallet(dest string) error {
 	_, err := s.call("backupwallet", []RPC_Data{dest})
 	return err
+}
+
+//---------------------------------------------------------------------
+/*
+ * createrawtransaction [{"txid":txid,"vout":n},...] {address:amount,...}
+ * Create a transaction spending given inputs (array of objects containing
+ * transaction outputs to spend), sending to given address(es). Returns the
+ * hex-encoded transaction in a string. Note that the transaction's inputs
+ * are not signed, and it is not stored in the wallet or transmitted to the
+ * network.
+ * Also note that NO transaction validity checks are done; it is easy to
+ * create invalid transactions or transactions that will not be relayed/mined
+ * by the network because they contain insufficient fees.
+ */
+func (s *Session) CreateRawTransaction(slots []Output, targets []Balance) (string, error) {
+	outs := make([]map[string]interface{}, 0)
+	for _, s := range slots {
+		e := make(map[string]interface{})
+		e["txid"] = s.Id
+		e["vout"] = s.Vout
+		outs = append(outs, e)
+	}
+	ins := make(map[string]interface{})
+	for _, t := range targets {
+		ins[t.Address] = t.Amount
+	}
+	res, err := s.call("createrawtransaction", []RPC_Data{outs, ins})
+	if err != nil {
+		return "", err
+	}
+	return res.Result.(string), nil
+}
+
+//---------------------------------------------------------------------
+/*
+ * decoderawtransaction <hex string>
+ * Returns JSON object with information about a serialized, hex-encoded transaction.
+ */
+func (s *Session) DecodeRawTransaction(raw string) (interface{}, error) {
+	res, err := s.call("decoderawtransaction", []RPC_Data{raw})
+	if err != nil {
+		return nil, err
+	}
+	return res.Result, nil
 }
 
 //---------------------------------------------------------------------
@@ -281,10 +324,10 @@ func (s *Session) GetBlock(hash string) (*Block, error) {
 		return nil, err
 	}
 	block := new(Block)
-	block.TxIDs = make([]string, 0)
+	block.IdList = make([]string, 0)
 	list := GetObject(res.Result, "tx").([]interface{})
 	for _, txid := range list {
-		block.TxIDs = append(block.TxIDs, txid.(string))
+		block.IdList = append(block.IdList, txid.(string))
 	}
 	block.Time = GetInt(res.Result, "time")
 	block.Height = GetInt(res.Result, "height")
@@ -413,26 +456,39 @@ func (s *Session) GetNewAddress(account string) (string, error) {
 
 //---------------------------------------------------------------------
 /*
+ * getrawtransaction <txid>
+ * returns serialized, hex-encoded data for transaction txid.
+ */
+func (s *Session) GetRawTransaction(txid string) (string, error) {
+	res, err := s.call("getrawtransaction", []RPC_Data{txid})
+	if err != nil {
+		return "", err
+	}
+	return res.Result.(string), nil
+}
+
+//---------------------------------------------------------------------
+/*
  * Method: gettransaction
  * Parameters: (String hash)
  * Description: Returns an object about the given transaction hash.
  * Returns: Transaction ref, error
  */
-func (s *Session) GetTransaction (hash string) (*Transaction, error) {
-	res, err := s.call("gettransaction", []RPC_Data{ hash })
+func (s *Session) GetTransaction(hash string) (*Transaction, error) {
+	res, err := s.call("gettransaction", []RPC_Data{hash})
 	if err != nil {
 		return nil, err
 	}
 	t := &Transaction{
-		Amount: GetFloat64(res.Result, "amount"),
-		Fee: GetFloat64(res.Result, "fee"),
-		BlockIndex: GetInt(res.Result, "blockindex"),
+		Amount:        GetFloat64(res.Result, "amount"),
+		Fee:           GetFloat64(res.Result, "fee"),
+		BlockIndex:    GetInt(res.Result, "blockindex"),
 		Confirmations: GetInt(res.Result, "confirmations"),
-		TxID: GetString(res.Result, "txid"),
-		BlockHash: GetString(res.Result, "blockhash"),
-		Time: GetInt(res.Result, "time"),
-		BlockTime: GetInt(res.Result, "blocktime"),
-		TimeReceived: GetInt(res.Result, "timereceived"),
+		Id:            GetString(res.Result, "txid"),
+		BlockHash:     GetString(res.Result, "blockhash"),
+		Time:          GetInt(res.Result, "time"),
+		BlockTime:     GetInt(res.Result, "blocktime"),
+		TimeReceived:  GetInt(res.Result, "timereceived"),
 	}
 	return t, nil
 }
@@ -536,8 +592,8 @@ func (s *Session) ListReceivedByAddress(minConf int, includeEmpty bool) ([]Recei
  *              or all transactions if omitted. Max 25 at a time.
  * Returns: lastBlock, []Transaction, error
  */
-func (s *Session) ListSinceBlock (hash string, minConf int) ([]Transaction, string, error) {
-	res, err := s.call("listsinceblock", []RPC_Data{ hash, minConf })
+func (s *Session) ListSinceBlock(hash string, minConf int) ([]Transaction, string, error) {
+	res, err := s.call("listsinceblock", []RPC_Data{hash, minConf})
 	if err != nil {
 		return nil, "", err
 	}
@@ -546,15 +602,15 @@ func (s *Session) ListSinceBlock (hash string, minConf int) ([]Transaction, stri
 	list := make([]Transaction, 0)
 	for _, e := range data {
 		t := Transaction{
-			Amount: GetFloat64(e, "amount"),
-			Fee: GetFloat64(e, "fee"),
-			BlockIndex: GetInt(e, "blockindex"),
+			Amount:        GetFloat64(e, "amount"),
+			Fee:           GetFloat64(e, "fee"),
+			BlockIndex:    GetInt(e, "blockindex"),
 			Confirmations: GetInt(e, "confirmations"),
-			TxID: GetString(e, "txid"),
-			BlockHash: GetString(e, "blockhash"),
-			Time: GetInt(e, "time"),
-			BlockTime: GetInt(e, "blocktime"),
-			TimeReceived: GetInt(e, "timereceived"),
+			Id:            GetString(e, "txid"),
+			BlockHash:     GetString(e, "blockhash"),
+			Time:          GetInt(e, "time"),
+			BlockTime:     GetInt(e, "blocktime"),
+			TimeReceived:  GetInt(e, "timereceived"),
 		}
 		list = append(list, t)
 	}
@@ -566,10 +622,10 @@ func (s *Session) ListSinceBlock (hash string, minConf int) ([]Transaction, stri
  * Method: listtransactions
  * Parameters: (String account, int count = 25, int offset = 0)
  * Description: Returns up to [count] most recent transactions skipping the first [from] transactions for account [account].
- * Returns: []Transaction, error 
+ * Returns: []Transaction, error
  */
-func (s *Session) ListTransactions (accnt string, count, offset int) ([]Transaction, error) {
-	res, err := s.call("listtransactions", []RPC_Data{ accnt, count, offset })
+func (s *Session) ListTransactions(accnt string, count, offset int) ([]Transaction, error) {
+	res, err := s.call("listtransactions", []RPC_Data{accnt, count, offset})
 	if err != nil {
 		return nil, err
 	}
@@ -577,15 +633,15 @@ func (s *Session) ListTransactions (accnt string, count, offset int) ([]Transact
 	data := res.Result.([]interface{})
 	for _, e := range data {
 		t := Transaction{
-			Amount: GetFloat64(e, "amount"),
-			Fee: GetFloat64(e, "fee"),
-			BlockIndex: GetInt(e, "blockindex"),
+			Amount:        GetFloat64(e, "amount"),
+			Fee:           GetFloat64(e, "fee"),
+			BlockIndex:    GetInt(e, "blockindex"),
 			Confirmations: GetInt(e, "confirmations"),
-			TxID: GetString(e, "txid"),
-			BlockHash: GetString(e, "blockhash"),
-			Time: GetInt(e, "time"),
-			BlockTime: GetInt(e, "blocktime"),
-			TimeReceived: GetInt(e, "timereceived"),
+			Id:            GetString(e, "txid"),
+			BlockHash:     GetString(e, "blockhash"),
+			Time:          GetInt(e, "time"),
+			BlockTime:     GetInt(e, "blocktime"),
+			TimeReceived:  GetInt(e, "timereceived"),
 		}
 		list = append(list, t)
 	}
@@ -597,10 +653,10 @@ func (s *Session) ListTransactions (accnt string, count, offset int) ([]Transact
  * Method: listtransactions
  * Parameters: (int count = 25, int offset = 0)
  * Description: Returns up to [count] most recent transactions skipping the first [from] transactions for all accounts.
- * Returns: []Transaction, error 
+ * Returns: []Transaction, error
  */
-func (s *Session) ListAllTransactions (count, offset int) ([]Transaction, error) {
-	res, err := s.call("listtransactions", []RPC_Data{ nil, count, offset })
+func (s *Session) ListAllTransactions(count, offset int) ([]Transaction, error) {
+	res, err := s.call("listtransactions", []RPC_Data{nil, count, offset})
 	if err != nil {
 		return nil, err
 	}
@@ -608,24 +664,31 @@ func (s *Session) ListAllTransactions (count, offset int) ([]Transaction, error)
 	data := res.Result.([]interface{})
 	for _, e := range data {
 		t := Transaction{
-			Amount: GetFloat64(e, "amount"),
-			Fee: GetFloat64(e, "fee"),
-			BlockIndex: GetInt(e, "blockindex"),
+			Amount:        GetFloat64(e, "amount"),
+			Fee:           GetFloat64(e, "fee"),
+			BlockIndex:    GetInt(e, "blockindex"),
 			Confirmations: GetInt(e, "confirmations"),
-			TxID: GetString(e, "txid"),
-			BlockHash: GetString(e, "blockhash"),
-			Time: GetInt(e, "time"),
-			BlockTime: GetInt(e, "blocktime"),
-			TimeReceived: GetInt(e, "timereceived"),
+			Id:            GetString(e, "txid"),
+			BlockHash:     GetString(e, "blockhash"),
+			Time:          GetInt(e, "time"),
+			BlockTime:     GetInt(e, "blocktime"),
+			TimeReceived:  GetInt(e, "timereceived"),
 		}
 		list = append(list, t)
 	}
 	return list, nil
 }
 
-
 //---------------------------------------------------------------------
 /*
+ * listunspent [minconf=1] [maxconf=999999]
+ * Returns an array of unspent transaction outputs in the wallet that have
+ * between minconf and maxconf (inclusive) confirmations. Each output is a
+ * 5-element object with keys: txid, output, scriptPubKey, amount,
+ * confirmations. txid is the hexadecimal transaction id, output is which
+ * output of that transaction, scriptPubKey is the hexadecimal-encoded CScript
+ * for that output, amount is the value of that output and confirmations is
+ * the transaction's depth in the chain.
  */
 func (s *Session) ListUnspent(minconf, maxconf int) ([]Unspent, error) {
 	args := []RPC_Data{minconf, maxconf}
@@ -648,14 +711,58 @@ func (s *Session) ListUnspent(minconf, maxconf int) ([]Unspent, error) {
 
 //---------------------------------------------------------------------
 /*
+ * ListLockUnspent: List all temporarily locked transaction outputs.
+ */
+func (s *Session) ListLockUnspent() ([]Output, error) {
+	res, err := s.call("listlockunspent", nil)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]Output, 0)
+	data := res.Result.([]interface{})
+	for _, d := range data {
+		o := Output{
+			Id:   GetString(d, "txid"),
+			Vout: GetInt(d, "vout"),
+		}
+		list = append(list, o)
+	}
+	return list, nil
+}
+
+//---------------------------------------------------------------------
+/*
+ * LockUspent: Temporarily lock (true) or unlock (false) specified transaction
+ * outputs. A locked transaction output will not be chosen by automatic coin
+ * selection, when spending bitcoins. Locks are stored in memory only. Nodes
+ * start with zero locked outputs, and the locked output list is always cleared
+ * (by virtue of process exit) when a node stops or fails.
+ */
+func (s *Session) LockUnspent(lock bool, slots []Output) error {
+	list := make([]map[string]interface{}, 0)
+	for _, s := range slots {
+		e := make(map[string]interface{})
+		e["txid"] = s.Id
+		e["vout"] = s.Vout
+		list = append(list, e)
+	}
+	_, err := s.call("lockunspent", []RPC_Data{lock, list})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//---------------------------------------------------------------------
+/*
  * Method: move
  * Parameters: (String fromAccount, String toAccount, long amount)
  * Description: Move funds from one account in your wallet to another.
  * Returns: String, error
  * Remarks: Requires unlocked wallet
  */
-func (s *Session) Move (fromAccount, toAccount string, amount float64) (string, error) {
-	res, err := s.call("move", []RPC_Data{ fromAccount, toAccount, amount })
+func (s *Session) Move(fromAccount, toAccount string, amount float64) (string, error) {
+	res, err := s.call("move", []RPC_Data{fromAccount, toAccount, amount})
 	if err != nil {
 		return "", err
 	}
@@ -672,8 +779,8 @@ func (s *Session) Move (fromAccount, toAccount string, amount float64) (string, 
  * Returns: String, error
  * Remarks: Requires unlocked wallet
  */
-func (s *Session) SendFrom (fromAccount, toAddress string, amount float64) (string, error) {
-	res, err := s.call("sendfrom", []RPC_Data{ fromAccount, toAddress, amount })
+func (s *Session) SendFrom(fromAccount, toAddress string, amount float64) (string, error) {
+	res, err := s.call("sendfrom", []RPC_Data{fromAccount, toAddress, amount})
 	if err != nil {
 		return "", err
 	}
@@ -689,12 +796,12 @@ func (s *Session) SendFrom (fromAccount, toAddress string, amount float64) (stri
  * Returns: String, error
  * Remarks: Requires unlocked wallet
  */
-func (s *Session) SendMany (fromAccount string, targets []Balance) (string, error) {
+func (s *Session) SendMany(fromAccount string, targets []Balance) (string, error) {
 	list := make(map[string]float64)
 	for _, t := range targets {
 		list[t.Address] = t.Amount
 	}
-	res, err := s.call("sendmany", []RPC_Data{ fromAccount, list })
+	res, err := s.call("sendmany", []RPC_Data{fromAccount, list})
 	if err != nil {
 		return "", err
 	}
@@ -709,8 +816,8 @@ func (s *Session) SendMany (fromAccount string, targets []Balance) (string, erro
  * Returns: String, error
  * Remarks: Requires unlocked wallet
  */
-func (s *Session) SendToAddress (addr string, amount float64) (string, error) {
-	res, err := s.call("sendtoaddress", []RPC_Data{ addr, amount })
+func (s *Session) SendToAddress(addr string, amount float64) (string, error) {
+	res, err := s.call("sendtoaddress", []RPC_Data{addr, amount})
 	if err != nil {
 		return "", err
 	}
@@ -739,6 +846,51 @@ func (s *Session) SetAccount(address, label string) error {
 func (s *Session) SetTxFee(amount float64) error {
 	_, err := s.call("settxfee", []RPC_Data{amount})
 	return err
+}
+
+//---------------------------------------------------------------------
+/*
+ * sendrawtransaction <hex string>
+ * Submits raw transaction (serialized, hex-encoded) to local node and network.
+ * Returns transaction id, or an error if the transaction is invalid for any
+ * reason.
+ */
+func (s *Session) SendRawTransaction(raw string) error {
+	_, err := s.call("sendrawtransaction", []RPC_Data{raw})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//---------------------------------------------------------------------
+/*
+ * signrawtransaction <hex string> [{"txid":txid,"vout":n,"scriptPubKey":hex},...] [<privatekey1>,...] [sighash="ALL"]
+ * Sign as many inputs as possible for raw transaction (serialized,
+ * hex-encoded). The first argument may be several variations of the same
+ * transaction concatenated together; signatures from all of them will be
+ * combined together, along with signatures for keys in the local wallet. The
+ * optional second argument is an array of parent transaction outputs, so you
+ * can create a chain of raw transactions that depend on each other before
+ * sending them to the network. Third optional argument is an array of
+ * base58-encoded private keys that, if given, will be the only keys used to
+ * sign the transaction. The fourth optional argument is a string that specifies
+ * how the signature hash is computed, and can be "ALL", "NONE", "SINGLE",
+ * "ALL|ANYONECANPAY", "NONE|ANYONECANPAY", or "SINGLE|ANYONECANPAY".
+ * Returns json object with keys:
+ *     hex : raw transaction with signature(s) (hex-encoded string)
+ *     complete : 1 if rawtx is completely signed, 0 if signatures are missing.
+ * If no private keys are given and the wallet is locked, requires that the
+ * wallet be unlocked with walletpassphrase first.
+ */
+func (s *Session) SignRawTransaction(raw string) (string, bool, error) {
+	res, err := s.call("signrawtransaction", []RPC_Data{raw})
+	if err != nil {
+		return "", false, err
+	}
+	signed := GetString(res.Result, "hex")
+	complete := GetBool(res.Result, "complete")
+	return signed, complete, nil
 }
 
 //---------------------------------------------------------------------
@@ -788,14 +940,3 @@ func (s *Session) WalletPassphrase(passphrase string, timeout int) error {
 	_, err := s.call("walletpassphrase", []RPC_Data{passphrase, timeout})
 	return err
 }
-
-/*
-func (s *Session)  () error {
-	res, err := s.call("", []RPC_Data{ })
-	if err != nil {
-		return , err
-	}
-	fmt.Printf("%v\n", res)
-	return , nil
-}
-*/
