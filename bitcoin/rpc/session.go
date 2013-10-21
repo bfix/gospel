@@ -72,7 +72,11 @@ type RPC_Response struct {
 
 // get integer value
 func GetInt(d RPC_Data, key string) int {
-	return int(d.(map[string]interface{})[key].(float64))
+	v := d.(map[string]interface{})[key]
+	if v == nil {
+		return -1
+	}
+	return int(v.(float64))
 }
 
 // get string value
@@ -95,7 +99,11 @@ func GetFloat64(d RPC_Data, key string) float64 {
 
 // get boolean value
 func GetBool(d RPC_Data, key string) bool {
-	return d.(map[string]interface{})[key].(bool)
+	v := d.(map[string]interface{})[key]
+	if v == nil {
+		return false
+	}
+	return v.(bool)
 }
 
 // get generic value
@@ -221,12 +229,61 @@ func (s *Session) CreateRawTransaction(slots []Output, targets []Balance) (strin
  * decoderawtransaction <hex string>
  * Returns JSON object with information about a serialized, hex-encoded transaction.
  */
-func (s *Session) DecodeRawTransaction(raw string) (interface{}, error) {
+func (s *Session) DecodeRawTransactionAsObject(raw string) (interface{}, error) {
 	res, err := s.call("decoderawtransaction", []RPC_Data{raw})
 	if err != nil {
 		return nil, err
 	}
 	return res.Result, nil
+}
+
+//---------------------------------------------------------------------
+/*
+ * decoderawtransaction <hex string>
+ * Returns instance with information about a serialized, hex-encoded transaction.
+ */
+func (s *Session) DecodeRawTransaction(raw string) (*RawTransaction, error) {
+	res, err := s.DecodeRawTransactionAsObject(raw)
+	if err != nil {
+		return nil, err
+	}
+	t := new(RawTransaction)
+	t.Id = GetString(res, "txid")
+	t.Version = GetInt(res, "version")
+	t.LockTime = GetInt(res, "locktime")
+	// fill input slots
+	t.Vin = make([]Vinput, 0)
+	data := GetObject(res, "vin").([]interface{})
+	for _, d := range data {
+		in := Vinput{
+			Id:        GetString(d, "txid"),
+			Vout:      GetInt(d, "vout"),
+			ScriptSig: GetString(GetObject(d, "scriptSig"), "hex"),
+			Sequence:  GetInt(d, "sequence"),
+		}
+		t.Vin = append(t.Vin, in)
+	}
+	// fill output slots
+	t.Vout = make([]Voutput, 0)
+	data = GetObject(res, "vout").([]interface{})
+	for _, d := range data {
+		script := GetObject(d, "scriptPubKey")
+		out := Voutput{
+			Value:        GetFloat64(d, "value"),
+			N:            GetInt(d, "n"),
+			ScriptPubkey: GetString(script, "hex"),
+			ReqSigs:      GetInt(script, "reqSigs"),
+			Type:         GetString(script, "type"),
+			Addresses:    make([]string, 0),
+		}
+		list := GetObject(script, "addresses").([]interface{})
+		for _, l := range list {
+			out.Addresses = append(out.Addresses, l.(string))
+		}
+		t.Vout = append(t.Vout, out)
+	}
+	// return assembled raw transaction
+	return t, nil
 }
 
 //---------------------------------------------------------------------
