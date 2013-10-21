@@ -81,6 +81,42 @@ type Transaction struct {
 
 //---------------------------------------------------------------------
 /*
+ * Raw transaction input slot
+ */
+type Vinput struct {
+	Id        string
+	Vout      int
+	ScriptSig string
+	Sequence  int
+}
+
+//---------------------------------------------------------------------
+/*
+ * Raw transaction output slot
+ */
+type Voutput struct {
+	Value        float64
+	N            int
+	ScriptPubkey string
+	ReqSigs      int
+	Type         string
+	Addresses    []string
+}
+
+//---------------------------------------------------------------------
+/*
+ * Bitcoin transaction
+ */
+type RawTransaction struct {
+	Id       string
+	Version  int
+	LockTime int
+	Vin      []Vinput
+	Vout     []Voutput
+}
+
+//---------------------------------------------------------------------
+/*
  * Transaction output
  */
 type Output struct {
