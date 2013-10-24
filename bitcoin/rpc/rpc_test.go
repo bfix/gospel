@@ -363,7 +363,7 @@ func TestRPC(t *testing.T) {
 		return
 	}
 	if len(txlist) > 0 {
-		txid := txlist[0].TxID
+		txid := txlist[0].Id
 		//-------------------------------------------------  GetTransaction
 		_, err = sess.GetTransaction(txid)
 		if err != nil {
