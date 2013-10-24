@@ -97,7 +97,7 @@ type Vinput struct {
 type Voutput struct {
 	Value        float64
 	N            int
-	ScriptPubkey string
+	ScriptPubKey string
 	ReqSigs      int
 	Type         string
 	Addresses    []string
@@ -120,8 +120,10 @@ type RawTransaction struct {
  * Transaction output
  */
 type Output struct {
-	Id   string
-	Vout int
+	Id           string
+	Vout         int
+	ScriptPubKey string
+	RedeemScript string
 }
 
 //---------------------------------------------------------------------
@@ -130,7 +132,6 @@ type Output struct {
  */
 type Unspent struct {
 	Output
-	ScriptPubkey  string
 	Amount        float64
 	Confirmations int
 }
