@@ -23,8 +23,6 @@ package util
 // Import external declarations
 
 import (
-	"code.google.com/p/go.crypto/ripemd160"
-	"crypto/sha256"
 	"github.com/bfix/gospel/bitcoin/ecc"
 )
 
@@ -50,26 +48,11 @@ func MakeTestAddress(key *ecc.PublicKey) Address {
 // hashes and identifiers.
 
 func buildAddr(key *ecc.PublicKey, version byte) Address {
-
 	addr := make([]byte, 0)
 	addr = append(addr, version)
-
-	sha2 := sha256.New()
-	sha2.Write(key.Bytes(true))
-	h := sha2.Sum(nil)
-
-	ripemd := ripemd160.New()
-	ripemd.Write(h)
-	kh := ripemd.Sum(nil)
+	kh := Hash160(key.Bytes())
 	addr = append(addr, kh...)
-
-	sha2.Reset()
-	sha2.Write(addr)
-	h = sha2.Sum(nil)
-	sha2.Reset()
-	sha2.Write(h)
-	cs := sha2.Sum(nil)
+	cs := Hash256(addr)
 	addr = append(addr, cs[:4]...)
-
 	return Address(Base58Encode(addr))
 }
