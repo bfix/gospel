@@ -24,8 +24,8 @@ package util
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"errors"
+	"fmt"
 	"github.com/bfix/gospel/bitcoin/ecc"
 )
 
@@ -35,17 +35,16 @@ import (
  * @param k *PrivateKey - key to be exported
  * @return string - private key in SIPA format
  */
-func ExportPrivateKey(k *ecc.PrivateKey) string {
+func ExportPrivateKey(k *ecc.PrivateKey, testnet bool) string {
 	exp := make([]byte, 0)
-	exp = append(exp, 0x80)
+	if testnet {
+		exp = append(exp, 0xEF)
+	} else {
+		exp = append(exp, 0x80)
+	}
 	exp = append(exp, k.Bytes()...)
 
-	sha2 := sha256.New()
-	sha2.Write(exp)
-	h := sha2.Sum(nil)
-	sha2.Reset()
-	sha2.Write(h)
-	cs := sha2.Sum(nil)
+	cs := Hash256(exp)
 	exp = append(exp, cs[:4]...)
 
 	return Base58Encode(exp)
@@ -58,31 +57,48 @@ func ExportPrivateKey(k *ecc.PrivateKey) string {
  * @return *PrivateKey - imported private key
  * @return error
  */
-func ImportPrivateKey(keydata string) (*ecc.PrivateKey, error) {
-
+func ImportPrivateKey(keydata string, testnet bool) (*ecc.PrivateKey, error) {
+	// decode and check data
 	data, err := Base58Decode(keydata)
 	if err != nil {
 		return nil, err
 	}
-	if data[0] != 0x80 || len(data) != 37 {
+	if testnet {
+		if data[0] != 0xEF {
+			msg := fmt.Sprintf("Invalid key version: %d (testnet)\n", int(data[0]))
+			return nil, errors.New(msg)
+		}
+	} else {
+		if data[0] != 0x80 {
+			msg := fmt.Sprintf("Invalid key version: %d\n", int(data[0]))
+			return nil, errors.New(msg)
+		}
+	}
+	// copy key data
+	var k, c []byte
+	if len(data) == 37 {
+		// uncompressed public key
+		k = data[1:33]
+		c = data[33:37]
+	} else if len(data) == 38 {
+		// compressed public key
+		k = data[1:34]
+		c = data[34:38]
+		if data[33] != 1 {
+			msg := fmt.Sprintf("Invalid key compression indicator: %d\n", int(data[33]))
+			return nil, errors.New(msg)
+		}
+	} else {
 		return nil, errors.New("Invalid key format")
 	}
-
-	k := data[1:33]
-	c := data[33:]
-
+	// recompute and verify checksum
 	t := make([]byte, 0)
-	t = append(t, 0x80)
+	t = append(t, data[0])
 	t = append(t, k...)
-
-	sha2 := sha256.New()
-	sha2.Write(t)
-	h := sha2.Sum(nil)
-	sha2.Reset()
-	sha2.Write(h)
-	cs := sha2.Sum(nil)
+	cs := Hash256(t)
 	if bytes.Compare(c, cs[:4]) != 0 {
 		return nil, errors.New("Invalid key data")
 	}
+	// return key
 	return ecc.PrivateKeyFromBytes(k)
 }

@@ -38,11 +38,12 @@ func TestExchange(t *testing.T) {
 	fmt.Println("********************************************************")
 
 	for n := 0; n < 100; n++ {
+		testnet := (n & 1 == 1)
 		key := ecc.GenerateKeys()
 
-		s := ExportPrivateKey(key)
+		s := ExportPrivateKey(key, testnet)
 
-		kk, err := ImportPrivateKey(s)
+		kk, err := ImportPrivateKey(s, testnet)
 		if err != nil {
 			fmt.Println("ImportPrivateKey() failed: " + err.Error())
 			t.Fail()
