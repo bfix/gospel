@@ -64,32 +64,39 @@ import (
 
 ///////////////////////////////////////////////////////////////////////
 /*
- * Change "scriptPubKey" to "PayToScriptHash":
+ * Assemble a TX_NULL_DATA script.
+ */
+func NullDataScript(data []byte) ([]byte, error) {
+	size := len(data)
+	if size > 75 {
+		return nil, errors.New("attached data to big")
+	}
+
+	script := make([]byte, 0)
+	script = append(script, 0x6a) // OP_RETURN
+	script = append(script, LengthPrefix(size)...)
+	script = append(script, data...)
+	return script, nil
+}
+
+///////////////////////////////////////////////////////////////////////
+/*
+ * Change "scriptPubKey" to new script.
  * This only works if there is only one input/output slot defined in
  * the transaction. The old "scriptPubKey" is completely dropped.
  *
  * @param raw string - hex string of raw transaction
- * @param script []byte - serialized script
+ * @param script []byte - replacement script
  * @return string - new hex-encoded raw string
  * @return error - error instance (or nil)
  */
-func PayToScriptHash(raw string, script []byte) (string, error) {
+func ReplaceScriptPubKey(raw string, script []byte) (string, error) {
 
 	// decode raw string from hex
 	in_raw, err := hex.DecodeString(raw)
 	if err != nil {
 		return "", err
 	}
-
-	// compute hash over data
-	hash := Hash160(script)
-
-	// create a "PayToScriptHash" script
-	yscript := make([]byte, 0)
-	yscript = append(yscript, 0xa9)
-	yscript = append(yscript, 0x14)
-	yscript = append(yscript, hash...)
-	yscript = append(yscript, 0x87)
 
 	// dissect raw transaction and change VOUT
 	pos := 4
@@ -112,8 +119,8 @@ func PayToScriptHash(raw string, script []byte) (string, error) {
 
 	out_raw := make([]byte, 0)
 	out_raw = append(out_raw, in_raw[:pos]...)
-	out_raw = append(out_raw, 23)
-	out_raw = append(out_raw, yscript...)
+	out_raw = append(out_raw, LengthPrefix(len(script))...)
+	out_raw = append(out_raw, script...)
 	out_raw = append(out_raw, in_raw[pos+scrlen+1:]...)
 
 	// return new raw transaction
@@ -121,30 +128,6 @@ func PayToScriptHash(raw string, script []byte) (string, error) {
 }
 
 ///////////////////////////////////////////////////////////////////////
-// Helper methods:
-
-/*
- * Create P2SH redeem script that includes data
- */
-func ScriptFromData(data []byte, key []byte) []byte {
-	out := make([]byte, 0)
-
-	// push data
-	size := len(data)
-	out = append(out, LengthPrefix(size)...)
-	out = append(out, data...)
-	// OP_DROP
-	out = append(out, 0x75)
-
-	// push public key
-	size = len(key)
-	out = append(out, LengthPrefix(size)...)
-	out = append(out, key...)
-	// push OP_CHECKSIG
-	return append(out, 0xac)
-}
-
-//---------------------------------------------------------------------
 /*
  * Assemble the length prefix for data.
  */
