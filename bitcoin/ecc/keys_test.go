@@ -28,10 +28,10 @@ func TestKeys(t *testing.T) {
 		// generate new key
 		prv = GenerateKeys()
 		// get public key point
-		pnt := prv.PublicKey.q
-		tst := scalarMultBase(prv.d)
+		pnt := prv.Q
+		tst := ScalarMultBase(prv.D)
 
-		if !(isOnCurve(pnt) && isEqual(pnt, tst)) {
+		if !(IsOnCurve(pnt) && IsEqual(pnt, tst)) {
 			failed = true
 			fmt.Print("-")
 		} else {

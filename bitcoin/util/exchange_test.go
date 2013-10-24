@@ -38,7 +38,7 @@ func TestExchange(t *testing.T) {
 	fmt.Println("********************************************************")
 
 	for n := 0; n < 100; n++ {
-		testnet := (n & 1 == 1)
+		testnet := (n&1 == 1)
 		key := ecc.GenerateKeys()
 
 		s := ExportPrivateKey(key, testnet)
