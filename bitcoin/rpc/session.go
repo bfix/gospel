@@ -24,6 +24,8 @@ package rpc
 import (
 	"encoding/json"
 	"errors"
+	"github.com/bfix/gospel/bitcoin/ecc"
+	"github.com/bfix/gospel/bitcoin/util"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -271,7 +273,7 @@ func (s *Session) DecodeRawTransaction(raw string) (*RawTransaction, error) {
 		out := Voutput{
 			Value:        GetFloat64(d, "value"),
 			N:            GetInt(d, "n"),
-			ScriptPubkey: GetString(script, "hex"),
+			ScriptPubKey: GetString(script, "hex"),
 			ReqSigs:      GetInt(script, "reqSigs"),
 			Type:         GetString(script, "type"),
 			Addresses:    make([]string, 0),
@@ -284,6 +286,18 @@ func (s *Session) DecodeRawTransaction(raw string) (*RawTransaction, error) {
 	}
 	// return assembled raw transaction
 	return t, nil
+}
+
+//---------------------------------------------------------------------
+/*
+ * Reveals the private key corresponding to <bitcoinaddress>
+ */
+func (s *Session) DumpPrivKey(address string, testnet bool) (*ecc.PrivateKey, error) {
+	res, err := s.call("dumpprivkey", []RPC_Data{address})
+	if err != nil {
+		return nil, err
+	}
+	return util.ImportPrivateKey(res.Result.(string), testnet)
 }
 
 //---------------------------------------------------------------------
@@ -774,7 +788,7 @@ func (s *Session) ListUnspent(minconf, maxconf int) ([]Unspent, error) {
 		unspent[i].Amount = GetFloat64(entry, "amount")
 		unspent[i].Vout = GetInt(entry, "vout")
 		unspent[i].Confirmations = GetInt(entry, "confirmations")
-		unspent[i].ScriptPubkey = GetString(entry, "scriptPubKey")
+		unspent[i].ScriptPubKey = GetString(entry, "scriptPubKey")
 	}
 	return unspent, nil
 }
@@ -953,8 +967,29 @@ func (s *Session) SendRawTransaction(raw string) error {
  * If no private keys are given and the wallet is locked, requires that the
  * wallet be unlocked with walletpassphrase first.
  */
-func (s *Session) SignRawTransaction(raw string) (string, bool, error) {
-	res, err := s.call("signrawtransaction", []RPC_Data{raw})
+func (s *Session) SignRawTransaction(raw string, ins []Output, keys []string, mode string) (string, bool, error) {
+	inList := make([](map[string]interface{}), 0)
+	if len(ins) == 0 {
+		inList = nil
+	} else {
+		for _, i := range ins {
+			e := make(map[string]interface{})
+			e["txid"] = i.Id
+			e["vout"] = i.Vout
+			e["scriptPubKey"] = i.ScriptPubKey
+			e["redeemScript"] = i.RedeemScript
+			inList = append(inList, e)
+		}
+	}
+	keyList := make([]interface{}, 0)
+	if len(keys) == 0 {
+		keyList = nil
+	} else {
+		for _, k := range keys {
+			keyList = append(keyList, k)
+		}
+	}
+	res, err := s.call("signrawtransaction", []RPC_Data{raw, inList, keyList, mode})
 	if err != nil {
 		return "", false, err
 	}
