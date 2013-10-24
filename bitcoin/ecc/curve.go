@@ -89,14 +89,16 @@ func coordAsBytes(v *big.Int) []byte {
 /////////////////////////////////////////////////////////////////////
 // reconstruct point from binary representation
 
-func pointFromBytes(b []byte) (p *point, err error) {
+func pointFromBytes(b []byte) (p *point, compr bool, err error) {
 	p = NewPoint(math.ZERO, math.ZERO)
 	err = nil
+	compr = true
 	switch b[0] {
 	case 0:
 	case 4:
 		p.x.SetBytes(b[1:33])
 		p.y.SetBytes(b[33:])
+		compr = false
 	case 3:
 		p.x.SetBytes(b[1:])
 		p.y, err = computeY(p.x, 1)
