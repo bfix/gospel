@@ -23,6 +23,7 @@ package ecc
 // Import external declarations
 
 import (
+	"errors"
 	"github.com/bfix/gospel/math"
 	"math/big"
 )
@@ -34,17 +35,17 @@ import (
  * factor (private key)
  */
 type PublicKey struct {
-	Q *point
+	Q            *point
+	IsCompressed bool
 }
 
 ///////////////////////////////////////////////////////////////////////
 /*
  * Get byte representation of public key.
- * @param compressed bool - compressed representation?
  * @return []byte - byte array representing a public key
  */
-func (k *PublicKey) Bytes(compressed bool) []byte {
-	return pointAsBytes(k.Q, compressed)
+func (k *PublicKey) Bytes() []byte {
+	return pointAsBytes(k.Q, k.IsCompressed)
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -52,11 +53,15 @@ func (k *PublicKey) Bytes(compressed bool) []byte {
  * Get public key from byte representation.
  */
 func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
-	pnt, err := pointFromBytes(b)
+	pnt, compr, err := pointFromBytes(b)
 	if err != nil {
 		return nil, err
 	}
-	return &PublicKey{pnt}, nil
+	key := &PublicKey{
+		Q:            pnt,
+		IsCompressed: compr,
+	}
+	return key, nil
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -75,7 +80,11 @@ type PrivateKey struct {
  * @return []byte - byte array representing a private key
  */
 func (k *PrivateKey) Bytes() []byte {
-	return coordAsBytes(k.D)
+	b := coordAsBytes(k.D)
+	if k.IsCompressed {
+		b = append(b, 1)
+	}
+	return b
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -83,10 +92,28 @@ func (k *PrivateKey) Bytes() []byte {
  * Get private key from byte representation.
  */
 func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
+	// check compressed/uncompressed
+	var (
+		kd    []byte = b
+		compr bool   = false
+	)
+	if len(b) == 33 {
+		kd = b[:32]
+		if b[32] == 1 {
+			compr = true
+		} else {
+			return nil, errors.New("Invalid private key format (compression flag)")
+		}
+	} else if len(b) != 32 {
+		return nil, errors.New("Invalid private key format (length)")
+	}
+	// set private factor.
 	key := &PrivateKey{}
-	key.D = new(big.Int).SetBytes(b)
+	key.D = new(big.Int).SetBytes(kd)
+	// compute public key
 	g := GetBasePoint()
 	key.Q = scalarMult(g, key.D)
+	key.IsCompressed = compr
 	return key, nil
 }
 
@@ -104,7 +131,8 @@ func GenerateKeys() *PrivateKey {
 		// generate factor in range [3..n-1]
 		prv.D = n_rnd(math.THREE)
 		// generate point p = d*G
-		prv.PublicKey.Q = ScalarMultBase(prv.D)
+		prv.Q = ScalarMultBase(prv.D)
+		prv.IsCompressed = true
 
 		// check for valid key
 		if !isInf(prv.PublicKey.Q) {
