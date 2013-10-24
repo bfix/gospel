@@ -50,9 +50,6 @@
  *  ------+-------------+---------+---------------------------------
  *
  *#####################################################################
- *
- * Methods are used in pairs:
- *		(1) PayToScriptHash() / PayToScriptData()
  */
 
 package util
@@ -66,25 +63,28 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-// (1) PayToScriptHash() / PayToScriptData()
-///////////////////////////////////////////////////////////////////////
-
 /*
- * Change "scriptPubkey" to "PayToScriptHash":
+ * Change "scriptPubKey" to "PayToScriptHash":
+ * This only works if there is only one input/output slot defined in
+ * the transaction. The old "scriptPubKey" is completely dropped.
+ *
+ * @param raw string - hex string of raw transaction
+ * @param script []byte - serialized script
+ * @return string - new hex-encoded raw string
+ * @return error - error instance (or nil)
  */
-func PayToScriptHash(raw string, hash []byte) (string, error) {
+func PayToScriptHash(raw string, script []byte) (string, error) {
 
 	// decode raw string from hex
 	in_raw, err := hex.DecodeString(raw)
 	if err != nil {
 		return "", err
 	}
-	size := len(hash)
-	if size != 20 {
-		return "", errors.New("invalid hash size (!= 20 bytes)")
-	}
 
-	// create a fake "PayToScriptHash"
+	// compute hash over data
+	hash := Hash160(script)
+
+	// create a "PayToScriptHash" script
 	yscript := make([]byte, 0)
 	yscript = append(yscript, 0xa9)
 	yscript = append(yscript, 0x14)
@@ -120,77 +120,53 @@ func PayToScriptHash(raw string, hash []byte) (string, error) {
 	return hex.EncodeToString(out_raw), nil
 }
 
+///////////////////////////////////////////////////////////////////////
+// Helper methods:
+
+/*
+ * Create P2SH redeem script that includes data
+ */
+func ScriptFromData(data []byte, key []byte) []byte {
+	out := make([]byte, 0)
+
+	// push data
+	size := len(data)
+	out = append(out, LengthPrefix(size)...)
+	out = append(out, data...)
+	// OP_DROP
+	out = append(out, 0x75)
+
+	// push public key
+	size = len(key)
+	out = append(out, LengthPrefix(size)...)
+	out = append(out, key...)
+	// push OP_CHECKSIG
+	return append(out, 0xac)
+}
+
 //---------------------------------------------------------------------
 /*
- * Change "scriptSig" to "PUSH_DATA<data>":
- *
+ * Assemble the length prefix for data.
  */
-func PayToScriptData(raw string, data []byte) (string, error) {
-
-	// decode raw string from hex
-	in_raw, err := hex.DecodeString(raw)
-	if err != nil {
-		return "", err
-	}
-	size := len(data)
-
-	// dissect raw transaction and change VOUT
-	pos := 4
-	n_vout := int(in_raw[pos])
-	if n_vout != 1 {
-		return "", errors.New("invalid number of vout (!= 1)")
-	}
-	pos += 37
-	scrlen := int(in_raw[pos])
-	if scrlen != 0 {
-		return "", errors.New("invalid scriptSig size (!= 0)")
-	}
-	out_raw := make([]byte, 0)
-	out_raw = append(out_raw, in_raw[:pos]...)
+func LengthPrefix(size int) []byte {
+	prefix := make([]byte, 0)
 	switch {
 	case size < 76:
-		// total size of script
-		out_raw = append(out_raw, byte(size+1))
-		// size of script
-		out_raw = append(out_raw, byte(size))
+		prefix = append(prefix, byte(size))
 	case size < 256:
-		// total size of script
-		out_raw = append(out_raw, 0x4c)
-		out_raw = append(out_raw, byte(size+2))
-		// size of script
-		out_raw = append(out_raw, 0x4c)
-		out_raw = append(out_raw, byte(size))
+		prefix = append(prefix, 0x4c)
+		prefix = append(prefix, byte(size))
 	case size < 65536:
-		// total size of script
-		tsize := size + 3
-		out_raw = append(out_raw, 0x4d)
-		out_raw = append(out_raw, byte(tsize&0xFF))
-		out_raw = append(out_raw, byte((tsize>>8)&0xFF))
 		// size of script
-		out_raw = append(out_raw, 0x4d)
-		out_raw = append(out_raw, byte(size&0xFF))
-		out_raw = append(out_raw, byte((size>>8)&0xFF))
+		prefix = append(prefix, 0x4d)
+		prefix = append(prefix, byte(size&0xFF))
+		prefix = append(prefix, byte((size>>8)&0xFF))
 	case size < 65536:
-		// total size of script
-		tsize := size + 5
-		out_raw = append(out_raw, 0x4d)
-		out_raw = append(out_raw, byte(tsize&0xFF))
-		out_raw = append(out_raw, byte((tsize>>8)&0xFF))
-		out_raw = append(out_raw, byte((tsize>>16)&0xFF))
-		out_raw = append(out_raw, byte((tsize>>24)&0xFF))
-		// size of script
-		out_raw = append(out_raw, 0x4d)
-		out_raw = append(out_raw, byte(size&0xFF))
-		out_raw = append(out_raw, byte((size>>8)&0xFF))
-		out_raw = append(out_raw, byte((size>>16)&0xFF))
-		out_raw = append(out_raw, byte((size>>24)&0xFF))
+		prefix = append(prefix, 0x4d)
+		prefix = append(prefix, byte(size&0xFF))
+		prefix = append(prefix, byte((size>>8)&0xFF))
+		prefix = append(prefix, byte((size>>16)&0xFF))
+		prefix = append(prefix, byte((size>>24)&0xFF))
 	}
-	// add script data
-	out_raw = append(out_raw, data...)
-
-	// append remaining raw data
-	out_raw = append(out_raw, in_raw[pos+scrlen+1:]...)
-
-	// return new raw transaction
-	return hex.EncodeToString(out_raw), nil
+	return prefix
 }
