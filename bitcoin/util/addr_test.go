@@ -158,7 +158,7 @@ func TestAddress(t *testing.T) {
 			return
 		}
 
-		pubkeyhex := hex.EncodeToString(pubkey.Bytes(true))
+		pubkeyhex := hex.EncodeToString(pubkey.Bytes())
 		if pubkeyhex != d.SerPubHex[90:] {
 			fmt.Println("SerPubHex -- key mismatch")
 			t.Fail()
@@ -189,13 +189,22 @@ func TestAddress(t *testing.T) {
 
 		prv, err := hex.DecodeString(d.SerPrvHex[90:])
 		if err != nil {
-			fmt.Println("PrvHex decoding error")
+			fmt.Println("PrvHex decoding error: " + err.Error())
 			t.Fail()
 			return
 		}
+		// skip leading zeros
+		if len(prv) == 33 {
+			if prv[0] != 0 {
+				fmt.Println("PrvHex wrong format")
+				t.Fail()
+				return
+			}
+			prv = prv[1:]
+		}
 		prvkey, err := ecc.PrivateKeyFromBytes(prv)
 		if err != nil {
-			fmt.Println("PrvHex conversion failed")
+			fmt.Println("PrvHex conversion failed: " + err.Error())
 			t.Fail()
 			return
 		}
