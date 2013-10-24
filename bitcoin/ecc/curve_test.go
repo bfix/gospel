@@ -24,7 +24,7 @@ func TestCurve(t *testing.T) {
 	gm := &point{curve_gx, new(big.Int).Neg(curve_gy)}
 
 	fmt.Print("Checking if base point 'g' is on curve: ")
-	if !isOnCurve(g) {
+	if !IsOnCurve(g) {
 		fmt.Printf("Failed")
 		t.Fail()
 		return
@@ -38,7 +38,7 @@ func TestCurve(t *testing.T) {
 
 	fmt.Print("Computing infinity '0 = n*g': ")
 	p1 := scalarMult(g, curve_n)
-	if !isEqual(p1, inf) {
+	if !IsEqual(p1, inf) {
 		fmt.Printf("Failed: %s\n", p1.emit())
 		t.Fail()
 		return
@@ -52,7 +52,7 @@ func TestCurve(t *testing.T) {
 
 	fmt.Print("Computing infinity '0 = (-g) + g': ")
 	p1 = add(g, gm)
-	if !isEqual(p1, inf) {
+	if !IsEqual(p1, inf) {
 		fmt.Printf("Failed: %s\n", p1.emit())
 		t.Fail()
 		return
@@ -63,7 +63,7 @@ func TestCurve(t *testing.T) {
 	fmt.Println("Checking infinity:")
 	fmt.Print("    0+p = p: ")
 	p1 = add(g, inf)
-	if !isEqual(p1, g) {
+	if !IsEqual(p1, g) {
 		fmt.Printf("Failed: %s != %s\n", p1.emit(), g.emit())
 		t.Fail()
 		return
@@ -72,7 +72,7 @@ func TestCurve(t *testing.T) {
 	}
 	fmt.Print("    k*0 = 0: ")
 	p1 = scalarMult(inf, math.EIGHT)
-	if !isEqual(p1, inf) {
+	if !IsEqual(p1, inf) {
 		fmt.Printf("Failed: %s != (0,0)\n", p1.emit())
 		t.Fail()
 		return
@@ -83,7 +83,7 @@ func TestCurve(t *testing.T) {
 	fmt.Print("Checking for 'double(x) == scalarMult(x,2)': ")
 	p1 = double(g)
 	p2 := scalarMult(g, math.TWO)
-	if !isEqual(p1, p2) {
+	if !IsEqual(p1, p2) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
@@ -99,7 +99,7 @@ func TestCurve(t *testing.T) {
 	p1 = double(g)
 	p2 = add(g, p1)
 	p3 := add(p1, g)
-	if !isEqual(p2, p3) {
+	if !IsEqual(p2, p3) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
@@ -114,7 +114,7 @@ func TestCurve(t *testing.T) {
 	fmt.Print("Checking for 'add(double(x),x) == scalarMult(x,3)': ")
 	p1 = add(double(g), g)
 	p2 = scalarMult(g, math.THREE)
-	if !isEqual(p1, p2) {
+	if !IsEqual(p1, p2) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
@@ -128,7 +128,7 @@ func TestCurve(t *testing.T) {
 
 	fmt.Print("Checking if point '2*g' is on curve: ")
 	pnt := double(g)
-	if !isOnCurve(pnt) {
+	if !IsOnCurve(pnt) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
@@ -142,7 +142,7 @@ func TestCurve(t *testing.T) {
 
 	fmt.Print("Checking if point '3*g' is on curve: ")
 	pnt = scalarMult(g, math.THREE)
-	if !isOnCurve(pnt) {
+	if !IsOnCurve(pnt) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
@@ -156,7 +156,7 @@ func TestCurve(t *testing.T) {
 
 	fmt.Print("Checking if point '7*g' is on curve: ")
 	pnt = scalarMult(g, math.SEVEN)
-	if !isOnCurve(pnt) {
+	if !IsOnCurve(pnt) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
@@ -170,7 +170,7 @@ func TestCurve(t *testing.T) {
 
 	fmt.Print("Checking if point '8*g' is on curve: ")
 	pnt = scalarMult(g, math.EIGHT)
-	if !isOnCurve(pnt) {
+	if !IsOnCurve(pnt) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
@@ -195,7 +195,7 @@ func TestCurve(t *testing.T) {
 		p1 = add(p, q)
 		p2 = add(q, p)
 
-		if !isEqual(p1, p2) {
+		if !IsEqual(p1, p2) {
 			failed = true
 			fmt.Print("-")
 			fmt.Print("\nFAIL: ")
@@ -204,7 +204,7 @@ func TestCurve(t *testing.T) {
 			p2.emit()
 			fmt.Println()
 		} else {
-			if !isEqual(p1, r) {
+			if !IsEqual(p1, r) {
 				failed = true
 				fmt.Print("-")
 				fmt.Print("\nFAIL: ")
@@ -256,7 +256,7 @@ func TestCurve(t *testing.T) {
 		p1 = &point{x, y}
 		p2 = scalarMult(g, m)
 
-		if !isEqual(p1, p2) {
+		if !IsEqual(p1, p2) {
 			failed = true
 			fmt.Printf("-\nFAIL: %s\n", p1.emit())
 			fmt.Printf("FAIL: %s\n", p2.emit())
@@ -286,13 +286,13 @@ func (p *point) emit() string {
 
 // test binary conversion for point
 func testInOut(p *point) bool {
-	cmpr := p.x.Bit(0) == 0
-	b := pointAsBytes(p, cmpr)
-	pp, err := pointFromBytes(b)
-	rc := (err == nil && isEqual(pp, p))
+	comprIn := p.x.Bit(0) == 0
+	b := pointAsBytes(p, comprIn)
+	pp, comprOut, err := pointFromBytes(b)
+	rc := (err == nil && IsEqual(pp, p) && comprIn == comprOut)
 	if !rc {
 		fmt.Printf(">> %s\n", p.emit())
-		fmt.Printf(">> %v\n", cmpr)
+		fmt.Printf(">> %v -- %v\n", comprIn, comprOut)
 		fmt.Printf(">> %s\n", hex.EncodeToString(b))
 		fmt.Printf(">> %s\n", pp.emit())
 		fmt.Println("BinRep() failed!")
