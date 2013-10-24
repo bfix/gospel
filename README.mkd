@@ -28,6 +28,9 @@ Packages
     * SOCKS5 connection handler
 - gospel/bitcoin/ecc: Elliptic curve crypto
     * Secp256k1, as used by bitcoin
+    * JSON-RPC to Bitcoin server
+    * Utility methods (addresses, key exchange, raw
+      transactions, hasing, Base58,...)
 - gospel/math: Mathematical helpers
     * Fast Fourier Transformation
 - gospel/crypto: cryptographic helpers
