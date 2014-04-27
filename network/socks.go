@@ -26,6 +26,7 @@ import (
 	"errors"
 	"github.com/bfix/gospel/logger"
 	"net"
+	"time"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -47,7 +48,31 @@ var socksState []string = []string{
 ///////////////////////////////////////////////////////////////////////
 // Public methods
 
+/*
+ * Connect to SOCKS5 proxy.
+ * @param proto string - protocol (currently limited to TCP)
+ * @param addr string - address of remote server
+ * @param port int - port of remote service
+ * @param proxy string - address of proxy server ("host:port")
+ * @return net.Conn - connection instance
+ * @return error - error object (or nil if successful)
+ */
 func Socks5Connect(proto string, addr string, port int, proxy string) (net.Conn, error) {
+	return Socks5ConnectTimeout(proto, addr, port, proxy, 0)
+}
+
+//---------------------------------------------------------------------
+/*
+ * Connect to SOCKS5 proxy with timeout.
+ * @param proto string - protocol (currently limited to TCP)
+ * @param addr string - address of remote server
+ * @param port int - port of remote service
+ * @param proxy string - address of proxy server ("host:port")
+ * @param timeout time.Duration - timeout for connection setup
+ * @return net.Conn - connection instance
+ * @return error - error object (or nil if successful)
+ */
+func Socks5ConnectTimeout(proto string, addr string, port int, proxy string, timeout time.Duration) (net.Conn, error) {
 
 	if proto != "tcp" {
 		logger.Printf(logger.ERROR, "[network] Unsupported protocol '%s'.\n", proto)
@@ -57,7 +82,15 @@ func Socks5Connect(proto string, addr string, port int, proxy string) (net.Conn,
 	//-----------------------------------------------------------------
 	// connect to SOCKS5 proxy via TCP
 	//-----------------------------------------------------------------
-	conn, err := net.Dial("tcp", proxy)
+	var (
+		conn net.Conn = nil
+		err  error
+	)
+	if timeout == 0 {
+		conn, err = net.Dial("tcp", proxy)
+	} else {
+		conn, err = net.DialTimeout("tcp", proxy, timeout)
+	}
 	if err != nil {
 		logger.Printf(logger.ERROR, "[network] failed to connect to proxy server: %s\n", err.Error())
 		return nil, err
@@ -71,10 +104,16 @@ func Socks5Connect(proto string, addr string, port int, proxy string) (net.Conn,
 	data[0] = 5 // SOCKS version
 	data[1] = 1 // One available authentication method
 	data[2] = 0 // No authentication required
+	if timeout > 0 {
+		conn.SetDeadline(time.Now().Add(timeout))
+	}
 	if n, err := conn.Write(data[:3]); n != 3 {
 		logger.Printf(logger.ERROR, "[network] failed to write to proxy server: %s\n", err.Error())
 		conn.Close()
 		return nil, err
+	}
+	if timeout > 0 {
+		conn.SetDeadline(time.Now().Add(timeout))
 	}
 	if n, err := conn.Read(data); n != 2 {
 		logger.Printf(logger.ERROR, "[network] failed to read from proxy server: %s\n", err.Error())
@@ -103,12 +142,22 @@ func Socks5Connect(proto string, addr string, port int, proxy string) (net.Conn,
 	}
 	data[5+size] = (byte)(port / 256)
 	data[6+size] = (byte)(port % 256)
+	if timeout > 0 {
+		conn.SetDeadline(time.Now().Add(timeout))
+	}
 	if n, err := conn.Write(data[:7+size]); n != (7 + size) {
 		logger.Printf(logger.ERROR, "[network] failed to write to proxy server: %s\n", err.Error())
 		conn.Close()
 		return nil, err
 	}
-	conn.Read(data)
+	if timeout > 0 {
+		conn.SetDeadline(time.Now().Add(timeout))
+	}
+	_, err = conn.Read(data)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
 	if data[1] != 0 {
 		err = errors.New(socksState[data[1]])
 		logger.Printf(logger.ERROR, "[network] proxy server failed: %s\n", err.Error())
