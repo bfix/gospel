@@ -26,6 +26,7 @@ Packages
     * packet handling
     * TOR
     * SOCKS5 connection handler
+    * SMTP/POP3 mail handling
 - gospel/bitcoin/ecc: Elliptic curve crypto
     * Secp256k1, as used by bitcoin
     * JSON-RPC to Bitcoin server
