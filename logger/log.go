@@ -32,7 +32,9 @@ import (
 // Logging constants
 
 const (
-	ERROR    = iota // errors
+	CRITICAL = iota // critical errors
+	SEVERE          // severe errors
+	ERROR           // errors
 	WARN            // warnings
 	INFO            // info
 	DBG_HIGH        // debug (high prio)
