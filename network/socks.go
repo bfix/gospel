@@ -26,6 +26,9 @@ import (
 	"errors"
 	"github.com/bfix/gospel/logger"
 	"net"
+	"net/url"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -73,23 +76,36 @@ func Socks5Connect(proto string, addr string, port int, proxy string) (net.Conn,
  * @return error - error object (or nil if successful)
  */
 func Socks5ConnectTimeout(proto string, addr string, port int, proxy string, timeout time.Duration) (net.Conn, error) {
-
-	if proto != "tcp" {
-		logger.Printf(logger.ERROR, "[network] Unsupported protocol '%s'.\n", proto)
-		return nil, errors.New("Unsupported protocol")
-	}
-
-	//-----------------------------------------------------------------
-	// connect to SOCKS5 proxy via TCP
-	//-----------------------------------------------------------------
 	var (
 		conn net.Conn = nil
 		err  error
 	)
+	if proto != "tcp" {
+		logger.Printf(logger.ERROR, "[network] Unsupported protocol '%s'.\n", proto)
+		return nil, errors.New("Unsupported protocol (TCP only)")
+	}
+	p, err := url.Parse(proxy)
+	if err != nil {
+		return nil, err
+	}
+	if len(p.Scheme) > 0 && p.Scheme != "socks5" {
+		logger.Printf(logger.ERROR, "[network] Invalid proxy scheme '%s'.\n", p.Scheme)
+		return nil, errors.New("Invalid proxy scheme")
+	}
+	idx := strings.Index(p.Host, ":")
+	if idx == -1 {
+		logger.Printf(logger.ERROR, "[network] Invalid host definition '%s'.\n", p.Host)
+		return nil, errors.New("Invalid host definition (missing port)")
+	}
+	pPort, err := strconv.Atoi(p.Host[idx+1:])
+	if err != nil || port < 1 || port > 65535 {
+		logger.Printf(logger.ERROR, "[network] Invalid port definition '%d'.\n", pPort)
+		return nil, errors.New("Invalid host definition (port out of range)")
+	}
 	if timeout == 0 {
-		conn, err = net.Dial("tcp", proxy)
+		conn, err = net.Dial("tcp", p.Host)
 	} else {
-		conn, err = net.DialTimeout("tcp", proxy, timeout)
+		conn, err = net.DialTimeout("tcp", p.Host, timeout)
 	}
 	if err != nil {
 		logger.Printf(logger.ERROR, "[network] failed to connect to proxy server: %s\n", err.Error())
