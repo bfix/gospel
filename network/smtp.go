@@ -45,8 +45,6 @@ import (
 	"net/smtp"
 	"net/textproto"
 	"net/url"
-	"strconv"
-	"strings"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -84,20 +82,11 @@ func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) error {
 	if proxy == "" {
 		c0, err = net.Dial("tcp", uSrv.Host)
 	} else {
-		uPrx, err := url.Parse(proxy)
+		host, port, err := SplitHost(uSrv.Host)
 		if err != nil {
 			return err
 		}
-		idx := strings.Index(uSrv.Host, ":")
-		if idx == -1 {
-			return errors.New("Invalid host definition")
-		}
-		host := uSrv.Host[:idx]
-		port, err := strconv.Atoi(uSrv.Host[idx+1:])
-		if err != nil || port < 1 || port > 65535 {
-			return errors.New("Invalid host definition")
-		}
-		c0, err = Socks5Connect("tcp", host, port, uPrx.Host)
+		c0, err = Socks5Connect("tcp", host, port, proxy)
 	}
 	if err != nil {
 		return err

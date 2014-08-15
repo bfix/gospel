@@ -90,20 +90,11 @@ func POP3Connect(service, proxy string) (*POP3Session, error) {
 	if proxy == "" {
 		sess.c0, err = net.Dial("tcp", uSrv.Host)
 	} else {
-		uPrx, err := url.Parse(proxy)
+		host, port, err := SplitHost(uSrv.Host)
 		if err != nil {
 			return nil, err
 		}
-		idx := strings.Index(uSrv.Host, ":")
-		if idx == -1 {
-			return nil, errors.New("Invalid host definition")
-		}
-		host := uSrv.Host[:idx]
-		port, err := strconv.Atoi(uSrv.Host[idx+1:])
-		if err != nil || port < 1 || port > 65535 {
-			return nil, errors.New("Invalid host definition")
-		}
-		sess.c0, err = Socks5Connect("tcp", host, port, uPrx.Host)
+		sess.c0, err = Socks5Connect("tcp", host, port, proxy)
 	}
 	if err != nil {
 		return nil, err
