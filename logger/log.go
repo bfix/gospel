@@ -45,7 +45,7 @@ const (
 ///////////////////////////////////////////////////////////////////////
 // Public variables
 
-var LogLevel = DBG // current logging verbosity
+var logLevel = DBG // current logging verbosity
 
 ///////////////////////////////////////////////////////////////////////
 // Public logging functions.
@@ -56,7 +56,7 @@ var LogLevel = DBG // current logging verbosity
  * @param line string - information to be logged
  */
 func Println(level int, line string) {
-	if level <= LogLevel {
+	if level <= logLevel {
 		log.Println(getTag(level) + line)
 	}
 }
@@ -69,7 +69,7 @@ func Println(level int, line string) {
  * @param v ...interface{} - list of variables to be formatted
  */
 func Printf(level int, format string, v ...interface{}) {
-	if level <= LogLevel {
+	if level <= logLevel {
 		log.Print(getTag(level) + fmt.Sprintf(format, v...))
 	}
 }
@@ -97,11 +97,24 @@ func LogToFile(filename string) bool {
 //=====================================================================
 
 /*
+ * Return numeric log level.
+ * @return int - current log level
+ */
+func GetLogLevel() int {
+	return logLevel
+}
+
+//---------------------------------------------------------------------
+/*
  * Get current loglevel in human-readable form.
  * @return string - symbolic name of loglevel
  */
-func GetLogLevel() string {
-	switch LogLevel {
+func GetLogLevelName() string {
+	switch logLevel {
+	case CRITICAL:
+		return "CRITICAL"
+	case SEVERE:
+		return "SEVERE"
 	case ERROR:
 		return "ERROR"
 	case WARN:
@@ -115,7 +128,19 @@ func GetLogLevel() string {
 	case DBG_ALL:
 		return "DBG_ALL"
 	}
-	return "???"
+	return "UNKNOWN_LOGLEVEL"
+}
+
+//---------------------------------------------------------------------
+/*
+ * Set logging level from value
+ * @param lvl int - new log level
+ */
+func SetLogLevel(lvl int) {
+	if lvl < CRITICAL || lvl > DBG_ALL {
+		Printf(WARN, "[logger] Unknown loglevel '%d' requested -- ignored.\n", lvl)
+	}
+	logLevel = lvl
 }
 
 //---------------------------------------------------------------------
@@ -126,17 +151,17 @@ func GetLogLevel() string {
 func SetLogLevelFromName(name string) {
 	switch name {
 	case "ERROR":
-		LogLevel = ERROR
+		logLevel = ERROR
 	case "WARN":
-		LogLevel = WARN
+		logLevel = WARN
 	case "INFO":
-		LogLevel = INFO
+		logLevel = INFO
 	case "DBG_HIGH":
-		LogLevel = DBG_HIGH
+		logLevel = DBG_HIGH
 	case "DBG":
-		LogLevel = DBG
+		logLevel = DBG
 	case "DBG_ALL":
-		LogLevel = DBG_ALL
+		logLevel = DBG_ALL
 	default:
 		Println(WARN, "[logger] Unknown loglevel '"+name+"' requested.")
 	}
