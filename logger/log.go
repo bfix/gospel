@@ -175,6 +175,10 @@ func SetLogLevelFromName(name string) {
  */
 func getTag(level int) string {
 	switch level {
+	case CRITICAL:
+		return "{C}"
+	case SEVERE:
+		return "{S}"
 	case ERROR:
 		return "{E}"
 	case WARN:
