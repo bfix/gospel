@@ -24,8 +24,8 @@ package logger
 
 import (
 	"fmt"
-	"log"
 	"os"
+	"time"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -40,12 +40,70 @@ const (
 	DBG_HIGH        // debug (high prio)
 	DBG             // debug (normal)
 	DBG_ALL         // debug (all)
+
+	cmd_ROTATE = iota // rotate log file
 )
 
 ///////////////////////////////////////////////////////////////////////
-// Public variables
+// Local types
 
-var logLevel = DBG // current logging verbosity
+type logger struct {
+	msgChan chan string // message to be logged
+	cmdChan chan int    // commands to be executed
+	logfile *os.File    // current log file (can be stdout/stderr)
+	started time.Time   // start time of current log file
+	level   int         // current log level
+}
+
+///////////////////////////////////////////////////////////////////////
+// Local variables
+
+var (
+	logInst *logger = nil // singleton logger instance
+)
+
+///////////////////////////////////////////////////////////////////////
+// Logger-internal methods / functions
+/*
+ * Instantiate new logger (to stdout)
+ */
+func init() {
+	logInst = new(logger)
+	logInst.msgChan = make(chan string)
+	logInst.cmdChan = make(chan int)
+	logInst.logfile = os.Stdout
+	logInst.started = time.Now()
+	logInst.level = DBG
+
+	go logInst.run()
+}
+
+//---------------------------------------------------------------------
+/*
+ * Handler loop for logger instance.
+ */
+func (l *logger) run() {
+	for {
+		select {
+		case msg := <-l.msgChan:
+			ts := time.Now().Format(time.Stamp)
+			l.logfile.WriteString(ts + msg)
+		case cmd := <-l.cmdChan:
+			switch cmd {
+			case cmd_ROTATE:
+				if l.logfile != os.Stdout {
+					fname := logInst.logfile.Name()
+					logInst.logfile.Close()
+					ts := logInst.started.Format(time.RFC3339)
+					os.Rename(fname, fname+"."+ts)
+					LogToFile(fname)
+				} else {
+					Println(WARN, "[log] log rotation for 'stdout' not applicable.")
+				}
+			}
+		}
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////
 // Public logging functions.
@@ -56,8 +114,8 @@ var logLevel = DBG // current logging verbosity
  * @param line string - information to be logged
  */
 func Println(level int, line string) {
-	if level <= logLevel {
-		log.Println(getTag(level) + line)
+	if level <= logInst.level {
+		logInst.msgChan <- getTag(level) + line + "\n"
 	}
 }
 
@@ -69,8 +127,8 @@ func Println(level int, line string) {
  * @param v ...interface{} - list of variables to be formatted
  */
 func Printf(level int, format string, v ...interface{}) {
-	if level <= logLevel {
-		log.Print(getTag(level) + fmt.Sprintf(format, v...))
+	if level <= logInst.level {
+		logInst.msgChan <- getTag(level) + fmt.Sprintf(format, v...)
 	}
 }
 
@@ -85,11 +143,20 @@ func Printf(level int, format string, v ...interface{}) {
 func LogToFile(filename string) bool {
 	Println(INFO, "[log] file-based logging to '"+filename+"'")
 	if f, err := os.Create(filename); err == nil {
-		log.SetOutput(f)
+		logInst.logfile = f
+		logInst.started = time.Now()
 		return true
 	}
 	Println(ERROR, "[log] can't enable file-based logging!")
 	return false
+}
+
+//---------------------------------------------------------------------
+/*
+ * Rotate log file.
+ */
+func Rotate() {
+	logInst.cmdChan <- cmd_ROTATE
 }
 
 //=====================================================================
@@ -101,7 +168,7 @@ func LogToFile(filename string) bool {
  * @return int - current log level
  */
 func GetLogLevel() int {
-	return logLevel
+	return logInst.level
 }
 
 //---------------------------------------------------------------------
@@ -110,7 +177,7 @@ func GetLogLevel() int {
  * @return string - symbolic name of loglevel
  */
 func GetLogLevelName() string {
-	switch logLevel {
+	switch logInst.level {
 	case CRITICAL:
 		return "CRITICAL"
 	case SEVERE:
@@ -140,7 +207,7 @@ func SetLogLevel(lvl int) {
 	if lvl < CRITICAL || lvl > DBG_ALL {
 		Printf(WARN, "[logger] Unknown loglevel '%d' requested -- ignored.\n", lvl)
 	}
-	logLevel = lvl
+	logInst.level = lvl
 }
 
 //---------------------------------------------------------------------
@@ -151,17 +218,17 @@ func SetLogLevel(lvl int) {
 func SetLogLevelFromName(name string) {
 	switch name {
 	case "ERROR":
-		logLevel = ERROR
+		logInst.level = ERROR
 	case "WARN":
-		logLevel = WARN
+		logInst.level = WARN
 	case "INFO":
-		logLevel = INFO
+		logInst.level = INFO
 	case "DBG_HIGH":
-		logLevel = DBG_HIGH
+		logInst.level = DBG_HIGH
 	case "DBG":
-		logLevel = DBG
+		logInst.level = DBG
 	case "DBG_ALL":
-		logLevel = DBG_ALL
+		logInst.level = DBG_ALL
 	default:
 		Println(WARN, "[logger] Unknown loglevel '"+name+"' requested.")
 	}
