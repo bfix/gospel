@@ -246,10 +246,12 @@ func EncryptMailMessage(key, body []byte) ([]byte, error) {
  * Result type for parsing mail messages
  */
 type MailContent struct {
-	Mode int    // message type (MDOE_XXX)
-	From string // sender email address
-	Body string // message body
-	Key  []byte // attached key or signing key (public)
+	Mode    int    // message type (MDOE_XXX)
+	From    string // sender email address
+	To      string // recipient email address
+	Subject string // subject line
+	Body    string // message body
+	Key     []byte // attached key or signing key (public)
 }
 
 /*
@@ -270,11 +272,12 @@ const (
 	ct_MP_ENC  = "multipart/encrypted;"
 	ct_MP_SIGN = "multipart/signed;"
 
-	MODE_PLAIN = iota
-	MODE_SIGN
-	MODE_ENC
-	MODE_SIGN_ENC
-	MODE_USIGN_ENC // unverified signature (key missing)
+	MODE_PLAIN     = iota // plain text message
+	MODE_SIGN             // signed
+	MODE_USIGN            // signed, but unverified signature
+	MODE_ENC              // encrypted
+	MODE_SIGN_ENC         // encrypted and signed
+	MODE_USIGN_ENC        // encrypted and signed, but unverified signature
 
 	INFO_IDENTITY = iota
 	INFO_PASSPHRASE
@@ -293,7 +296,11 @@ func ParseMailMessage(msg io.Reader, getInfo MailUserInfo) (*MailContent, error)
 	if err != nil {
 		return nil, err
 	}
-	addr, err := mail.ParseAddress(m.Header.Get("From"))
+	fromAddr, err := mail.ParseAddress(m.Header.Get("From"))
+	if err != nil {
+		return nil, err
+	}
+	toAddr, err := mail.ParseAddress(m.Header.Get("To"))
 	if err != nil {
 		return nil, err
 	}
@@ -311,9 +318,9 @@ func ParseMailMessage(msg io.Reader, getInfo MailUserInfo) (*MailContent, error)
 	} else if strings.HasPrefix(ct, ct_MP_MIX) {
 		mc, err = ParsePlain(ct, m.Body)
 	} else if strings.HasPrefix(ct, ct_MP_ENC) {
-		mc, err = ParseEncrypted(ct, addr.Address, getInfo, m.Body)
+		mc, err = ParseEncrypted(ct, fromAddr.Address, getInfo, m.Body)
 	} else if strings.HasPrefix(ct, ct_MP_SIGN) {
-		mc, err = ParseSigned(ct, addr.Address, m.Body)
+		mc, err = ParseSigned(ct, fromAddr.Address, getInfo, m.Body)
 	}
 	if err != nil {
 		return nil, err
@@ -321,7 +328,9 @@ func ParseMailMessage(msg io.Reader, getInfo MailUserInfo) (*MailContent, error)
 	if mc == nil {
 		return nil, errors.New("Unparsed mail message")
 	}
-	mc.From = addr.Address
+	mc.From = fromAddr.Address
+	mc.To = toAddr.Address
+	mc.Subject = m.Header.Get("Subject")
 	return mc, nil
 }
 
@@ -466,13 +475,14 @@ func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (*Mai
  * Parse signed unencrypted message.
  * @param ct string - content type string
  * @param addr string - sender address
+ * @param getInfo MailUserInfo - callback for info retrieval
  * @param body io.Reader - content reader
  * @return *MailContent - parse result
  * @return error - error instance or nil
  */
-func ParseSigned(ct, addr string, body io.Reader) (*MailContent, error) {
+func ParseSigned(ct, addr string, getInfo MailUserInfo, body io.Reader) (*MailContent, error) {
 	mc := new(MailContent)
-	mc.Mode = MODE_ENC
+	mc.Mode = MODE_SIGN
 	boundary := extractValue(ct, "boundary")
 	rdr := multipart.NewReader(body, boundary)
 	for {
@@ -486,11 +496,16 @@ func ParseSigned(ct, addr string, body io.Reader) (*MailContent, error) {
 				}
 				mc.Body = string(data)
 			case strings.HasPrefix(ct, "application/pgp-signature;"):
-				data, err := ioutil.ReadAll(part)
-				if err != nil {
+				id := getInfo(INFO_SENDER, addr).(*openpgp.Entity)
+				if id == nil {
+					mc.Mode = MODE_USIGN
+					continue
+				}
+				buf := bytes.NewBufferString(mc.Body)
+				if _, err := openpgp.CheckArmoredDetachedSignature(openpgp.EntityList{id}, buf, part); err != nil {
 					return nil, err
 				}
-				fmt.Println("Signature: " + string(data))
+				logger.Println(logger.INFO, "Signature verified OK")
 			}
 		} else if err == io.EOF {
 			break
