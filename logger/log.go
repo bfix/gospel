@@ -65,7 +65,7 @@ var (
 ///////////////////////////////////////////////////////////////////////
 // Logger-internal methods / functions
 /*
- * Instantiate new logger (to stdout)
+ * Instantiate new logger (to stdout) and run its handler loop.
  */
 func init() {
 	logInst = new(logger)
@@ -75,34 +75,29 @@ func init() {
 	logInst.started = time.Now()
 	logInst.level = DBG
 
-	go logInst.run()
-}
-
-//---------------------------------------------------------------------
-/*
- * Handler loop for logger instance.
- */
-func (l *logger) run() {
-	for {
-		select {
-		case msg := <-l.msgChan:
-			ts := time.Now().Format(time.Stamp)
-			l.logfile.WriteString(ts + msg)
-		case cmd := <-l.cmdChan:
-			switch cmd {
-			case cmd_ROTATE:
-				if l.logfile != os.Stdout {
-					fname := logInst.logfile.Name()
-					logInst.logfile.Close()
-					ts := logInst.started.Format(time.RFC3339)
-					os.Rename(fname, fname+"."+ts)
-					LogToFile(fname)
-				} else {
-					Println(WARN, "[log] log rotation for 'stdout' not applicable.")
+	go func(){
+		for {
+			select {
+			case msg := <-logInst.msgChan:
+				ts := time.Now().Format(time.Stamp)
+				logInst.logfile.WriteString(ts + msg)
+			case cmd := <-logInst.cmdChan:
+				switch cmd {
+				case cmd_ROTATE:
+					if logInst.logfile != os.Stdout {
+						fname := logInst.logfile.Name()
+						logInst.logfile.Close()
+						logInst.logfile = nil
+						ts := logInst.started.Format(time.RFC3339)
+						os.Rename(fname, fname+"."+ts)
+						LogToFile(fname)
+					} else {
+						Println(WARN, "[log] log rotation for 'stdout' not applicable.")
+					}
 				}
 			}
 		}
-	}
+	}()
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -141,6 +136,9 @@ func Printf(level int, format string, v ...interface{}) {
  * @param filename string - name of logfile
  */
 func LogToFile(filename string) bool {
+	if logInst.logfile == nil {
+		logInst.logfile = os.Stdout
+	}
 	Println(INFO, "[log] file-based logging to '"+filename+"'")
 	if f, err := os.Create(filename); err == nil {
 		logInst.logfile = f
