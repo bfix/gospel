@@ -87,10 +87,13 @@ func init() {
 					if logInst.logfile != os.Stdout {
 						fname := logInst.logfile.Name()
 						logInst.logfile.Close()
-						logInst.logfile = nil
 						ts := logInst.started.Format(time.RFC3339)
 						os.Rename(fname, fname+"."+ts)
-						LogToFile(fname)
+						var err error
+						if logInst.logfile, err = os.Create(fname); err != nil {
+							logInst.logfile = os.Stdout
+						}
+						logInst.started = time.Now()
 					} else {
 						Println(WARN, "[log] log rotation for 'stdout' not applicable.")
 					}
