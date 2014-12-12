@@ -75,7 +75,7 @@ func init() {
 	logInst.started = time.Now()
 	logInst.level = DBG
 
-	go func(){
+	go func() {
 		for {
 			select {
 			case msg := <-logInst.msgChan:
