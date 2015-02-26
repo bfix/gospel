@@ -32,14 +32,14 @@ package network
 
 import (
 	"bytes"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
 	"crypto/rand"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/bfix/gospel/crypto"
 	"github.com/bfix/gospel/logger"
+	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/armor"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -264,6 +264,24 @@ type MailUserInfo func(key int, data string) interface{}
 
 //---------------------------------------------------------------------
 /*
+ * Get email-related OpenPGP identity.
+ * @param getInfo MailUserInfo - callback for info retrieval
+ * @param key int - info type requested (INFO_XXX)
+ * @param data string - additional data
+ * @return *openpgp.Entity
+ */
+func getIdentity(getInfo MailUserInfo, key int, data string) *openpgp.Entity {
+	var id *openpgp.Entity = nil
+	tmp := getInfo(key, data)
+	switch tmp.(type) {
+	case *openpgp.Entity:
+		id = tmp.(*openpgp.Entity)
+	}
+	return id
+}
+
+//---------------------------------------------------------------------
+/*
  * Parsing-related constants
  */
 const (
@@ -405,7 +423,12 @@ func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (*Mai
 				if err != nil {
 					return nil, err
 				}
-				pw := getInfo(INFO_PASSPHRASE, "").(string)
+				pw := ""
+				pwTmp := getInfo(INFO_PASSPHRASE, "")
+				switch pwTmp.(type) {
+				case string:
+					pw = pwTmp.(string)
+				}
 				prompt := func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
 					priv := keys[0].PrivateKey
 					if priv.Encrypted {
@@ -415,14 +438,14 @@ func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (*Mai
 					priv.Serialize(buf)
 					return buf.Bytes(), nil
 				}
-				identity := getInfo(INFO_IDENTITY, "").(*openpgp.Entity)
-				md, err := openpgp.ReadMessage(rdr.Body, openpgp.EntityList{identity}, prompt, nil)
+				id := getIdentity(getInfo, INFO_IDENTITY, "")
+				md, err := openpgp.ReadMessage(rdr.Body, openpgp.EntityList{id}, prompt, nil)
 				if err != nil {
 					return nil, err
 				}
 				if md.IsSigned {
 					mc.Mode = MODE_SIGN_ENC
-					id := getInfo(INFO_SENDER, addr).(*openpgp.Entity)
+					id := getIdentity(getInfo, INFO_SENDER, addr)
 					if id == nil {
 						mc.Mode = MODE_USIGN_ENC
 						content, err := ioutil.ReadAll(md.UnverifiedBody)
@@ -496,7 +519,7 @@ func ParseSigned(ct, addr string, getInfo MailUserInfo, body io.Reader) (*MailCo
 				}
 				mc.Body = string(data)
 			case strings.HasPrefix(ct, "application/pgp-signature;"):
-				id := getInfo(INFO_SENDER, addr).(*openpgp.Entity)
+				id := getIdentity(getInfo, INFO_SENDER, addr)
 				if id == nil {
 					mc.Mode = MODE_USIGN
 					continue
