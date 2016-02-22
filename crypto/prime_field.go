@@ -52,7 +52,7 @@ func (f *FieldP) Add(a, b *big.Int) *big.Int {
 
 //---------------------------------------------------------------------
 
-// Sub substracts field values
+// Sub subtracts field values
 func (f *FieldP) Sub(a, b *big.Int) *big.Int {
 	c := new(big.Int).Add(f.P, a)
 	d := new(big.Int).Sub(c, b)
