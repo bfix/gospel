@@ -219,8 +219,8 @@ func TestCurve(t *testing.T) {
 	}
 	if failed {
 		t.Fail()
-		return
 		fmt.Println(" Failed")
+		return
 	} else {
 		fmt.Println(" O.K.")
 	}

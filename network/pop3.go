@@ -185,7 +185,7 @@ func (sess *POP3Session) Close() {
  * containing a single dot.
  * @param cmd string - command to the POP3 server
  * @param expectData bool - expect additional data
- * @return []string - array of additional reponse lines (text)
+ * @return []string - array of additional response lines (text)
  * @return error - error instance (or nil)
  */
 func (sess *POP3Session) Exec(cmd string, expectData bool) ([]string, error) {

@@ -140,7 +140,7 @@ func TestRPC(t *testing.T) {
 	)
 	if NEW_ACCOUNTS {
 		//-------------------------------------------------  GetNewAddress
-		label := fmt.Sprintf("Account %d", time.Now().Unix)
+		label := fmt.Sprintf("Account %d", time.Now().Unix())
 		addr, err = sess.GetNewAddress(label)
 		if err != nil {
 			fmt.Println("GetNewAddress() failed: " + err.Error())

@@ -23,8 +23,8 @@ package util
 // Import external declarations
 
 import (
-	"golang.org/x/crypto/ripemd160"
 	"crypto/sha256"
+	"golang.org/x/crypto/ripemd160"
 )
 
 ///////////////////////////////////////////////////////////////////////

@@ -24,10 +24,10 @@ package crypto
 
 import (
 	"bytes"
+	"errors"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
-	"errors"
 )
 
 ///////////////////////////////////////////////////////////////////////

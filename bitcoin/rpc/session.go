@@ -1038,7 +1038,7 @@ func (s *Session) WalletLock() error {
 /*
  * Method: walletpassphrase
  * Parameters: (String password, int timeout)
- * Description: Stores the wallet second password in cache for timeout in seconds. Only requred for double encrypted wallets.
+ * Description: Stores the wallet second password in cache for timeout in seconds. Only required for double encrypted wallets.
  * Returns: error
  */
 func (s *Session) WalletPassphrase(passphrase string, timeout int) error {

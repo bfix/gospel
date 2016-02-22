@@ -24,7 +24,7 @@ package rpc
 
 //---------------------------------------------------------------------
 /*
- * Generic infomation about running Bitcoin server.
+ * Generic information about running Bitcoin server.
  */
 type Info struct {
 	Version         int
