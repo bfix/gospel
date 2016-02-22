@@ -1,3 +1,5 @@
+package util
+
 /*
  * Raw transaction manipulation methods.
  * Implement "non-default" scriptSig/scriptPubkey combinations
@@ -52,8 +54,6 @@
  *#####################################################################
  */
 
-package util
-
 ///////////////////////////////////////////////////////////////////////
 // Import external declarations
 
@@ -63,16 +63,15 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Assemble a TX_NULL_DATA script.
- */
+
+// NullDataScript assembles a TX_NULL_DATA script.
 func NullDataScript(data []byte) ([]byte, error) {
 	size := len(data)
 	if size > 75 {
 		return nil, errors.New("attached data to big")
 	}
 
-	script := make([]byte, 0)
+	var script []byte
 	script = append(script, 0x6a) // OP_RETURN
 	script = append(script, LengthPrefix(size)...)
 	script = append(script, data...)
@@ -80,59 +79,52 @@ func NullDataScript(data []byte) ([]byte, error) {
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Change "scriptPubKey" to new script.
- * This only works if there is only one input/output slot defined in
- * the transaction. The old "scriptPubKey" is completely dropped.
- *
- * @param raw string - hex string of raw transaction
- * @param script []byte - replacement script
- * @return string - new hex-encoded raw string
- * @return error - error instance (or nil)
- */
+
+// ReplaceScriptPubKey changes "scriptPubKey" to a new script.
+// This only works if there is only one input/output slot defined in
+// the transaction. The old "scriptPubKey" is completely dropped.
 func ReplaceScriptPubKey(raw string, script []byte) (string, error) {
 
 	// decode raw string from hex
-	in_raw, err := hex.DecodeString(raw)
+	inRaw, err := hex.DecodeString(raw)
 	if err != nil {
 		return "", err
 	}
 
 	// dissect raw transaction and change VOUT
 	pos := 4
-	n_vout := int(in_raw[pos])
-	if n_vout != 1 {
+	nVout := int(inRaw[pos])
+	if nVout != 1 {
 		return "", errors.New("invalid number of vout (!= 1)")
 	}
 	pos += 37
-	scrlen := int(in_raw[pos])
+	scrlen := int(inRaw[pos])
 	if scrlen != 0 {
 		return "", errors.New("invalid scriptSig size (!= 0)")
 	}
 	pos += scrlen + 5
-	n_vin := int(in_raw[pos])
-	if n_vin != 1 {
+	nVin := int(inRaw[pos])
+	if nVin != 1 {
 		return "", errors.New("invalid number of vin (!= 1)")
 	}
 	pos += 9
-	scrlen = int(in_raw[pos])
+	scrlen = int(inRaw[pos])
 
-	out_raw := make([]byte, 0)
-	out_raw = append(out_raw, in_raw[:pos]...)
-	out_raw = append(out_raw, LengthPrefix(len(script))...)
-	out_raw = append(out_raw, script...)
-	out_raw = append(out_raw, in_raw[pos+scrlen+1:]...)
+	var outRaw []byte
+	outRaw = append(outRaw, inRaw[:pos]...)
+	outRaw = append(outRaw, LengthPrefix(len(script))...)
+	outRaw = append(outRaw, script...)
+	outRaw = append(outRaw, inRaw[pos+scrlen+1:]...)
 
 	// return new raw transaction
-	return hex.EncodeToString(out_raw), nil
+	return hex.EncodeToString(outRaw), nil
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Assemble the length prefix for data.
- */
+
+// LengthPrefix assembles the length prefix for data.
 func LengthPrefix(size int) []byte {
-	prefix := make([]byte, 0)
+	var prefix []byte
 	switch {
 	case size < 76:
 		prefix = append(prefix, byte(size))

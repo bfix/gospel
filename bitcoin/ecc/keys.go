@@ -29,29 +29,26 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * PublicKey is a point on the elliptic curve: (x,y) = d*G, where
- * 'G' is the base point of the curve and 'd' is the secret private
- * factor (private key)
- */
+
+// PublicKey is a Point on the elliptic curve: (x,y) = d*G, where
+// 'G' is the base Point of the curve and 'd' is the secret private
+// factor (private key)
 type PublicKey struct {
-	Q            *point
+	Q            *Point
 	IsCompressed bool
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Get byte representation of public key.
- * @return []byte - byte array representing a public key
- */
+
+// Bytes returns the byte representation of public key.
+// @return []byte - byte array representing a public key
 func (k *PublicKey) Bytes() []byte {
 	return pointAsBytes(k.Q, k.IsCompressed)
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Get public key from byte representation.
- */
+
+// PublicKeyFromBytes returns a public key from a byte representation.
 func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	pnt, compr, err := pointFromBytes(b)
 	if err != nil {
@@ -65,20 +62,18 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * PrivateKey is a random factor 'd' for the base point that yields
- * the associated PublicKey (point on the curve (x,y) = d*G)
- */
+
+// PrivateKey is a random factor 'd' for the base Point that yields
+// the associated PublicKey (Point on the curve (x,y) = d*G)
 type PrivateKey struct {
 	PublicKey
 	D *big.Int
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Get byte representation of private key.
- * @return []byte - byte array representing a private key
- */
+
+// Bytes returns a byte representation of private key.
+// @return []byte - byte array representing a private key
 func (k *PrivateKey) Bytes() []byte {
 	b := coordAsBytes(k.D)
 	if k.IsCompressed {
@@ -88,14 +83,13 @@ func (k *PrivateKey) Bytes() []byte {
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Get private key from byte representation.
- */
+
+// PrivateKeyFromBytes returns a private key from a byte representation.
 func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 	// check compressed/uncompressed
 	var (
-		kd    []byte = b
-		compr bool   = false
+		kd    = b
+		compr = false
 	)
 	if len(b) == 33 {
 		kd = b[:32]
@@ -118,19 +112,18 @@ func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Generate a new set of keys.
- * [http://www.nsa.gov/ia/_files/ecdsa.pdf] page 19f but with a
- * different range (value 1 and 2 for exponent are not allowed)
- * @return *PrivateKey - generated key pair
- */
+
+// GenerateKeys creates a new set of keys.
+// [http://www.nsa.gov/ia/_files/ecdsa.pdf] page 19f but with a
+// different range (value 1 and 2 for exponent are not allowed)
+// @return *PrivateKey - generated key pair
 func GenerateKeys() *PrivateKey {
 
 	prv := new(PrivateKey)
 	for {
 		// generate factor in range [3..n-1]
-		prv.D = n_rnd(math.THREE)
-		// generate point p = d*G
+		prv.D = nRnd(math.THREE)
+		// generate Point p = d*G
 		prv.Q = ScalarMultBase(prv.D)
 		prv.IsCompressed = true
 

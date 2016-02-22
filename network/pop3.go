@@ -44,9 +44,7 @@ import (
 ///////////////////////////////////////////////////////////////////////
 // POP3-related types and methods
 
-/*
- * POP3 session instance.
- */
+// POP3Session data structure
 type POP3Session struct {
 	conn        *textproto.Conn
 	c0          net.Conn
@@ -55,13 +53,8 @@ type POP3Session struct {
 }
 
 //---------------------------------------------------------------------
-/*
- * Establish a session with POP3 mailbox.
- * @param service string - POP3 URL (not as in RFC 2384!)
- * @param proxy string - proxy URL or empty
- * @return *POP3Session - session instance (or nil if failed)
- * @return error - error instance (or nil if successful)
- */
+
+// POP3Connect establishes a session with POP3 mailbox.
 func POP3Connect(service, proxy string) (*POP3Session, error) {
 	sess := new(POP3Session)
 	sess.conn = nil
@@ -166,9 +159,8 @@ func POP3Connect(service, proxy string) (*POP3Session, error) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Close a POP3 session with the server.
- */
+
+// Close a POP3 session with the server.
 func (sess *POP3Session) Close() {
 	sess.Exec("QUIT", false)
 	sess.conn.Close()
@@ -179,15 +171,10 @@ func (sess *POP3Session) Close() {
 }
 
 //---------------------------------------------------------------------
-/*
- * Execute a command on the POP3 server:
- * Expected data is assumed to be terminated by a line
- * containing a single dot.
- * @param cmd string - command to the POP3 server
- * @param expectData bool - expect additional data
- * @return []string - array of additional response lines (text)
- * @return error - error instance (or nil)
- */
+
+// Exec executes a command on the POP3 server:
+// Expected data is assumed to be terminated by a line
+// containing a single dot.
 func (sess *POP3Session) Exec(cmd string, expectData bool) ([]string, error) {
 	if len(cmd) > 0 {
 		if err := sess.conn.PrintfLine(cmd); err != nil {
@@ -195,7 +182,7 @@ func (sess *POP3Session) Exec(cmd string, expectData bool) ([]string, error) {
 		}
 	}
 	if expectData {
-		res := make([]string, 0)
+		var res []string
 		for {
 			s, err := sess.conn.ReadLine()
 			if err != nil {
@@ -210,21 +197,17 @@ func (sess *POP3Session) Exec(cmd string, expectData bool) ([]string, error) {
 			return nil, errors.New("No response data")
 		}
 		return res, nil
-	} else {
-		res, err := sess.conn.ReadLine()
-		if err != nil {
-			return nil, err
-		}
-		return []string{res}, nil
 	}
+	res, err := sess.conn.ReadLine()
+	if err != nil {
+		return nil, err
+	}
+	return []string{res}, nil
 }
 
 //---------------------------------------------------------------------
-/*
- * Get list of unread messages.
- * @return []int - ids of unread messages
- * @return error - error instance (or nil)
- */
+
+// ListUnread returns a list of unread messages.
 func (sess *POP3Session) ListUnread() ([]int, error) {
 	res, err := sess.Exec("LIST", true)
 	if err != nil {
@@ -234,7 +217,7 @@ func (sess *POP3Session) ListUnread() ([]int, error) {
 		return nil, errors.New(msg)
 	}
 
-	idList := make([]int, 0)
+	var idList []int
 	for _, s := range res[1:] {
 		idStr := strings.Split(s, " ")[0]
 		id, err := strconv.Atoi(idStr)
@@ -247,12 +230,8 @@ func (sess *POP3Session) ListUnread() ([]int, error) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Read message# <id> from the server.
- * @param id int - message id
- * @return []string - message content
- * @return error - error instance (or nil)
- */
+
+// Retrieve message# <id> from the server.
 func (sess *POP3Session) Retrieve(id int) ([]string, error) {
 	sess.c0.SetDeadline(time.Now().Add(30 * time.Minute))
 	res, err := sess.Exec("RETR "+strconv.Itoa(id), true)
@@ -267,11 +246,8 @@ func (sess *POP3Session) Retrieve(id int) ([]string, error) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Delete message# <id> from the server.
- * @param id int - message id
- * @return error - error instance (or nil)
- */
+
+// Delete message# <id> from the server.
 func (sess *POP3Session) Delete(id int) error {
 	res, err := sess.Exec("DELE "+strconv.Itoa(id), false)
 	if err != nil {

@@ -1,3 +1,5 @@
+package ecc
+
 /*
  * ====================================================================
  * Elliptic curve cryptography (ECDSA) based on curve "Secp256k1"
@@ -23,4 +25,3 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package ecc

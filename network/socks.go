@@ -35,7 +35,7 @@ import (
 ///////////////////////////////////////////////////////////////////////
 // Local definitions
 
-var socksState []string = []string{
+var socksState = []string{
 	"succeeded",
 	"general SOCKS server failure",
 	"connection not allowed by ruleset",
@@ -51,33 +51,17 @@ var socksState []string = []string{
 ///////////////////////////////////////////////////////////////////////
 // Public methods
 
-/*
- * Connect to SOCKS5 proxy.
- * @param proto string - protocol (currently limited to TCP)
- * @param addr string - address of remote server
- * @param port int - port of remote service
- * @param proxy string - address of proxy server ("host:port")
- * @return net.Conn - connection instance
- * @return error - error object (or nil if successful)
- */
+// Socks5Connect connects to a SOCKS5 proxy.
 func Socks5Connect(proto string, addr string, port int, proxy string) (net.Conn, error) {
 	return Socks5ConnectTimeout(proto, addr, port, proxy, 0)
 }
 
 //---------------------------------------------------------------------
-/*
- * Connect to SOCKS5 proxy with timeout.
- * @param proto string - protocol (currently limited to TCP)
- * @param addr string - address of remote server
- * @param port int - port of remote service
- * @param proxy string - address of proxy server ("host:port")
- * @param timeout time.Duration - timeout for connection setup
- * @return net.Conn - connection instance
- * @return error - error object (or nil if successful)
- */
+
+// Socks5ConnectTimeout connects to a SOCKS5 proxy with timeout.
 func Socks5ConnectTimeout(proto string, addr string, port int, proxy string, timeout time.Duration) (net.Conn, error) {
 	var (
-		conn net.Conn = nil
+		conn net.Conn
 		err  error
 	)
 	if proto != "tcp" {

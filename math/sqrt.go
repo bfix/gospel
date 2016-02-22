@@ -28,11 +28,11 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-// compute square root of a quadratic residue mod p
-// Uses the Shanks-Tonelli algorithm to compute the square root
-// see (http://en.wikipedia.org/wiki/Shanks%E2%80%93Tonelli_algorithm)
 
-func Sqrt_modP(a, p *big.Int) (r *big.Int, err error) {
+// SqrtModP computes the square root of a quadratic residue mod p
+// It uses the Shanks-Tonelli algorithm to compute the square root
+// see (http://en.wikipedia.org/wiki/Shanks%E2%80%93Tonelli_algorithm)
+func SqrtModP(a, p *big.Int) (r *big.Int, err error) {
 	r = ZERO
 	err = nil
 	if !isQuadraticResidue(a, p) {

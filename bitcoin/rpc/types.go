@@ -23,9 +23,8 @@ package rpc
 // public types
 
 //---------------------------------------------------------------------
-/*
- * Generic information about running Bitcoin server.
- */
+
+// Info is a generic information about running Bitcoin server.
 type Info struct {
 	Version         int
 	ProtocolVersion int
@@ -44,11 +43,10 @@ type Info struct {
 }
 
 //---------------------------------------------------------------------
-/*
- * Block (element of the Bitcoin blockchain)
- */
+
+// Block (element of the Bitcoin blockchain)
 type Block struct {
-	IdList            []string
+	IDList            []string
 	Time              int
 	Height            int
 	Nonce             int
@@ -64,15 +62,14 @@ type Block struct {
 }
 
 //---------------------------------------------------------------------
-/*
- * Bitcoin transaction
- */
+
+//Transaction is a Bitcoin transaction
 type Transaction struct {
 	Amount        float64
 	Fee           float64
 	BlockIndex    int
 	Confirmations int
-	Id            string
+	ID            string
 	BlockHash     string
 	Time          int
 	BlockTime     int
@@ -80,20 +77,18 @@ type Transaction struct {
 }
 
 //---------------------------------------------------------------------
-/*
- * Raw transaction input slot
- */
+
+// Vinput is a raw transaction input slot
 type Vinput struct {
-	Id        string
+	ID        string
 	Vout      int
 	ScriptSig string
 	Sequence  int
 }
 
 //---------------------------------------------------------------------
-/*
- * Raw transaction output slot
- */
+
+// Voutput is a raw transaction output slot
 type Voutput struct {
 	Value        float64
 	N            int
@@ -104,11 +99,10 @@ type Voutput struct {
 }
 
 //---------------------------------------------------------------------
-/*
- * Bitcoin transaction
- */
+
+// RawTransaction is a Bitcoin transaction in raw format
 type RawTransaction struct {
-	Id       string
+	ID       string
 	Version  int
 	LockTime int
 	Vin      []Vinput
@@ -116,20 +110,18 @@ type RawTransaction struct {
 }
 
 //---------------------------------------------------------------------
-/*
- * Transaction output
- */
+
+// Output of a transaction
 type Output struct {
-	Id           string
+	ID           string
 	Vout         int
 	ScriptPubKey string
 	RedeemScript string
 }
 
 //---------------------------------------------------------------------
-/*
- * Unspent transactions for accounts
- */
+
+// Unspent transactions for accounts
 type Unspent struct {
 	Output
 	Amount        float64
@@ -137,9 +129,8 @@ type Unspent struct {
 }
 
 //---------------------------------------------------------------------
-/*
- * Received transactions for account/address (accumulated)
- */
+
+// Received transactions for account/address (accumulated)
 type Received struct {
 	Account       string
 	Label         string
@@ -149,9 +140,8 @@ type Received struct {
 }
 
 //---------------------------------------------------------------------
-/*
- * Validity check on address
- */
+
+// Validity check on address
 type Validity struct {
 	Address      string
 	IsCompressed bool
@@ -162,9 +152,8 @@ type Validity struct {
 }
 
 //---------------------------------------------------------------------
-/*
- * Balance of Bitcoin address (used for outgoing transactions as well)
- */
+
+// Balance of Bitcoin address (used for outgoing transactions as well)
 type Balance struct {
 	Address string
 	Amount  float64

@@ -22,18 +22,14 @@ package data
 ///////////////////////////////////////////////////////////////////////
 // Generic Stack type and implementation.
 
-/*
- * Stack for generic data types.
- */
+// Stack for generic data types.
 type Stack struct {
 	data [](interface{}) // list of stack elements
 }
 
 //=====================================================================
-/*
- * Instantiate a new generic Stack object.
- * @return *Stack - reference to new instance
- */
+
+// NewStack instantiates a new generic Stack object.
 func NewStack() *Stack {
 	return &Stack{
 		data: make([](interface{}), 0),
@@ -41,59 +37,49 @@ func NewStack() *Stack {
 }
 
 //---------------------------------------------------------------------
-/*
- * Pop last entry from stack and return it to caller.
- * @return v interface{} - generic stack entry
- */
-func (self *Stack) Pop() (v interface{}) {
-	pos := len(self.data) - 1
-	v, self.data = self.data[pos], self.data[:pos]
+
+// Pop last entry from stack and return it to caller.
+func (s *Stack) Pop() (v interface{}) {
+	pos := len(s.data) - 1
+	v, s.data = s.data[pos], s.data[:pos]
 	return
 }
 
 //---------------------------------------------------------------------
-/*
- * Push generic entry to stack.
- * @param v interface{} - generic stack entry
- */
-func (self *Stack) Push(v interface{}) {
-	self.data = append(self.data, v)
+
+// Push generic entry to stack.
+func (s *Stack) Push(v interface{}) {
+	s.data = append(s.data, v)
 }
 
 //---------------------------------------------------------------------
-/*
- * Return number of elements on stack.
- * @return int - number of elements on stack
- */
-func (self *Stack) Len() int {
-	return len(self.data)
+
+// Len returns the number of elements on stack.
+func (s *Stack) Len() int {
+	return len(s.data)
 }
 
 //---------------------------------------------------------------------
-/*
- * Peek at the last element pushed to stack without dropping it.
- * @return v interface{} - generic stack entry
- */
-func (self *Stack) Peek() (v interface{}) {
-	pos := len(self.data) - 1
+
+// Peek at the last element pushed to stack without dropping it.
+func (s *Stack) Peek() (v interface{}) {
+	pos := len(s.data) - 1
 	if pos < 0 {
 		return nil
 	}
-	return self.data[pos]
+	return s.data[pos]
 }
 
 ///////////////////////////////////////////////////////////////////////
-// Integer-based Stack type and implementation.
 
+// IntStack is an Integer-based Stack type and implementation.
 type IntStack struct {
 	data []int // list of stack elements
 }
 
 //=====================================================================
-/*
- * Instantiate a new integer-based Stack object.
- * @return *IntStack - reference to new stack instance
- */
+
+// NewIntStack instantiates a new integer-based Stack object.
 func NewIntStack() *IntStack {
 	return &IntStack{
 		data: make([]int, 0),
@@ -101,53 +87,42 @@ func NewIntStack() *IntStack {
 }
 
 //---------------------------------------------------------------------
-/*
- * Pop last entry from stack and return it to caller.
- * @return v int - last top stack entry
- */
-func (self *IntStack) Pop() (v int) {
-	pos := len(self.data) - 1
-	v, self.data = self.data[pos], self.data[:pos]
+
+// Pop last entry from stack and return it to caller.
+func (s *IntStack) Pop() (v int) {
+	pos := len(s.data) - 1
+	v, s.data = s.data[pos], s.data[:pos]
 	return
 }
 
 //---------------------------------------------------------------------
-/*
- * Push entry to stack.
- * @param v int - new top stack entry
- */
-func (self *IntStack) Push(v int) {
-	self.data = append(self.data, v)
+
+// Push entry to stack.
+func (s *IntStack) Push(v int) {
+	s.data = append(s.data, v)
 }
 
 //---------------------------------------------------------------------
-/*
- * Return number of elements on stack.
- * @return int - number of elements on stack
- */
-func (self *IntStack) Len() int {
-	return len(self.data)
+
+// Len returns the number of elements on stack.
+func (s *IntStack) Len() int {
+	return len(s.data)
 }
 
 //---------------------------------------------------------------------
-/*
- * Peek at the last element pushed to stack without dropping it.
- * @return v int - top stack entry (retained)
- */
-func (self *IntStack) Peek() (v int) {
-	return self.data[len(self.data)-1]
+
+// Peek at the last element pushed to stack without dropping it.
+func (s *IntStack) Peek() (v int) {
+	return s.data[len(s.data)-1]
 }
 
 //---------------------------------------------------------------------
-/*
- * Compare last element with given value.
- * @param v int - value to compare to
- * @return bool - do value and top element match?
- */
-func (self *IntStack) IsTop(v int) bool {
-	pos := len(self.data) - 1
+
+// IsTop compares last element with given value.
+func (s *IntStack) IsTop(v int) bool {
+	pos := len(s.data) - 1
 	if pos < 0 {
 		return false
 	}
-	return self.data[pos] == v
+	return s.data[pos] == v
 }

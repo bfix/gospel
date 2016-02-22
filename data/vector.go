@@ -22,17 +22,14 @@ package data
 ///////////////////////////////////////////////////////////////////////
 // Generic Vector type and implementation.
 
-/*
- * Generic Vector data structure
- */
+// Vector data structure
 type Vector struct {
 	data [](interface{}) // list of elements
 }
 
 //=====================================================================
-/*
- * Instantiate a new (empty) Vector object.
- */
+
+// NewVector instantiates a new (empty) Vector object.
 func NewVector() *Vector {
 	return &Vector{
 		data: make([](interface{}), 0),
@@ -40,85 +37,70 @@ func NewVector() *Vector {
 }
 
 //---------------------------------------------------------------------
-/*
- * Get number of elements inthe vector.
- * @return int - number of elements
- */
-func (self *Vector) Len() int {
-	return len(self.data)
+
+// Len returns the number of elements in the vector.
+func (vec *Vector) Len() int {
+	return len(vec.data)
 }
 
 //---------------------------------------------------------------------
-/*
- * Add element to the end of the vector.
- * @param v interface{} - element to be added
- */
-func (self *Vector) Add(v interface{}) {
-	self.data = append(self.data, v)
+
+// Add element to the end of the vector.
+func (vec *Vector) Add(v interface{}) {
+	vec.data = append(vec.data, v)
 }
 
 //---------------------------------------------------------------------
-/*
- * Insert element at given position. Add 'nil' elements if index
- * is beyond the end of the vector.
- * @param i int - insert position
- * @param v interface{} - element to be inserted
- */
-func (self *Vector) Insert(i int, v interface{}) {
+
+// Insert element at given position. Add 'nil' elements if index
+// is beyond the end of the vector.
+func (vec *Vector) Insert(i int, v interface{}) {
 
 	if i < 0 {
 		// create a prepending slice
 		pre := make([](interface{}), -i)
 		pre[0] = v
-		self.data = append(pre, self.data...)
-	} else if i >= len(self.data) {
+		vec.data = append(pre, vec.data...)
+	} else if i >= len(vec.data) {
 		// create appending slice
-		idx := i - len(self.data) + 1
+		idx := i - len(vec.data) + 1
 		app := make([](interface{}), idx)
 		app[idx-1] = v
-		self.data = append(self.data, app...)
+		vec.data = append(vec.data, app...)
 	} else {
-		pre := self.data[:i]
-		app := self.data[i:]
-		self.data = append(append(pre, v), app...)
+		pre := vec.data[:i]
+		app := vec.data[i:]
+		vec.data = append(append(pre, v), app...)
 	}
 }
 
 //---------------------------------------------------------------------
-/*
- * Drop the last element from the vector.
- * @return v interface{} - dropped element
- */
-func (self *Vector) Drop() (v interface{}) {
-	pos := len(self.data) - 1
-	v, self.data = self.data[pos], self.data[:pos]
+
+// Drop the last element from the vector.
+func (vec *Vector) Drop() (v interface{}) {
+	pos := len(vec.data) - 1
+	v, vec.data = vec.data[pos], vec.data[:pos]
 	return
 }
 
 //---------------------------------------------------------------------
-/*
- * Delete indexed element from the vector.
- * @param i int - position of element to be deleted
- * @return v interface{} - deleted element
- */
-func (self *Vector) Delete(i int) (v interface{}) {
-	if i < 0 || i > len(self.data)-1 {
+
+// Delete indexed element from the vector.
+func (vec *Vector) Delete(i int) (v interface{}) {
+	if i < 0 || i > len(vec.data)-1 {
 		return nil
 	}
-	v = self.data[i]
-	self.data = append(self.data[:i], self.data[i+1:]...)
+	v = vec.data[i]
+	vec.data = append(vec.data[:i], vec.data[i+1:]...)
 	return
 }
 
 //---------------------------------------------------------------------
-/*
- * Get indexed element from vector.
- * @param i int - position of element
- * @return v interface{} - indexed element
- */
-func (self *Vector) At(i int) (v interface{}) {
-	if i < 0 || i > len(self.data)-1 {
+
+// At return the indexed element from vector.
+func (vec *Vector) At(i int) (v interface{}) {
+	if i < 0 || i > len(vec.data)-1 {
 		return nil
 	}
-	return self.data[i]
+	return vec.data[i]
 }

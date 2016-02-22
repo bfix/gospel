@@ -28,34 +28,33 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Sign hash value with private key.
- * [http://www.nsa.gov/ia/_files/ecdsa.pdf, page 13f]
- * @param key *PrivateKey - key used to sign hash value
- * @param hash []byte - hash value to be signed
- * @return r,s *big.Int - signature values
- */
+
+// Sign a hash value with private key.
+// [http://www.nsa.gov/ia/_files/ecdsa.pdf, page 13f]
+// @param key *PrivateKey - key used to sign hash value
+// @param hash []byte - hash value to be signed
+// @return r,s *big.Int - signature values
 func Sign(key *PrivateKey, hash []byte) (r, s *big.Int) {
 
-	var k, kInv *big.Int
+	var k, invK *big.Int
 	for {
 		// compute value of 'r' as x-coordinate of k*G with random k
 		for {
 			// get random value
-			k = n_rnd(math.THREE)
+			k = nRnd(math.THREE)
 			// get its modular inverse
-			kInv = n_inv(k)
+			invK = nInv(k)
 
 			// compute k*G
 			pnt := ScalarMultBase(k)
-			r = n_mod(pnt.x)
+			r = nMod(pnt.x)
 			if r.Sign() != 0 {
 				break
 			}
 		}
 		// compute value of 's := (rd + e)/k'
 		e := convertHash(hash)
-		s = n_mul(_add(n_mul(key.D, r), e), kInv)
+		s = nMul(addIntJac(nMul(key.D, r), e), invK)
 		if s.Sign() != 0 {
 			break
 		}
@@ -64,26 +63,25 @@ func Sign(key *PrivateKey, hash []byte) (r, s *big.Int) {
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Verify hash value with public key.
- * [http://www.nsa.gov/ia/_files/ecdsa.pdf, page 15f]
- * @param key *PublicKey - key used to verify signature
- * @param hash []byte - hash value of signed content
- * @param r,s *big.Int - signature values
- * @return bool - correct signature?
- */
+
+// Verify a hash value with public key.
+// [http://www.nsa.gov/ia/_files/ecdsa.pdf, page 15f]
+// @param key *PublicKey - key used to verify signature
+// @param hash []byte - hash value of signed content
+// @param r,s *big.Int - signature values
+// @return bool - correct signature?
 func Verify(key *PublicKey, hash []byte, r, s *big.Int) bool {
 
 	// sanity checks for arguments
 	if r.Sign() == 0 || s.Sign() == 0 {
 		return false
 	}
-	if r.Cmp(curve_n) >= 0 || s.Cmp(curve_n) >= 0 {
+	if r.Cmp(curveN) >= 0 || s.Cmp(curveN) >= 0 {
 		return false
 	}
 	// check signature
 	e := convertHash(hash)
-	w := n_inv(s)
+	w := nInv(s)
 
 	u1 := e.Mul(e, w)
 	u2 := w.Mul(r, w)
@@ -94,7 +92,7 @@ func Verify(key *PublicKey, hash []byte, r, s *big.Int) bool {
 		return false
 	}
 	p3 := add(p1, p2)
-	rr := n_mod(p3.x)
+	rr := nMod(p3.x)
 	return rr.Cmp(r) == 0
 }
 
@@ -105,13 +103,13 @@ func Verify(key *PublicKey, hash []byte, r, s *big.Int) bool {
 func convertHash(hash []byte) *big.Int {
 
 	// trim hash value (if required)
-	maxSize := (curve_n.BitLen() + 7) / 8
+	maxSize := (curveN.BitLen() + 7) / 8
 	if len(hash) > maxSize {
 		hash = hash[:maxSize]
 	}
 
 	// convert to integer
 	val := new(big.Int).SetBytes(hash)
-	val.Rsh(val, uint(maxSize*8-curve_n.BitLen()))
+	val.Rsh(val, uint(maxSize*8-curveN.BitLen()))
 	return val
 }

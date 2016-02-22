@@ -35,7 +35,7 @@ func TestSqrt(t *testing.T) {
 		}
 		if isQuadraticResidue(g, p) {
 			count++
-			h, err := Sqrt_modP(g, p)
+			h, err := SqrtModP(g, p)
 			if err != nil {
 				fmt.Println(err.Error())
 				t.Fail()

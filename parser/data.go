@@ -32,6 +32,7 @@ import (
 ///////////////////////////////////////////////////////////////////////
 //	Public types
 
+// Data represents parsed data
 type Data struct {
 	Parameter
 	data.Vector
@@ -41,13 +42,8 @@ type Data struct {
 ///////////////////////////////////////////////////////////////////////
 //	Public methods
 
-/*
- * Read data definition from reader and re-built as internal data
- * structure.
- * @this d *Data - pointer to data object
- * @param rdr *bufio.Reader - stream reader
- * @return error - error object (or nil)
- */
+// Read data definition from reader and re-built as internal data
+// structure.
 func (d *Data) Read(rdr *bufio.Reader) error {
 
 	// variable during parsing
@@ -113,22 +109,15 @@ func (d *Data) Read(rdr *bufio.Reader) error {
 }
 
 //---------------------------------------------------------------------
-/*
- * Write data structure to stream writer.
- * @this d *Data - pointer to data object
- * @param wrt *bufio.Writer - stream writer
- */
+
+// Write data structure to stream writer.
 func (d *Data) Write(wrt *bufio.Writer) {
 	d.writeData(wrt, 0)
 }
 
 //---------------------------------------------------------------------
-/*
- * Access n.th sub-element of nested data structure.
- * @this d *Data - pointer to data object
- * @param n int - list index
- * @return *Data - index element (or nil)
- */
+
+// Elem accesses the n.th sub-element of nested data structure.
 func (d *Data) Elem(n int) *Data {
 	// check range of index
 	if n < 0 || n > d.Len()-1 {
@@ -139,11 +128,8 @@ func (d *Data) Elem(n int) *Data {
 }
 
 //---------------------------------------------------------------------
-/*
- * Get the access path for current object from root.
- * @this d *Data - pointer to data object
- * @return string - access path for element
- */
+
+// GetPath returns the access path for current object from root.
 func (d *Data) GetPath() string {
 
 	// return root for last element
@@ -171,13 +157,9 @@ func (d *Data) GetPath() string {
 }
 
 //---------------------------------------------------------------------
-/*
- * Lookup element in nested data structure by a path description.
- * allows for automatic reference resolution (link processing)
- * @this d *Data - pointer to data object
- * @param path string - path description
- * @return *Data - addressed element (or nil)
- */
+
+// Lookup element in nested data structure by a path description.
+// allows for automatic reference resolution (link processing)
 func (d *Data) Lookup(path string) *Data {
 
 	// leading slash means "start from real root"
@@ -196,7 +178,7 @@ func (d *Data) Lookup(path string) *Data {
 	}
 
 	// get addressed sub-element
-	var elem *Data = nil
+	var elem *Data
 	if curr[0] == '#' {
 		// indexed access
 		if idx, err := strconv.Atoi(curr[1:]); err == nil {
@@ -321,38 +303,3 @@ func (d *Data) addToList(param *Parameter) *Data {
 	d.Add(elem)
 	return elem
 }
-
-///////////////////////////////////////////////////////////////////////
-//	Revision history:
-///////////////////////////////////////////////////////////////////////
-//
-//	Revision 2.0  2012-01-09 16:03:23  brf
-//  First release as free software (GPL3+)
-//
-//	Revision 1.8  2010-11-27 22:28:47  brf
-//	Handle quoted values and root-based lookup.
-//
-//	Revision 1.7  2010-11-06 16:33:05  brf
-//	Get root-based access path to data element.
-//	Add link to parent element on list insertion.
-//
-//	Revision 1.6  2010-11-06 10:36:03  brf
-//	Handle element links as values (immediate/deferred reference resolution).
-//
-//	Revision 1.5  2010-11-04 20:26:13  brf
-//	Lookup element in nested data structures by a path description.
-//
-//	Revision 1.4  2010-11-02 21:02:44  brf
-//	Added description.
-//	Top-level data object keeps a list of top-level parameters.
-//
-//	Revision 1.3  2010-11-02 05:46:31  brf
-//	Use vector.Vector instead of list.List for parameter list storage.
-//
-//	Revision 1.2  2010-11-01 22:48:58  brf
-//	Removed debug output.
-//
-//	Revision 1.1  2010-11-01 22:47:52  brf
-//	Initial revision.
-//
-//

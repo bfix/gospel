@@ -28,7 +28,7 @@ func TestCounter(t *testing.T) {
 			t.Fail()
 		}
 		for i := 0; i < 10; i++ {
-			if !test_counter(priv) {
+			if !testCounter(priv) {
 				t.Fail()
 			}
 			fmt.Print(".")
@@ -41,7 +41,7 @@ func TestCounter(t *testing.T) {
 /*
  * Test Counter
  */
-func test_counter(priv *PaillierPrivateKey) bool {
+func testCounter(priv *PaillierPrivateKey) bool {
 
 	max := big.NewInt(2)
 	pub := priv.GetPublicKey()
@@ -49,7 +49,7 @@ func test_counter(priv *PaillierPrivateKey) bool {
 	if err != nil {
 		return false
 	}
-	var inc int64 = 0
+	var inc int64
 	for i := 0; i < 100; i++ {
 		v, err := rand.Int(rand.Reader, max)
 		if err != nil {

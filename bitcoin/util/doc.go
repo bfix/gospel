@@ -1,3 +1,5 @@
+package util
+
 /*
  * ====================================================================
  * Bitcoin utility types and functions
@@ -21,4 +23,3 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package util

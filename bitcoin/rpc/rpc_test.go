@@ -8,11 +8,11 @@ import (
 )
 
 const (
-	WALLET_COPY  = "/tmp/testwallet.dat"
-	NEW_ACCOUNTS = false
-	PASSPHRASE   = "HellFreezesOver"
-	PRV_KEY      = ""
-	BLOCK_HASH   = "00000000000003fab35380c07f6773ae27727b21016a8821c88e47e241c86458"
+	walletCopy = "/tmp/testwallet.dat"
+	newAccount = false
+	passphrase = "HellFreezesOver"
+	prvKey     = ""
+	blockHash  = "00000000000003fab35380c07f6773ae27727b21016a8821c88e47e241c86458"
 )
 
 func TestRPC(t *testing.T) {
@@ -70,19 +70,19 @@ func TestRPC(t *testing.T) {
 	//=================================================================
 
 	//-----------------------------------------------------  BackupWallet
-	err = sess.BackupWallet(WALLET_COPY)
+	err = sess.BackupWallet(walletCopy)
 	if err != nil {
 		fmt.Println("BackupWallet(): " + err.Error())
 		t.Fail()
 		return
 	}
-	_, err = os.Stat(WALLET_COPY)
+	_, err = os.Stat(walletCopy)
 	if err != nil {
 		fmt.Println("Wallet file: " + err.Error())
 		t.Fail()
 		return
 	}
-	if err = os.Remove(WALLET_COPY); err != nil {
+	if err = os.Remove(walletCopy); err != nil {
 		fmt.Println("Wallet file: " + err.Error())
 		t.Fail()
 		return
@@ -97,7 +97,7 @@ func TestRPC(t *testing.T) {
 	}
 
 	//-----------------------------------------------------  WalletPassphrase
-	err = sess.WalletPassphrase(PASSPHRASE, 600)
+	err = sess.WalletPassphrase(passphrase, 600)
 	if err != nil {
 		fmt.Println("WalletPassphrase(): " + err.Error())
 		t.Fail()
@@ -112,9 +112,9 @@ func TestRPC(t *testing.T) {
 		return
 	}
 
-	if NEW_ACCOUNTS {
+	if newAccount {
 		//-------------------------------------------------  ImportPrivateKey
-		err = sess.ImportPrivateKey(PRV_KEY)
+		err = sess.ImportPrivateKey(prvKey)
 		if err != nil {
 			fmt.Println("ImportPrivateKey(): " + err.Error())
 			t.Fail()
@@ -138,7 +138,7 @@ func TestRPC(t *testing.T) {
 		addr  = ""
 		accnt = ""
 	)
-	if NEW_ACCOUNTS {
+	if newAccount {
 		//-------------------------------------------------  GetNewAddress
 		label := fmt.Sprintf("Account %d", time.Now().Unix())
 		addr, err = sess.GetNewAddress(label)
@@ -185,15 +185,15 @@ func TestRPC(t *testing.T) {
 			t.Fail()
 			return
 		}
-		for label, _ := range accnts {
+		for label := range accnts {
 			//---------------------------------------------  GetAddressByAccount
-			addr_list, err := sess.GetAddressesByAccount(label)
+			addrList, err := sess.GetAddressesByAccount(label)
 			if err != nil {
 				fmt.Println("GetAddressesByAccount() failed: " + err.Error())
 				t.Fail()
 				return
 			}
-			if len(addr_list) == 0 {
+			if len(addrList) == 0 {
 				continue
 			}
 			// use first valid pair
@@ -207,7 +207,7 @@ func TestRPC(t *testing.T) {
 				}
 				if bal > 0 {
 					accnt = label
-					addr = addr_list[0]
+					addr = addrList[0]
 					break
 				}
 			}
@@ -234,14 +234,14 @@ func TestRPC(t *testing.T) {
 	}
 
 	//-----------------------------------------------------  GetAddressesByAccount
-	addr_list, err := sess.GetAddressesByAccount(accnt)
+	addrList, err := sess.GetAddressesByAccount(accnt)
 	if err != nil {
 		fmt.Println("GetAddressesByAccount('" + accnt + "') failed: " + err.Error())
 		t.Fail()
 		return
 	}
 	found := false
-	for _, a := range addr_list {
+	for _, a := range addrList {
 		if a == addr {
 			found = true
 			break
@@ -270,7 +270,7 @@ func TestRPC(t *testing.T) {
 	}
 
 	//-----------------------------------------------------  ListReceivedByAccount
-	rcv_1, err := sess.ListReceivedByAccount(1, false)
+	rcv1, err := sess.ListReceivedByAccount(1, false)
 	if err != nil {
 		fmt.Println("ListReceivedByAccount() failed: " + err.Error())
 		t.Fail()
@@ -278,13 +278,13 @@ func TestRPC(t *testing.T) {
 	}
 
 	//-----------------------------------------------------  ListReceivedByAddress
-	rcv_2, err := sess.ListReceivedByAddress(1, false)
+	rcv2, err := sess.ListReceivedByAddress(1, false)
 	if err != nil {
 		fmt.Println("ListReceivedByAddress() failed: " + err.Error())
 		t.Fail()
 		return
 	}
-	if len(rcv_1) != len(rcv_2) {
+	if len(rcv1) != len(rcv2) {
 		fmt.Println("received count mismatch")
 		t.Fail()
 		return
@@ -331,7 +331,7 @@ func TestRPC(t *testing.T) {
 	}
 
 	//-----------------------------------------------------  GetBlock
-	block, err := sess.GetBlock(BLOCK_HASH)
+	block, err := sess.GetBlock(blockHash)
 	if err != nil {
 		fmt.Println("GetBlock() failed: " + err.Error())
 		t.Fail()
@@ -363,7 +363,7 @@ func TestRPC(t *testing.T) {
 		return
 	}
 	if len(txlist) > 0 {
-		txid := txlist[0].Id
+		txid := txlist[0].ID
 		//-------------------------------------------------  GetTransaction
 		_, err = sess.GetTransaction(txid)
 		if err != nil {

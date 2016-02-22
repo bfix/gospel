@@ -31,20 +31,14 @@ import (
 ///////////////////////////////////////////////////////////////////////
 // Global attributes
 
-var Delay, _ = time.ParseDuration("1ms")
-var Retries = 1000
-var Timeout, _ = time.ParseDuration("100us")
+var delay, _ = time.ParseDuration("1ms")
+var retries = 1000
+var timeout, _ = time.ParseDuration("100us")
 
 ///////////////////////////////////////////////////////////////////////
 // Public functions
 
-/*
- * Send data over network connection (stream-oriented).
- * @param conn net.Conn - network connection
- * @param data []byte - data to be send
- * @param srv string - send on behalf of specified service
- * @return bool - successful operation (or connection closed/to be closed)
- */
+// SendData sends data over network connection (stream-oriented).
 func SendData(conn net.Conn, data []byte, srv string) bool {
 
 	count := len(data) // total length of data
@@ -54,7 +48,7 @@ func SendData(conn net.Conn, data []byte, srv string) bool {
 	// write data to socket buffer
 	for count > 0 {
 		// set timeout
-		conn.SetDeadline(time.Now().Add(Timeout))
+		conn.SetDeadline(time.Now().Add(timeout))
 		// get (next) chunk to be send
 		chunk := data[start : start+count]
 		if num, err := conn.Write(chunk); num > 0 {
@@ -70,8 +64,8 @@ func SendData(conn net.Conn, data []byte, srv string) bool {
 				nerr := err.(net.Error)
 				if nerr.Timeout() || nerr.Temporary() {
 					retry++
-					time.Sleep(Delay)
-					if retry == Retries {
+					time.Sleep(delay)
+					if retry == retries {
 						logger.Printf(logger.ERROR, "[%s] Write failed after retries: %s\n", srv, err.Error())
 						return false
 					}
@@ -90,19 +84,13 @@ func SendData(conn net.Conn, data []byte, srv string) bool {
 }
 
 //---------------------------------------------------------------------
-/*
- * Receive data over network connection (stream-oriented).
- * @param conn net.Conn - network connection
- * @param data []byte - data buffer
- * @param srv string - receive on behalf of specified service
- * @return int - number of bytes read
- * @return bool - successful operation (or connection closed/to be closed)
- */
+
+// RecvData receives data over network connection (stream-oriented).
 func RecvData(conn net.Conn, data []byte, srv string) (int, bool) {
 
-	for retry := 0; retry < Retries; {
+	for retry := 0; retry < retries; {
 		// set timeout
-		conn.SetDeadline(time.Now().Add(Timeout))
+		conn.SetDeadline(time.Now().Add(timeout))
 		// read data from socket buffer
 		n, err := conn.Read(data)
 		if err != nil {
@@ -115,7 +103,7 @@ func RecvData(conn net.Conn, data []byte, srv string) (int, bool) {
 					return 0, true
 				} else if nerr.Temporary() {
 					retry++
-					time.Sleep(Delay)
+					time.Sleep(delay)
 					continue
 				}
 			default:

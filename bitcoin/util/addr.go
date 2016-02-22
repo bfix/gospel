@@ -27,18 +27,18 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-// Address type (string-like base58 encoded data)
 
+// Address type (string-like base58 encoded data)
 type Address string
 
 ///////////////////////////////////////////////////////////////////////
-// compute address from public key for either the "real" bitcoin
-// network or the test network
 
+// MakeAddress computes an address from public key for the "real" Bitcoin network
 func MakeAddress(key *ecc.PublicKey) Address {
 	return buildAddr(key, 0)
 }
 
+// MakeTestAddress computes an address from public key for the test network
 func MakeTestAddress(key *ecc.PublicKey) Address {
 	return buildAddr(key, 111)
 }
@@ -48,7 +48,7 @@ func MakeTestAddress(key *ecc.PublicKey) Address {
 // hashes and identifiers.
 
 func buildAddr(key *ecc.PublicKey, version byte) Address {
-	addr := make([]byte, 0)
+	var addr []byte
 	addr = append(addr, version)
 	kh := Hash160(key.Bytes())
 	addr = append(addr, kh...)

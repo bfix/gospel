@@ -23,7 +23,7 @@ func TestEngine(t *testing.T) {
 	failed := false
 	for i := 0; i < 32; i++ {
 		prv := GenerateKeys()
-		hash := n_rnd(math.ONE).Bytes()
+		hash := nRnd(math.ONE).Bytes()
 		r, s := Sign(prv, hash)
 		if Verify(&prv.PublicKey, hash, r, s) {
 			fmt.Print("+")

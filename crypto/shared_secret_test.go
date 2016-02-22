@@ -38,7 +38,7 @@ func TestKeys(t *testing.T) {
 		fmt.Printf("Round #%v:", kk)
 		perm := rand.Perm(n)
 		coop := make([]Share, kk)
-		for i, _ := range coop {
+		for i := range coop {
 			coop[i] = shares[perm[i]]
 			fmt.Printf(" %d", perm[i]+1)
 		}

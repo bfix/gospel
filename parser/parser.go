@@ -35,20 +35,24 @@ import (
 // Define public constants (pair types).
 
 const (
-	DONE  = iota // not defined
-	ERROR        // signal error to callback
-	EMPTY        // empty parameter
-	VAR          // generic parameter
-	VALUE        // parameter value
-	LIST         // parameter list
+	// DONE for undefined/success
+	DONE = iota
+	// ERROR from callback
+	ERROR
+	// EMPTY parameter
+	EMPTY
+	// VAR is a generic parameter
+	VAR
+	// VALUE denotes a parameter value
+	VALUE
+	// LIST denotes a parameter list
+	LIST
 )
 
 ///////////////////////////////////////////////////////////////////////
 // Public types
 
-/*
- * Parameter type declaration.
- */
+// Parameter type declaration.
 type Parameter struct {
 	Name  string // name of parameter
 	Value string // value of parameter (encoded as string)
@@ -65,11 +69,8 @@ func (p *Parameter) reset() {
 }
 
 //---------------------------------------------------------------------
-/*
- * Printable parameter instance.
- * @this p *Parameter
- * @return string - printable parameter
- */
+
+// String returns a human-readable parameter instance.
 func (p *Parameter) String() string {
 	val := p.Value
 	if val != "{}" && val != "~" {
@@ -82,20 +83,15 @@ func (p *Parameter) String() string {
 }
 
 //---------------------------------------------------------------------
-/*
- * Callback prototype
- */
+
+// Callback prototype
 type Callback func(mode int, param *Parameter) bool
 
 ///////////////////////////////////////////////////////////////////////
 // Public methods
 
-/*
- * Parse data definition from reader and pass parameters to callback.
- * @param rdr *bufio.Reader - stream reader
- * @param cb Callback - callback function
- * @return error - error encountered (or nil if successful)
- */
+// Parser reads data definitions from reader and pass parameters
+// to callback.
 func Parser(rdr *bufio.Reader, cb Callback) error {
 
 	state := 1                  // current state in state machine
@@ -404,41 +400,3 @@ func mkError(msg string, line int, offset int) error {
 	out += ", Offset:" + strconv.Itoa(offset) + ")"
 	return errors.New(out)
 }
-
-///////////////////////////////////////////////////////////////////////
-//	Revision history:
-///////////////////////////////////////////////////////////////////////
-//
-//	Revision 2.0  2012-01-09 16:03:23  brf
-//  First release as free software (GPL3+)
-//
-//	Revision 1.10  2010-11-28 13:13:44  brf
-//	Handle comments.
-//
-//	Revision 1.9  2010-11-27 22:24:24  brf
-//	Handle empty parameters; quoted values and parameter at the end of the definition.
-//
-//	Revision 1.8  2010-11-06 10:33:26  brf
-//	Correctly handle escaped characters in value strings.
-//
-//	Revision 1.7  2010-11-02 20:19:31  brf
-//	Data format adjusted (removed Section definition).
-//
-//	Revision 1.6  2010-11-02 20:11:02  brf
-//	Added description.
-//
-//	Revision 1.5  2010-11-02 18:58:51  brf
-//	Handle multiple top-level parameters.
-//
-//	Revision 1.4  2010-11-01 20:23:08  brf
-//	Corrected handling of named lists.
-//
-//	Revision 1.3  2010-11-01 20:10:18  brf
-//	Merged LIST and ARRAY processing.
-//
-//	Revision 1.2  2010-10-31 12:55:38  brf
-//	Changed package name.
-//
-//	Revision 1.1  2010-10-31 11:57:33  brf
-//	Initial revision.
-//

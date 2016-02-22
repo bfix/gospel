@@ -34,7 +34,7 @@ func TestPrng(t *testing.T) {
 	// allocate table
 	v := 1 << bitsPerBlock
 	tab := make([]int, v)
-	for i, _ := range tab {
+	for i := range tab {
 		tab[i] = 0
 	}
 

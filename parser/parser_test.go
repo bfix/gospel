@@ -25,15 +25,15 @@ import (
 //	test variables
 
 var (
-	currName    string     // current name of machine
-	currAddress string     // current address of machine
-	currPort    string     // current port in list
-	currService string     // current name of service
-	countName   int    = 0 // current number of machine
-	countPort   int    = 0 // current number of ports
+	currName    string // current name of machine
+	currAddress string // current address of machine
+	currPort    string // current port in list
+	currService string // current name of service
+	countName   int    // current number of machine
+	countPort   int    // current number of ports
 	rc          bool
 	pos         int
-	res         [8]string = [8]string{
+	res         = [8]string{
 		"Name(1)=\"hades\", Address=192.168.23.254, Port(1)=22, Service=\"ssh\"",
 		"Name(1)=\"hades\", Address=192.168.23.254, Port(2)=53, Service=\"dns\"",
 		"Name(1)=\"hades\", Address=192.168.23.254, Port(3)=1194, Service=\"openvpn\"",

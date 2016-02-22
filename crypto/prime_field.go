@@ -27,9 +27,8 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Prime field
- */
+
+// FieldP is a prime field
 type FieldP struct {
 	P *big.Int
 }
@@ -38,31 +37,22 @@ type FieldP struct {
 // Prime field methods
 ///////////////////////////////////////////////////////////////////////
 
-/*
- * Generate random field value
- * @return *big.Int - random value in field
- */
+// Random generates a random field value
 func (f *FieldP) Random() *big.Int {
 	return RandBigInt(big.NewInt(0), new(big.Int).Sub(f.P, big.NewInt(1)))
 }
 
 //---------------------------------------------------------------------
-/*
- * Add field values
- * @param a,b *big.Int - numbers to be added
- * @return *big.Int - resulting number
- */
+
+// Add field values
 func (f *FieldP) Add(a, b *big.Int) *big.Int {
 	c := new(big.Int).Add(a, b)
 	return new(big.Int).Mod(c, f.P)
 }
 
 //---------------------------------------------------------------------
-/*
- * Subtract field values
- * @param a,b *big.Int - numbers to be subtracted
- * @return *big.Int - resulting number
- */
+
+// Sub substracts field values
 func (f *FieldP) Sub(a, b *big.Int) *big.Int {
 	c := new(big.Int).Add(f.P, a)
 	d := new(big.Int).Sub(c, b)
@@ -70,44 +60,24 @@ func (f *FieldP) Sub(a, b *big.Int) *big.Int {
 }
 
 //---------------------------------------------------------------------
-/*
- * Negate field value
- * @param a *big.Int - numbers to be negated
- * @return *big.Int - resulting number
- */
+
+// Neg negates a field value
 func (f *FieldP) Neg(a *big.Int) *big.Int {
 	return new(big.Int).Sub(f.P, a)
 }
 
 //---------------------------------------------------------------------
-/*
- * Multiply field values
- * @param a,b *big.Int - numbers to be multiplied
- * @return *big.Int - resulting number
- */
+
+// Mul multiplies field values
 func (f *FieldP) Mul(a, b *big.Int) *big.Int {
 	c := new(big.Int).Mul(a, b)
 	return new(big.Int).Mod(c, f.P)
 }
 
 //---------------------------------------------------------------------
-/*
- * Divide field values
- * @param a,b *big.Int - numbers to be divided
- * @return *big.Int - resulting number
- */
+
+// Div divides field values
 func (f *FieldP) Div(a, b *big.Int) *big.Int {
 	c := new(big.Int).ModInverse(b, f.P)
 	return f.Mul(a, c)
 }
-
-///////////////////////////////////////////////////////////////////////
-//	Revision history:
-///////////////////////////////////////////////////////////////////////
-//
-//	Revision 2.0  2012-01-11 03:02:41  brf
-//  First release as free software (GPL3+)
-//
-//	Revision 1.2  2011-12-21 23:33:19  brf
-//	Comments added. Code clean-up.
-//

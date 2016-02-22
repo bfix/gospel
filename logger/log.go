@@ -32,16 +32,25 @@ import (
 // Logging constants
 
 const (
-	CRITICAL = iota // critical errors
-	SEVERE          // severe errors
-	ERROR           // errors
-	WARN            // warnings
-	INFO            // info
-	DBG_HIGH        // debug (high prio)
-	DBG             // debug (normal)
-	DBG_ALL         // debug (all)
+	// CRITICAL errors
+	CRITICAL = iota
+	// SEVERE errors
+	SEVERE
+	// ERROR message
+	ERROR
+	// WARN for warning messages
+	WARN
+	// INFO messages
+	INFO
+	// DBG_HIGH for high-priority debug messages
+	DBG_HIGH
+	// DBG for normal debug messages
+	DBG
+	// DBG_ALL for all debug messages
+	DBG_ALL
 
-	cmd_ROTATE = iota // rotate log file
+	// ROTATE log file command
+	ROTATE = iota // rotate log file
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -59,7 +68,7 @@ type logger struct {
 // Local variables
 
 var (
-	logInst *logger = nil // singleton logger instance
+	logInst *logger // singleton logger instance
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -83,7 +92,7 @@ func init() {
 				logInst.logfile.WriteString(ts + msg)
 			case cmd := <-logInst.cmdChan:
 				switch cmd {
-				case cmd_ROTATE:
+				case ROTATE:
 					if logInst.logfile != os.Stdout {
 						fname := logInst.logfile.Name()
 						logInst.logfile.Close()
@@ -106,11 +115,7 @@ func init() {
 ///////////////////////////////////////////////////////////////////////
 // Public logging functions.
 
-/*
- * Punch logging data for given level.
- * @param level int - associated logging level
- * @param line string - information to be logged
- */
+// Println punches logging data for given level.
 func Println(level int, line string) {
 	if level <= logInst.level {
 		logInst.msgChan <- getTag(level) + line + "\n"
@@ -118,12 +123,8 @@ func Println(level int, line string) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Punch formatted logging data for givel level
- * @param level int - associated logging level
- * @param format string - format definition
- * @param v ...interface{} - list of variables to be formatted
- */
+
+// Printf punches formatted logging data for givel level
 func Printf(level int, format string, v ...interface{}) {
 	if level <= logInst.level {
 		logInst.msgChan <- getTag(level) + fmt.Sprintf(format, v...)
@@ -134,10 +135,7 @@ func Printf(level int, format string, v ...interface{}) {
 // Logfile functions
 //=====================================================================
 
-/*
- * Start logging to file.
- * @param filename string - name of logfile
- */
+// LogToFile starts logging messages to file.
 func LogToFile(filename string) bool {
 	if logInst.logfile == nil {
 		logInst.logfile = os.Stdout
@@ -153,30 +151,24 @@ func LogToFile(filename string) bool {
 }
 
 //---------------------------------------------------------------------
-/*
- * Rotate log file.
- */
+
+// Rotate log file.
 func Rotate() {
-	logInst.cmdChan <- cmd_ROTATE
+	logInst.cmdChan <- ROTATE
 }
 
 //=====================================================================
 // Human-readable log tags
 //=====================================================================
 
-/*
- * Return numeric log level.
- * @return int - current log level
- */
+// GetLogLevel returns a numeric log level.
 func GetLogLevel() int {
 	return logInst.level
 }
 
 //---------------------------------------------------------------------
-/*
- * Get current loglevel in human-readable form.
- * @return string - symbolic name of loglevel
- */
+
+// GetLogLevelName returns the current loglevel in human-readable form.
 func GetLogLevelName() string {
 	switch logInst.level {
 	case CRITICAL:
@@ -200,10 +192,8 @@ func GetLogLevelName() string {
 }
 
 //---------------------------------------------------------------------
-/*
- * Set logging level from value
- * @param lvl int - new log level
- */
+
+// SetLogLevel sets the logging level from numeric value
 func SetLogLevel(lvl int) {
 	if lvl < CRITICAL || lvl > DBG_ALL {
 		Printf(WARN, "[logger] Unknown loglevel '%d' requested -- ignored.\n", lvl)
@@ -212,10 +202,8 @@ func SetLogLevel(lvl int) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Set logging level from symbolic name.
- * @param name string - name of log level
- */
+
+// SetLogLevelFromName sets the logging level from symbolic name.
 func SetLogLevelFromName(name string) {
 	switch name {
 	case "ERROR":
@@ -236,11 +224,8 @@ func SetLogLevelFromName(name string) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Get loglevel tag as prefix for message
- * @param level int - log level
- * @return string - log tag
- */
+
+// GetTag returns the loglevel tag as prefix for message
 func getTag(level int) string {
 	switch level {
 	case CRITICAL:

@@ -32,13 +32,7 @@ import (
 ///////////////////////////////////////////////////////////////////////
 // Public methods
 
-/*
- * Split "host:port" string into components.
- * @param host string - incoming service spec
- * @return addr string - service address
- * @return port int - port address (1-65535)
- * @return error - error instance or nil
- */
+// SplitHost dissects a string of fotm "host:port" string into components.
 func SplitHost(host string) (addr string, port int, err error) {
 	idx := strings.Index(host, ":")
 	if idx == -1 {

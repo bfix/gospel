@@ -30,9 +30,7 @@ import (
 ///////////////////////////////////////////////////////////////////////
 // type definitions:
 
-/*
- * Cryptographic counter
- */
+// Counter is a cryptographic counter (encrypted value)
 type Counter struct {
 	pubkey *PaillierPublicKey // reference to public Paillier key
 	data   *big.Int           // encrypted counter value
@@ -41,12 +39,7 @@ type Counter struct {
 ///////////////////////////////////////////////////////////////////////
 // Public counter methods:
 
-/*
- * Create a new Counter instance for given public key.
- * @param k *PaillierPublicKey - associated public Paillier key
- * @return c *Counter - reference to Counter instance
- * @return err error - error object (or nil if successful)
- */
+// NewCounter creates a new Counter instance for given public key.
 func NewCounter(k *PaillierPublicKey) (c *Counter, err error) {
 
 	// create a new counter with value "0"
@@ -62,30 +55,23 @@ func NewCounter(k *PaillierPublicKey) (c *Counter, err error) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Get the encrypted counter value.
- * @param self *Counter - this instance
- * @return *big.Int - encrypted counter value
- */
-func (self *Counter) Get() *big.Int {
-	return self.data
+
+// Get the encrypted counter value.
+func (c *Counter) Get() *big.Int {
+	return c.data
 }
 
 //---------------------------------------------------------------------
-/*
- * Increment counter: usually called with step values of "0" (don't
- * change counter, but change representation) and "1" (increment by
- * one step).
- * @param self *Counter - this instance
- * @param step *big.Int - increment
- * @return error - error object (or nil if successful)
- */
-func (self *Counter) Increment(step *big.Int) error {
 
-	d, err := self.pubkey.Encrypt(step)
+// Increment counter: usually called with step values of "0" (don't
+// change counter, but change representation) and "1" (increment by
+// one step).
+func (c *Counter) Increment(step *big.Int) error {
+
+	d, err := c.pubkey.Encrypt(step)
 	if err != nil {
 		return err
 	}
-	self.data.Mul(self.data, d)
+	c.data.Mul(c.data, d)
 	return nil
 }

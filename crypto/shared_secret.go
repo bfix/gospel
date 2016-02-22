@@ -32,9 +32,8 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * A Share is a partial secret.
- */
+
+// Share is a data structure for a partial secret.
 type Share struct {
 	X, Y, P *big.Int
 }
@@ -42,15 +41,8 @@ type Share struct {
 ///////////////////////////////////////////////////////////////////////
 // Public methods
 
-/*
- * Split a 'secret' into 'n' shares, where a 'k' shares
- * are sufficient to reconstruct 'secret'.
- * @param secret *big.Int - secret value to be shared
- * @param p *big.Int - generator of underlaying prime field
- * @param n int - total number of shares to be generated
- * @param k int - number of shares needed to reconstruct secret
- * @return []Share - generated list of shares
- */
+// Split a 'secret' into 'n' shares, where a 'k' shares are sufficient
+// to reconstruct 'secret'.
 func Split(secret, p *big.Int, n, k int) []Share {
 
 	f := &FieldP{p}
@@ -64,7 +56,7 @@ func Split(secret, p *big.Int, n, k int) []Share {
 
 	// construct shares
 	shares := make([]Share, n)
-	for i, _ := range shares {
+	for i := range shares {
 		x := f.Random()
 		y := a[0]
 		xi := x
@@ -79,12 +71,9 @@ func Split(secret, p *big.Int, n, k int) []Share {
 }
 
 //---------------------------------------------------------------------
-/*
- * Reconstruct secrets from number of shares: if not sufficient shares
- * are available, the resulting secret is "random"
- * @param shares []Share - (sufficient) number of shares to reconstruct secret
- * @return *big.Int - reconstructed secret
- */
+
+// Reconstruct secrets from number of shares: if not sufficient shares
+// are available, the resulting secret is "random"
 func Reconstruct(shares []Share) *big.Int {
 
 	// compute value of Lagrangian polynominal at 0
@@ -108,14 +97,3 @@ func Reconstruct(shares []Share) *big.Int {
 	}
 	return y
 }
-
-///////////////////////////////////////////////////////////////////////
-//	Revision history:
-///////////////////////////////////////////////////////////////////////
-//
-//	Revision 2.0  2012-01-11 03:02:41  brf
-//  First release as free software (GPL3+)
-//
-//	Revision 1.2  2011-12-21 23:33:19  brf
-//	Comments added. Code clean-up.
-//

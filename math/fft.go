@@ -31,9 +31,8 @@ import (
 // Public types
 
 //---------------------------------------------------------------------
-/*
- * Transformer type declaration (worker object for FF transformations).
- */
+
+// Transformer type declaration (worker object for FF transformations).
 type Transformer struct {
 	depth   int          // depth of binary field
 	size    int          // helper: 2^depth
@@ -42,21 +41,16 @@ type Transformer struct {
 }
 
 //---------------------------------------------------------------------
-/*
- * Fields are input/output objects for transformation methods.
- */
+
+// Field instances are input/output objects for transformation methods.
 type Field []complex128
 
 ///////////////////////////////////////////////////////////////////////
 // Public methods
 
 //---------------------------------------------------------------------
-/*
- * Create a new transformer worker instance.
- * @param n int - handle fields of size 2^n
- * @return *Transformer - new worker instance
- * @return error - error encountered (or nil if successful)
- */
+
+// NewTransformer creates a new transformer worker instance.
 func NewTransformer(n int) (*Transformer, error) {
 
 	// check for valid argument
@@ -82,23 +76,15 @@ func NewTransformer(n int) (*Transformer, error) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Get field size for transformation worker instance.
- * @this t *Transformer - worker instance for transformation
- * @return int - expected width of field
- */
+
+// GetSize returns the field size for a transformation worker instance.
 func (t *Transformer) GetSize() int {
 	return t.size
 }
 
 //---------------------------------------------------------------------
-/*
- * Transform time series into frequency domain.
- * @this t *Transformer - worker instance for transformation
- * @param in Field - input data for transformation
- * @return Field - output data for transformation
- * @return error - processing status (nil = O.K.)
- */
+
+// Time2Freq transforms a time series into the frequency domain.
 func (t *Transformer) Time2Freq(in Field) (Field, error) {
 
 	// check for matching array length
@@ -140,13 +126,8 @@ func (t *Transformer) Time2Freq(in Field) (Field, error) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Transform frequemcy series into time domain.
- * @this t *Transformer - worker instance for transformation
- * @param in Field - input data for transformation
- * @return Field - output data for transformation
- * @return error - processing status (nil = O.K.)
- */
+
+// Freq2Time transforms a frequency series into the time domain.
 func (t *Transformer) Freq2Time(in Field) (Field, error) {
 
 	// check for matching array length
@@ -206,17 +187,3 @@ func (t *Transformer) index(j, n int) int {
 	}
 	return d
 }
-
-///////////////////////////////////////////////////////////////////////
-//	Revision history:
-///////////////////////////////////////////////////////////////////////
-//
-//	Revision 2.0  2012-01-11 02:45:03  brf
-//  First release as free software (GPL3+)
-//
-//	Revision 1.2  2010-11-10 21:08:16  brf
-//	Corrected allocation and scaling of output field.
-//
-//	Revision 1.1  2010-11-10 06:50:40  brf
-//	Initial revision.
-//

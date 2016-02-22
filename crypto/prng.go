@@ -36,22 +36,14 @@ var rnd = rand.New(NewPrngSource())
 ///////////////////////////////////////////////////////////////////////
 // Public Methods to generate randomized objects
 
-/*
- * Return a random integer value with given range.
- * @param lower int - lower bound (inclusive)
- * @param upper int - upper bound (inclusive)
- * @return int - random number (in given range)
- */
+// RandInt returns a random integer value with given range (inclusive).
 func RandInt(lower, upper int) int {
 	return lower + (rnd.Int() % (upper - lower + 1))
 }
 
 //=====================================================================
-/*
- * Generate a byte array of given size with random content.
- * @param n int - size of resulting byte array
- * @return []byte - byte array with random content
- */
+
+// RandBytes generates a byte array of given size with random content.
 func RandBytes(n int) []byte {
 	data := make([]byte, n)
 	for i := 0; i < n; i++ {
@@ -61,12 +53,8 @@ func RandBytes(n int) []byte {
 }
 
 //=====================================================================
-/*
- * Return a random big integer value with given range.
- * @param lower *big.Int - lower bound (inclusive)
- * @param upper *big.Int - upper bound (exclusive)
- * @return *big.Int - random number (in given range)
- */
+
+// RandBigInt returns a random big integer value with given range.
 func RandBigInt(lower, upper *big.Int) *big.Int {
 	span := new(big.Int).Sub(upper, lower)
 	span = new(big.Int).Add(span, big.NewInt(1))

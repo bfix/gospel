@@ -30,13 +30,10 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Export private key
- * @param k *PrivateKey - key to be exported
- * @return string - private key in SIPA format
- */
+
+// ExportPrivateKey returns a private key in SIPA format
 func ExportPrivateKey(k *ecc.PrivateKey, testnet bool) string {
-	exp := make([]byte, 0)
+	var exp []byte
 	if testnet {
 		exp = append(exp, 0xEF)
 	} else {
@@ -51,12 +48,8 @@ func ExportPrivateKey(k *ecc.PrivateKey, testnet bool) string {
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Import private key
- * @param keydata string - private key in SIPA format
- * @return *PrivateKey - imported private key
- * @return error
- */
+
+// ImportPrivateKey imports a private key in SIPA format
 func ImportPrivateKey(keydata string, testnet bool) (*ecc.PrivateKey, error) {
 	// decode and check data
 	data, err := Base58Decode(keydata)
@@ -92,7 +85,7 @@ func ImportPrivateKey(keydata string, testnet bool) (*ecc.PrivateKey, error) {
 		return nil, errors.New("Invalid key format")
 	}
 	// recompute and verify checksum
-	t := make([]byte, 0)
+	var t []byte
 	t = append(t, data[0])
 	t = append(t, k...)
 	cs := Hash256(t)

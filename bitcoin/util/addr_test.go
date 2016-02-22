@@ -46,8 +46,8 @@ import (
 //  prv_main: 0488ade4 00 00000000 00000000 873dff81c02f525623fd1fe5167eac3a55a049de3d314bb42ee227ffed37d508 00+e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35
 
 type TestData struct {
-	IdHex     string
-	IdAddr    string
+	IDhex     string
+	IDaddr    string
 	SecHex    string
 	SecWif    string
 	PubHex    string
@@ -89,10 +89,10 @@ var (
 		},
 	}
 
-	VERSION_MAIN_PUBLIC  = "0488b21e"
-	VERSION_MAIN_PRIVATE = "0488ade4"
-	VERSION_TEST_PUBLIC  = "043587cf"
-	VERSION_TEST_PRIVATE = "04358394"
+	versionMainPublic  = "0488b21e"
+	versionMainPrivate = "0488ade4"
+	versionTestPublic  = "043587cf"
+	versionTestPrivate = "04358394"
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -110,21 +110,21 @@ func TestAddress(t *testing.T) {
 		// check address data
 		//-------------------------------------------------------------
 
-		idhex, err := hex.DecodeString(d.IdHex)
+		idhex, err := hex.DecodeString(d.IDhex)
 		if err != nil {
-			fmt.Println("IdHex decoding error")
+			fmt.Println("IDhex decoding error")
 			t.Fail()
 			return
 		}
-		idaddr, err := Base58Decode(d.IdAddr)
+		idaddr, err := Base58Decode(d.IDaddr)
 		if err != nil {
-			fmt.Println("IdAddr decoding error")
+			fmt.Println("IDaddr decoding error")
 			t.Fail()
 			return
 		}
 
 		if !bytes.Equal(idaddr[1:len(idhex)+1], idhex) {
-			fmt.Println("IdAddr -- IdHex mismatch")
+			fmt.Println("IDaddr -- IDhex mismatch")
 			t.Fail()
 		}
 
@@ -150,10 +150,10 @@ func TestAddress(t *testing.T) {
 			return
 		}
 		addr := MakeAddress(pubkey)
-		if string(addr) != d.IdAddr {
+		if string(addr) != d.IDaddr {
 			fmt.Println("Address(pubKey) failed")
 			fmt.Println(">> " + addr)
-			fmt.Println(">> " + d.IdAddr)
+			fmt.Println(">> " + d.IDaddr)
 			t.Fail()
 			return
 		}
@@ -167,8 +167,8 @@ func TestAddress(t *testing.T) {
 			fmt.Println("Chain mismatch")
 			t.Fail()
 		}
-		if VERSION_MAIN_PUBLIC != d.SerPubHex[:8] {
-			fmt.Println("VERSION_MAIN_PUBLIC mismatch")
+		if versionMainPublic != d.SerPubHex[:8] {
+			fmt.Println("versionMainPublic mismatch")
 			t.Fail()
 		}
 		b, err := hex.DecodeString(d.SerPubHex)
@@ -217,8 +217,8 @@ func TestAddress(t *testing.T) {
 			fmt.Println("Chain mismatch")
 			t.Fail()
 		}
-		if VERSION_MAIN_PRIVATE != d.SerPrvHex[:8] {
-			fmt.Println("VERSION_MAIN_PRIVATE mismatch")
+		if versionMainPrivate != d.SerPrvHex[:8] {
+			fmt.Println("versionMainPrivate mismatch")
 			t.Fail()
 		}
 		b, err = hex.DecodeString(d.SerPrvHex)

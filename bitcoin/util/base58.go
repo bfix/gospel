@@ -38,8 +38,8 @@ var (
 )
 
 ///////////////////////////////////////////////////////////////////////
-// convert byte array to base58 string representation
 
+// Base58Encode converts byte array to base58 string representation
 func Base58Encode(in []byte) string {
 
 	// convert byte array to integer
@@ -65,8 +65,8 @@ func Base58Encode(in []byte) string {
 }
 
 ///////////////////////////////////////////////////////////////////////
-// convert base58 representation into byte array
 
+// Base58Decode converts a base58 representation into byte array
 func Base58Decode(s string) ([]byte, error) {
 
 	// convert string to byte array

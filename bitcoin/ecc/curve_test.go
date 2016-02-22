@@ -20,31 +20,31 @@ func TestCurve(t *testing.T) {
 	fmt.Println("ecc/curve Test")
 	fmt.Println("********************************************************")
 
-	g := &point{curve_gx, curve_gy}
-	gm := &point{curve_gx, new(big.Int).Neg(curve_gy)}
+	g := &Point{curveGx, curveGy}
+	gm := &Point{curveGx, new(big.Int).Neg(curveGy)}
 
 	fmt.Print("Checking if base point 'g' is on curve: ")
 	if !IsOnCurve(g) {
 		fmt.Printf("Failed")
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
+
 	if !testInOut(g) {
 		t.Fail()
 		return
 	}
 
 	fmt.Print("Computing infinity '0 = n*g': ")
-	p1 := scalarMult(g, curve_n)
+	p1 := scalarMult(g, curveN)
 	if !IsEqual(p1, inf) {
 		fmt.Printf("Failed: %s\n", p1.emit())
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
+
 	if !testInOut(p1) {
 		t.Fail()
 		return
@@ -56,9 +56,8 @@ func TestCurve(t *testing.T) {
 		fmt.Printf("Failed: %s\n", p1.emit())
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
 
 	fmt.Println("Checking infinity:")
 	fmt.Print("    0+p = p: ")
@@ -67,18 +66,17 @@ func TestCurve(t *testing.T) {
 		fmt.Printf("Failed: %s != %s\n", p1.emit(), g.emit())
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
+
 	fmt.Print("    k*0 = 0: ")
 	p1 = scalarMult(inf, math.EIGHT)
 	if !IsEqual(p1, inf) {
 		fmt.Printf("Failed: %s != (0,0)\n", p1.emit())
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
 
 	fmt.Print("Checking for 'double(x) == scalarMult(x,2)': ")
 	p1 = double(g)
@@ -87,9 +85,9 @@ func TestCurve(t *testing.T) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
+
 	if !testInOut(p2) {
 		t.Fail()
 		return
@@ -103,9 +101,9 @@ func TestCurve(t *testing.T) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
+
 	if !testInOut(p3) {
 		t.Fail()
 		return
@@ -118,9 +116,9 @@ func TestCurve(t *testing.T) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
+
 	if !testInOut(p3) {
 		t.Fail()
 		return
@@ -132,9 +130,9 @@ func TestCurve(t *testing.T) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
+
 	if !testInOut(pnt) {
 		t.Fail()
 		return
@@ -146,9 +144,9 @@ func TestCurve(t *testing.T) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
+
 	if !testInOut(pnt) {
 		t.Fail()
 		return
@@ -160,9 +158,9 @@ func TestCurve(t *testing.T) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
+
 	if !testInOut(pnt) {
 		t.Fail()
 		return
@@ -174,9 +172,9 @@ func TestCurve(t *testing.T) {
 		fmt.Println("Failed")
 		t.Fail()
 		return
-	} else {
-		fmt.Println("O.K.")
 	}
+	fmt.Println("O.K.")
+
 	if !testInOut(pnt) {
 		t.Fail()
 		return
@@ -186,8 +184,8 @@ func TestCurve(t *testing.T) {
 	fmt.Print("    ")
 	failed := false
 	for n := 0; n < 32; n++ {
-		a := n_rnd(math.ZERO)
-		b := n_rnd(math.ZERO)
+		a := nRnd(math.ZERO)
+		b := nRnd(math.ZERO)
 		c := new(big.Int).Add(a, b)
 		p := scalarMult(g, a)
 		q := scalarMult(g, b)
@@ -221,9 +219,8 @@ func TestCurve(t *testing.T) {
 		t.Fail()
 		fmt.Println(" Failed")
 		return
-	} else {
-		fmt.Println(" O.K.")
 	}
+	fmt.Println(" O.K.")
 
 	fmt.Println("Checking NIST test values:")
 	fmt.Print("    ")
@@ -253,7 +250,7 @@ func TestCurve(t *testing.T) {
 		m := fromHex(set[0])
 		x := fromHex(set[1])
 		y := fromHex(set[2])
-		p1 = &point{x, y}
+		p1 = &Point{x, y}
 		p2 = scalarMult(g, m)
 
 		if !IsEqual(p1, p2) {
@@ -272,20 +269,19 @@ func TestCurve(t *testing.T) {
 		t.Fail()
 		fmt.Println(" Failed")
 		return
-	} else {
-		fmt.Println(" O.K.")
 	}
+	fmt.Println(" O.K.")
 }
 
 ///////////////////////////////////////////////////////////////////////
 // helper methods: print a point
 
-func (p *point) emit() string {
+func (p *Point) emit() string {
 	return "(" + p.x.String() + "," + p.y.String() + ")"
 }
 
 // test binary conversion for point
-func testInOut(p *point) bool {
+func testInOut(p *Point) bool {
 	comprIn := p.x.Bit(0) == 0
 	b := pointAsBytes(p, comprIn)
 	pp, comprOut, err := pointFromBytes(b)

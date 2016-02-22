@@ -32,16 +32,14 @@ import (
 ///////////////////////////////////////////////////////////////////////
 // Public interfaces
 
-/*
- * User-defined service handler: Handle TCP/UDP client sessions.
- * The interface defines four methods:
- * - Process (conn): Main handler routine for connection
- * - GetName(): Return service name (for logging output)
- * - CanHandle (protocol): Check if handler can process given
- *       network protocol (TCP or UDP on IPv4 or IPv6)
- * - IsAllowed (addr): Checkk if remote address is allowed to
- *       be served by the service handler.
- */
+// Service is a user-defined service handler that handles TCP/UDP
+// client sessions. The interface defines four methods:
+// - Process (conn): Main handler routine for connection
+// - GetName(): Return service name (for logging output)
+// - CanHandle (protocol): Check if handler can process given
+//       network protocol (TCP or UDP on IPv4 or IPv6)
+// - IsAllowed (addr): Checkk if remote address is allowed to
+//       be served by the service handler.
 type Service interface {
 	Process(conn net.Conn)          // main handler routine
 	GetName() string                // get symbolic name of service
@@ -52,13 +50,8 @@ type Service interface {
 ///////////////////////////////////////////////////////////////////////
 // Public methods
 
-/*
- * Run TCP/UDP network service with user-defined session handler.
- * @param network string - network identifier (TCP/UDP on IPv4/v6)
- * @param addr string - address:port specification of service
- * @param hdlr []Service - implementations of service interface
- * @return error - error object (or nil)
- */
+// RunService runs a TCP/UDP network service with user-defined
+// session handler.
 func RunService(network, addr string, hdlr []Service) error {
 
 	// initialize control service
@@ -112,14 +105,3 @@ func RunService(network, addr string, hdlr []Service) error {
 	logger.Println(logger.INFO, "[network] service started on '"+network+"/"+addr+"'...")
 	return nil
 }
-
-///////////////////////////////////////////////////////////////////////
-//	Revision history:
-///////////////////////////////////////////////////////////////////////
-//
-//	Revision 2.0  2012-01-11 08:19:55  brf
-//  First release as free software (GPL3+)
-//
-//	Revision 1.0  2010-11-18 23:17:06  brf
-//  Initial revision.
-//

@@ -30,24 +30,16 @@ import (
 ///////////////////////////////////////////////////////////////////////
 // Public functions
 
-/*
- * Check if source is a TOR exit node that can connect to dst:dport
- * @param src net.IP - source address to be checked for TOR exit node
- * @param dst net.IP - destination address (usually addr of this instance)
- * @param dport int - destination port (usually port of this instance)
- * @return bool - TOR exit node involved?
- */
+// IsTorExitToDest checks if source is a TOR exit node that can
+// connect to dst:dport
 func IsTorExitToDest(src, dst net.IP, dport int) bool {
 	name := revAddr(src) + "." + strconv.Itoa(dport) + "." + revAddr(dst)
 	return checkTor(name)
 }
 
 //---------------------------------------------------------------------
-/*
- * Check if source is a TOR exit node
- * @param src net.IP - source address to be checked for TOR exit node
- * @return bool - TOR exit node involved?
- */
+
+// IsTorExit checks if source is a TOR exit node
 func IsTorExit(src net.IP) bool {
 	return checkTor(revAddr(src) + ".80.1.2.3.4")
 }

@@ -30,9 +30,7 @@ import (
 ///////////////////////////////////////////////////////////////////////
 // Public Methods
 
-/*
- * Compute RIPEMD-160(SHA-256(data))
- */
+// Hash160 computes RIPEMD-160(SHA-256(data))
 func Hash160(data []byte) []byte {
 	sha2 := sha256.New()
 	sha2.Write(data)
@@ -42,9 +40,8 @@ func Hash160(data []byte) []byte {
 }
 
 //---------------------------------------------------------------------
-/*
- * Compute SHA-256(SHA-256(data))
- */
+
+// Hash256 computes SHA-256(SHA-256(data))
 func Hash256(data []byte) []byte {
 	sha2 := sha256.New()
 	sha2.Write(data)

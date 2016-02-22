@@ -34,19 +34,18 @@ import (
 // Module-global constants and variables
 
 const (
+	// KEY_SIGN flags a signing key
 	KEY_SIGN = iota
+	// KEY_ENCRYPT flags a encryption key
 	KEY_ENCRYPT
+	// KEY_AUTH flags an authorization key
 	KEY_AUTH
 )
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Convert a ASCII-armored public key representation into
- * an OpenPGP key.
- * @param buf []byte - armored public key representation
- * @return *packet.PublicKey - OpenPGP key
- * @return error - error instance or nil
- */
+
+// GetPublicKey converts an ASCII-armored public key representation
+// into an OpenPGP key.
 func GetPublicKey(buf []byte) (*packet.PublicKey, error) {
 	keyRdr, err := armor.Decode(bytes.NewBuffer(buf))
 	if err != nil {
@@ -64,12 +63,8 @@ func GetPublicKey(buf []byte) (*packet.PublicKey, error) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Get armored public key for entity.
- * @param ent *openpgp.Entity - OpenPGP entity
- * @return []byte - armored public key representation
- * @return error - error instance or nil
- */
+
+// GetArmoredPublicKey returns an armored public key for entity.
 func GetArmoredPublicKey(ent *openpgp.Entity) ([]byte, error) {
 	out := new(bytes.Buffer)
 	wrt, err := armor.Encode(out, openpgp.PublicKeyType, nil)
@@ -85,12 +80,9 @@ func GetArmoredPublicKey(ent *openpgp.Entity) ([]byte, error) {
 }
 
 //---------------------------------------------------------------------
-/*
- * Get a suitable subkey from entity.
- * @param ent *openpgp.Entity - main entity
- * @param mode int - key mode (keyXXX)
- * @return *openpgp.Key - found subkey
- */
+
+// GetKeyFromIdentity returns a suitable subkey from entity for the
+// given operation.
 func GetKeyFromIdentity(ent *openpgp.Entity, mode int) *openpgp.Key {
 	key := new(openpgp.Key)
 	key.Entity = ent

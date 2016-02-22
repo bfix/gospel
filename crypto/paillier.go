@@ -70,16 +70,12 @@ import (
 ///////////////////////////////////////////////////////////////////////
 // Paillier key pair
 
-/*
- * Paillier public key
- */
+// PaillierPublicKey data structure
 type PaillierPublicKey struct {
 	N, G *big.Int
 }
 
-/*
- * Paillier private key
- */
+// PaillierPrivateKey data structure
 type PaillierPrivateKey struct {
 	*PaillierPublicKey
 	L, U *big.Int
@@ -87,12 +83,8 @@ type PaillierPrivateKey struct {
 }
 
 ///////////////////////////////////////////////////////////////////////
-/*
- * Generate a new Paillier private key (key pair).
- * @param bits int - number of bits of product 'N'
- * @return key *PaillierPrivateKey - generated private key (key pair)
- * @return err error - error object (or nil if successful)
- */
+
+// NewPaillierPrivateKey generates a new Paillier private key (key pair).
 func NewPaillierPrivateKey(bits int) (key *PaillierPrivateKey, err error) {
 
 	// generate primes 'p' and 'q' and their factor 'n'
@@ -156,34 +148,26 @@ func NewPaillierPrivateKey(bits int) (key *PaillierPrivateKey, err error) {
 ///////////////////////////////////////////////////////////////////////
 // Methods related to the Paillier private key:
 
-/*
- * Get public key from private key.
- * @param self *PaillierPrivateKey - this instance
- * @return *PaillierPublicKey - reference to public key
- */
-func (self *PaillierPrivateKey) GetPublicKey() *PaillierPublicKey {
-	return self.PaillierPublicKey
+// GetPublicKey returns the corresponding public key from a private key.
+func (p *PaillierPrivateKey) GetPublicKey() *PaillierPublicKey {
+	return p.PaillierPublicKey
 }
 
 //---------------------------------------------------------------------
-/*
- * Decrypt message with private key.
- * @param c *big.Int - encrypted message
- * @return m *big.Int - decrypted message
- * @return err error - error object (or nil if successful)
- */
-func (self *PaillierPrivateKey) Decrypt(c *big.Int) (m *big.Int, err error) {
+
+// Decrypt message with private key.
+func (p *PaillierPrivateKey) Decrypt(c *big.Int) (m *big.Int, err error) {
 
 	// initialize variables
-	pub := self.GetPublicKey()
+	pub := p.GetPublicKey()
 	n2 := new(big.Int).Mul(pub.N, pub.N)
 	one := big.NewInt(1)
 
 	// perform decryption function
-	m = new(big.Int).Exp(c, self.L, n2)
+	m = new(big.Int).Exp(c, p.L, n2)
 	m.Sub(m, one)
 	m.Div(m, pub.N)
-	m.Mul(m, self.U)
+	m.Mul(m, p.U)
 	m.Mod(m, pub.N)
 	return m, nil
 }
@@ -191,24 +175,19 @@ func (self *PaillierPrivateKey) Decrypt(c *big.Int) (m *big.Int, err error) {
 ///////////////////////////////////////////////////////////////////////
 // Methods related to the Paillier public key:
 
-/*
- * Encrypt message with private key.
- * @param m *big.Int - plaintext message
- * @return c *big.Int - encrypted message
- * @return err error - error object (or nil if successful)
- */
-func (self *PaillierPublicKey) Encrypt(m *big.Int) (c *big.Int, err error) {
+// Encrypt message with public key.
+func (p *PaillierPublicKey) Encrypt(m *big.Int) (c *big.Int, err error) {
 
 	// initialize variables
-	n2 := new(big.Int).Mul(self.N, self.N)
+	n2 := new(big.Int).Mul(p.N, p.N)
 
 	// compute decryption function
-	c1 := new(big.Int).Exp(self.G, m, n2)
-	r, err := rand.Int(rand.Reader, self.N)
+	c1 := new(big.Int).Exp(p.G, m, n2)
+	r, err := rand.Int(rand.Reader, p.N)
 	if err != nil {
 		return nil, err
 	}
-	c2 := new(big.Int).Exp(r, self.N, n2)
+	c2 := new(big.Int).Exp(r, p.N, n2)
 	c = new(big.Int).Mul(c1, c2)
 	c.Mod(c, n2)
 	return c, nil
