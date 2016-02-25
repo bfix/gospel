@@ -40,14 +40,10 @@ const (
 	ERROR
 	// WARN for warning messages
 	WARN
-	// INFO messages
+	// INFO is for informational messages
 	INFO
-	// DBG_HIGH for high-priority debug messages
-	DBG_HIGH
-	// DBG for normal debug messages
+	// DBG for debug messages
 	DBG
-	// DBG_ALL for all debug messages
-	DBG_ALL
 
 	// ROTATE log file command
 	ROTATE = iota // rotate log file
@@ -181,12 +177,8 @@ func GetLogLevelName() string {
 		return "WARN"
 	case INFO:
 		return "INFO"
-	case DBG_HIGH:
-		return "DBG_HIGH"
 	case DBG:
 		return "DBG"
-	case DBG_ALL:
-		return "DBG_ALL"
 	}
 	return "UNKNOWN_LOGLEVEL"
 }
@@ -195,7 +187,7 @@ func GetLogLevelName() string {
 
 // SetLogLevel sets the logging level from numeric value
 func SetLogLevel(lvl int) {
-	if lvl < CRITICAL || lvl > DBG_ALL {
+	if lvl < CRITICAL || lvl > DBG {
 		Printf(WARN, "[logger] Unknown loglevel '%d' requested -- ignored.\n", lvl)
 	}
 	logInst.level = lvl
@@ -206,18 +198,18 @@ func SetLogLevel(lvl int) {
 // SetLogLevelFromName sets the logging level from symbolic name.
 func SetLogLevelFromName(name string) {
 	switch name {
+	case "CRITICAL":
+		logInst.level = CRITICAL
+	case "SEVERE":
+		logInst.level = SEVERE
 	case "ERROR":
 		logInst.level = ERROR
 	case "WARN":
 		logInst.level = WARN
 	case "INFO":
 		logInst.level = INFO
-	case "DBG_HIGH":
-		logInst.level = DBG_HIGH
 	case "DBG":
 		logInst.level = DBG
-	case "DBG_ALL":
-		logInst.level = DBG_ALL
 	default:
 		Println(WARN, "[logger] Unknown loglevel '"+name+"' requested.")
 	}
@@ -238,12 +230,8 @@ func getTag(level int) string {
 		return "{W}"
 	case INFO:
 		return "{I}"
-	case DBG_HIGH:
-		return "{D2}"
 	case DBG:
-		return "{D1}"
-	case DBG_ALL:
-		return "{D0}"
+		return "{D}"
 	}
 	return "{?}"
 }
