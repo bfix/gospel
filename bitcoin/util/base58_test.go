@@ -10,30 +10,30 @@ import (
 func TestBase58(t *testing.T) {
 	one := big.NewInt(1)
 	if !test1(big.NewInt(57)) {
-		t.Fatal()
+		t.Fatal("base58 failure")
 	}
 	if !test1(big.NewInt(58)) {
-		t.Fatal()
+		t.Fatal("base58 failure")
 	}
 	if !test1(big.NewInt(255)) {
-		t.Fatal()
+		t.Fatal("base58 failure")
 	}
 	if !test2([]byte{0, 255}) {
-		t.Fatal()
+		t.Fatal("base58 failure")
 	}
 	if !test2([]byte{0, 0, 255}) {
-		t.Fatal()
+		t.Fatal("base58 failure")
 	}
 	bound := big.NewInt(256)
 	for n := 0; n < 128; n++ {
 		if !test1(crypto.RandBigInt(one, bound)) {
-			t.Fatal()
+			t.Fatal("base58 failure")
 		}
 		bound = new(big.Int).Lsh(bound, 1)
 	}
 
 	if _, err := Base58Decode("invalid"); err == nil {
-		t.Fatal()
+		t.Fatal("base58 failure")
 	}
 }
 

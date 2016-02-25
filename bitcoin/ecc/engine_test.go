@@ -12,7 +12,7 @@ func TestEngine(t *testing.T) {
 		hash := nRnd(math.ONE).Bytes()
 		r, s := Sign(prv, hash)
 		if !Verify(&prv.PublicKey, hash, r, s) {
-			t.Fatal()
+			t.Fatal("sign/verify failed")
 		}
 	}
 }
@@ -22,6 +22,6 @@ func TestHash(t *testing.T) {
 	h := i.Bytes()
 	j := convertHash(h)
 	if i.Cmp(j) != 0 {
-		t.Fatal()
+		t.Fatal("convertHash failed")
 	}
 }

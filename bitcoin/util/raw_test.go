@@ -14,16 +14,16 @@ func TestScript(t *testing.T) {
 		b := make([]byte, n)
 		n, err := rand.Read(b)
 		if err != nil || n != len(b) {
-			t.Fatal()
+			t.Fatal("rand failed")
 		}
 		_, err = NullDataScript(b)
 		return err
 	}
 	if testScr(64) != nil {
-		t.Fatal()
+		t.Fatal("nulldatascript failed on short")
 	}
 	if testScr(128) == nil {
-		t.Fatal()
+		t.Fatal("nulldatascript failed on long")
 	}
 }
 
@@ -31,7 +31,7 @@ func TestPrefix(t *testing.T) {
 	check := func(n, s int) {
 		p := LengthPrefix(n)
 		if len(p) != s {
-			t.Fatal()
+			t.Fatal("lengthprefix failed")
 		}
 	}
 	check(64, 1)
@@ -44,30 +44,30 @@ func TestRaw(t *testing.T) {
 	b := rnd(t, 64)
 	s, err := NullDataScript(b)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("nulldatascript failed")
 	}
 	// OK
 	if _, err = ReplaceScriptPubKey(raw, s); err != nil {
-		t.Fatal()
+		t.Fatal("replacescriptpubkey failed")
 	}
-	// #vout != 1
+	// #vin != 1
 	r := raw[:9] + "2" + raw[10:]
 	if _, err = ReplaceScriptPubKey(r, s); err == nil {
-		t.Fatal()
+		t.Fatal("vin check failed")
 	}
 	// sigSize != 0
 	r = raw[:83] + "1" + raw[84:]
 	if _, err = ReplaceScriptPubKey(r, s); err == nil {
-		t.Fatal()
+		t.Fatal("signsize check failed")
 	}
 	// #vout != 1
 	r = raw[:93] + "2" + raw[94:]
 	if _, err = ReplaceScriptPubKey(r, s); err == nil {
-		t.Fatal()
+		t.Fatal("vout check failed")
 	}
 	// invalid raw
 	if _, err = ReplaceScriptPubKey("invalid", s); err == nil {
-		t.Fatal()
+		t.Fatal("invalid raw check failed")
 	}
 }
 
@@ -75,7 +75,7 @@ func rnd(t *testing.T, n int) []byte {
 	b := make([]byte, n)
 	i, err := rand.Read(b)
 	if err != nil || i != n {
-		t.Fatal()
+		t.Fatal("rand failed")
 	}
 	return b
 }

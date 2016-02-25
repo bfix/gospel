@@ -25,9 +25,9 @@ func TestKeys(t *testing.T) {
 
 		switch {
 		case s.Cmp(s2) != 0 && kk >= k:
-			t.Fatal()
+			t.Fatal("failed reconstruction")
 		case s.Cmp(s2) == 0 && kk < k:
-			t.Fatal()
+			t.Fatal("pre-mature reconstruction")
 		}
 	}
 }

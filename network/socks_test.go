@@ -1,7 +1,7 @@
 package network
 
 import (
-	"bufio"
+//	"bufio"
 	"testing"
 )
 
@@ -9,7 +9,7 @@ func TestSocks5(t *testing.T) {
 
 	conn, err := Socks5Connect("tcp", "www.google.com", 80, "127.0.0.1:9050")
 	if conn == nil || err != nil {
-		t.Fatal()
+		t.Fatal("failed to connect to tor proxy")
 	}
 	/*
 		conn.Write([]byte("GET / HTTP/1.0\n\n"))

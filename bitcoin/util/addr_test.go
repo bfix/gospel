@@ -64,55 +64,55 @@ func TestAddress(t *testing.T) {
 	for _, d := range data {
 		idhex, err := hex.DecodeString(d.IDhex)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("test data failure")
 		}
 		idaddr, err := Base58Decode(d.IDaddr)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("test data failure")
 		}
 		if !bytes.Equal(idaddr[1:len(idhex)+1], idhex) {
-			t.Fatal()
+			t.Fatal("test data mismatch")
 		}
 		pub, err := hex.DecodeString(d.PubHex)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("test data failure")
 		}
 		pubkey, err := ecc.PublicKeyFromBytes(pub)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("test data failure")
 		}
 		if !ecc.IsOnCurve(pubkey.Q) {
-			t.Fatal()
+			t.Fatal("public point not on curve")
 		}
 
 		addr := MakeTestAddress(pubkey)
 
 		addr = MakeAddress(pubkey)
 		if string(addr) != d.IDaddr {
-			t.Fatal()
+			t.Fatal("makeaddress failed")
 		}
 		pubkeyhex := hex.EncodeToString(pubkey.Bytes())
 		if pubkeyhex != d.SerPubHex[90:] {
-			t.Fatal()
+			t.Fatal("pubkey mismatch")
 		}
 		if d.Chain != d.SerPubHex[26:90] {
-			t.Fatal()
+			t.Fatal("chain mismatch")
 		}
 		if versionMainPublic != d.SerPubHex[:8] {
-			t.Fatal()
+			t.Fatal("version mismatch")
 		}
 		b, err := hex.DecodeString(d.SerPubHex)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("test data failure")
 		}
 		b = append(b, prefix(b)...)
 		pubser := Base58Encode(b)
 		if pubser != d.SerPubB58 {
-			t.Fatal()
+			t.Fatal("test data failure")
 		}
 		prv, err := hex.DecodeString(d.SerPrvHex[90:])
 		if err != nil {
-			t.Fatal()
+			t.Fatal("test data failure")
 		}
 		if len(prv) == 33 {
 			if prv[0] != 0 {
@@ -122,26 +122,26 @@ func TestAddress(t *testing.T) {
 		}
 		prvkey, err := ecc.PrivateKeyFromBytes(prv)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("privatekeyfrombytes failed")
 		}
 		q := ecc.ScalarMultBase(prvkey.D)
 		if !ecc.IsEqual(q, pubkey.Q) {
-			t.Fatal()
+			t.Fatal("pub/private mismatch")
 		}
 		if d.Chain != d.SerPubHex[26:90] {
-			t.Fatal()
+			t.Fatal("chain mismatch")
 		}
 		if versionMainPrivate != d.SerPrvHex[:8] {
-			t.Fatal()
+			t.Fatal("version mismatch")
 		}
 		b, err = hex.DecodeString(d.SerPrvHex)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("test data failure")
 		}
 		b = append(b, prefix(b)...)
 		prvser := Base58Encode(b)
 		if prvser != d.SerPrvB58 {
-			t.Fatal()
+			t.Fatal("test data failure")
 		}
 	}
 }

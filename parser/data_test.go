@@ -60,7 +60,7 @@ func testCase1(data, access, path, elem string, t *testing.T, flags string) {
 	}
 	d := getData(data, t)
 	if (flags[0] == '1') != (d != nil) {
-		t.Fatal()
+		t.Fatal("getdata failed")
 	}
 	if d != nil {
 		e := d.Lookup(access)
@@ -69,12 +69,12 @@ func testCase1(data, access, path, elem string, t *testing.T, flags string) {
 			p = e.GetPath()
 		}
 		if (flags[1] == '1') != (p == path) {
-			t.Fatal()
+			t.Fatal("lookup failed")
 		}
 		if e != nil {
 			p = e.String()
 			if (flags[2] == '1') != (p == ("`" + elem + "`")) {
-				t.Fatal()
+				t.Fatal("elem failed")
 			}
 		}
 	}

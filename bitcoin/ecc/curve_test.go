@@ -35,43 +35,43 @@ var (
 
 func TestBase(t *testing.T) {
 	if !IsOnCurve(g) {
-		t.Fatal()
+		t.Fatal("base point not on curve")
 	}
 	if !testInOut(g) {
-		t.Fatal()
+		t.Fatal("base point serialization failed")
 	}
 	gT := GetBasePoint()
 	if !IsEqual(g, gT) {
-		t.Fatal()
+		t.Fatal("GetBasePoint failed")
 	}
 	p := NewPoint(g.x, g.y)
 	if !IsEqual(g, p) {
-		t.Fatal()
+		t.Fatal("NewPoint failed")
 	}
 }
 
 func TestInfinity(t *testing.T) {
 	p1 := scalarMult(g, curveN)
 	if !IsEqual(p1, inf) {
-		t.Fatal()
+		t.Fatal("n*G is not infinity")
 	}
 	if !isInf(p1) {
-		t.Fatal()
+		t.Fatal("isInf failed")
 	}
 	if !testInOut(p1) {
-		t.Fatal()
+		t.Fatal("infinity serialization failed")
 	}
 	p1 = add(g, gm)
 	if !IsEqual(p1, inf) {
-		t.Fatal()
+		t.Fatal("g-g is not infinity")
 	}
 	p1 = add(g, inf)
 	if !IsEqual(p1, g) {
-		t.Fatal()
+		t.Fatal("g+0 != g")
 	}
 	p1 = scalarMult(inf, math.EIGHT)
 	if !IsEqual(p1, inf) {
-		t.Fatal()
+		t.Fatal("8*0 != 0")
 	}
 }
 
@@ -80,20 +80,16 @@ func TestMult(t *testing.T) {
 	mult := func(n *big.Int) *Point {
 		p := ScalarMultBase(n)
 		if !IsOnCurve(p) {
-			t.Fatal()
+			t.Fatal("point not on curve")
 		}
 		if !testInOut(p) {
-			t.Fatal()
-		}
-		pp := scalarMult(g, n)
-		if !IsEqual(p, pp) {
-			t.Fatal()
+			t.Fatal("point serialization failed")
 		}
 		return p
 	}
 	p2 := mult(math.TWO)
 	if !IsEqual(p1, p2) {
-		t.Fatal()
+		t.Fatal("mult failed")
 	}
 
 	mult(math.THREE)
@@ -106,18 +102,18 @@ func TestAdd(t *testing.T) {
 	p2 := add(g, p1)
 	p3 := add(p1, g)
 	if !IsEqual(p2, p3) {
-		t.Fatal()
+		t.Fatal("p+g != g+p")
 	}
 	if !testInOut(p3) {
-		t.Fatal()
+		t.Fatal("point serialization failed")
 	}
 	p1 = add(double(g), g)
 	p2 = scalarMult(g, math.THREE)
 	if !IsEqual(p1, p2) {
-		t.Fatal()
+		t.Fatal("G+G+G != 3*G")
 	}
 	if !testInOut(p3) {
-		t.Fatal()
+		t.Fatal("point serialization failed")
 	}
 
 	for n := 0; n < 32; n++ {
@@ -129,9 +125,8 @@ func TestAdd(t *testing.T) {
 		r := scalarMult(g, c)
 		p1 = add(p, q)
 		p2 = add(q, p)
-
 		if !IsEqual(p1, p2) || !IsEqual(p1, r) {
-			t.Fatal()
+			t.Fatal("a*G + b*G != (a+b)*G")
 		}
 	}
 }
@@ -139,12 +134,11 @@ func TestAdd(t *testing.T) {
 func TestDouble(t *testing.T) {
 	pnt := double(g)
 	if !IsOnCurve(pnt) {
-		t.Fatal()
+		t.Fatal("doubled point not on curve")
 	}
 	if !testInOut(pnt) {
-		t.Fatal()
+		t.Fatal("point serialization failed")
 	}
-
 }
 
 func TestNIST(t *testing.T) {
@@ -154,12 +148,11 @@ func TestNIST(t *testing.T) {
 		y := fromHex(set[2])
 		p1 := &Point{x, y}
 		p2 := scalarMult(g, m)
-
 		if !IsEqual(p1, p2) {
-			t.Fatal()
+			t.Fatal("failed nist case")
 		}
 		if !testInOut(p1) {
-			t.Fatal()
+			t.Fatal("point serialization failed")
 		}
 	}
 }

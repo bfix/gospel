@@ -9,26 +9,26 @@ const eps = 1e-9 // precision during compare
 
 // Run test suite for FFT implementation.
 func TestTransform(t *testing.T) {
-	t, err := NewTransformer(10)
+	tf, err := NewTransformer(10)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("failed to create new transformer")
 	}
-	size := t.GetSize()
+	size := tf.GetSize()
 	in := make(Field, size)
 	for i := 0; i < size; i++ {
 		in[i] = complex(float64(i), 0.)
 	}
-	out, err := t.Time2Freq(in)
+	out, err := tf.Time2Freq(in)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("failed t2f conversion")
 	}
-	in2, err := t.Freq2Time(out)
+	in2, err := tf.Freq2Time(out)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("failed f2t conversion")
 	}
 	for i := 0; i < size; i++ {
 		if !isEqual(in[i], in2[i]) {
-			t.Fatal()
+			t.Fatal("data mismatch")
 		}
 	}
 }

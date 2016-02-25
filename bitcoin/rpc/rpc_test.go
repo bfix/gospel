@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -33,63 +32,63 @@ func init() {
 
 func TestSession(t *testing.T) {
 	if sess == nil {
-		t.Fatal()
+		t.Fatal("no session")
 	}
 	info, err = sess.GetInfo()
 	if err != nil {
-		t.Fatal()
+		t.Fatal("getinfo failed")
 	}
 }
 
 func TestConnectionCount(t *testing.T) {
 	conns, err := sess.GetConnectionCount()
 	if err != nil {
-		t.Fatal()
+		t.Fatal("getsessioncount failed")
 	}
 	if conns != info.Connections {
-		t.Fatal()
+		t.Fatal("num-seesions in info mismatch")
 	}
 }
 
 func TestDifficulty(t *testing.T) {
 	diff, err := sess.GetDifficulty()
 	if err != nil {
-		t.Fatal()
+		t.Fatal("getdifficulty faied")
 	}
 	if diff != info.Difficulty {
-		t.Fatal()
+		t.Fatal("difficulty mismatch in info")
 	}
 }
 
 func TestWallet(t *testing.T) {
 	if err = sess.BackupWallet(walletCopy); err != nil {
-		t.Fatal()
+		t.Fatal("backupwallet failed")
 	}
 	if _, err = os.Stat(walletCopy); err != nil {
-		t.Fatal()
+		t.Fatal("no wallet copy created")
 	}
 	if err = os.Remove(walletCopy); err != nil {
-		t.Fatal()
+		t.Fatal("failed to remove wallet copy")
 	}
 	if err = sess.WalletLock(); err != nil {
-		t.Fatal()
+		t.Fatal("walletlock failed")
 	}
 	if err = sess.WalletPassphrase(passphrase, 600); err != nil {
-		t.Fatal()
+		t.Fatal("walletpassphrase failed")
 	}
 }
 
 func TestKeypool(t *testing.T) {
 	err = sess.KeypoolRefill()
 	if err != nil {
-		t.Fatal()
+		t.Fatal("keypoolrefill failed")
 	}
 }
 
 func TestImport(t *testing.T) {
 	if newAccount {
 		if err = sess.ImportPrivateKey(prvKey); err != nil {
-			t.Fatal()
+			t.Fatal("import privkey failed")
 			return
 		}
 	}
@@ -97,7 +96,7 @@ func TestImport(t *testing.T) {
 
 func TestListUnspend(t *testing.T) {
 	if _, err = sess.ListUnspent(1, 999999); err != nil {
-		t.Fatal()
+		t.Fatal("listunspend failed")
 	}
 
 }
@@ -107,34 +106,34 @@ func TestAccount(t *testing.T) {
 		label := fmt.Sprintf("Account %d", time.Now().Unix())
 		addr, err = sess.GetNewAddress(label)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("getnewaddress failed")
 		}
 		accnt = "Renamed " + label
 		err = sess.SetAccount(addr, accnt)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("setaccount failed")
 		}
 		label, err = sess.GetAccount(addr)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("getaccount failed")
 		}
 		if accnt != label {
-			t.Fatal()
+			t.Fatal("account label mismatch")
 		}
 		_, err = sess.GetAccountAddress(accnt)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("getaccountaddress failed")
 		}
 	}
 
 	accnts, err := sess.ListAccounts(0)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("listaccounts failed")
 	}
 	for label := range accnts {
 		addrList, err := sess.GetAddressesByAccount(label)
 		if err != nil {
-			t.Fatal()
+			t.Fatal("getaddressbyaccount failed")
 		}
 		if len(addrList) == 0 {
 			continue
@@ -142,7 +141,7 @@ func TestAccount(t *testing.T) {
 		if len(label) > 0 {
 			bal, err := sess.GetBalance(label)
 			if err != nil {
-				t.Fatal()
+				t.Fatal("getbalance failed")
 			}
 			if bal > 0 {
 				accnt = label
@@ -153,13 +152,13 @@ func TestAccount(t *testing.T) {
 	}
 	if len(accnt) > 0 {
 		if _, ok := accnts[accnt]; !ok {
-			t.Fatal()
+			t.Fatal("account list failure")
 		}
 	}
 
 	addrList, err := sess.GetAddressesByAccount(accnt)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("getaddressbyaccount failed")
 	}
 	found := false
 	for _, a := range addrList {
@@ -169,46 +168,46 @@ func TestAccount(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatal()
+		t.Fatal("address not found")
 	}
 }
 
 func TestBalance(t *testing.T) {
 	if _, err = sess.GetBalance(accnt); err != nil {
-		t.Fatal()
+		t.Fatal("getbalance failed")
 	}
 	if _, err = sess.GetBalanceAll(); err != nil {
-		t.Fatal()
+		t.Fatal("getbalanceall failed")
 	}
 }
 
 func TestReceived(t *testing.T) {
 	rcv1, err := sess.ListReceivedByAccount(1, false)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("listreceivedbyaccount failed")
 	}
 	rcv2, err := sess.ListReceivedByAddress(1, false)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("listreceivedbyaddress failed")
 	}
 	if len(rcv1) != len(rcv2) {
-		t.Fatal()
+		t.Fatal("receivers mismatch")
 	}
 }
 
 func TestAddress(t *testing.T) {
 	val, err := sess.ValidateAddress(addr)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("validateaddress failed")
 	}
 	if val.Address != addr {
-		t.Fatal()
+		t.Fatal("address mismatch")
 	}
 	if val.Account != accnt {
-		t.Fatal()
+		t.Fatal("account mismatch")
 	}
 	if !val.IsMine {
-		t.Fatal()
+		t.Fatal("owner mismatch")
 		return
 	}
 }
@@ -216,47 +215,47 @@ func TestAddress(t *testing.T) {
 func TestBlock(t *testing.T) {
 	blks, err := sess.GetBlockCount()
 	if err != nil {
-		t.Fatal()
+		t.Fatal("getblockcount failed")
 	}
 	if blks != info.Blocks {
-		t.Fatal()
+		t.Fatal("blockcount mismatch in info")
 	}
 	block, err := sess.GetBlock(blockHash)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("getblock failed")
 	}
 	blkhash, err := sess.GetBlockHash(block.Height)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("getblockhash failed")
 	}
 	if blkhash != block.Hash {
-		t.Fatal()
+		t.Fatal("blockhash mismatch")
 	}
 }
 
 func TestTransaction(t *testing.T) {
 	txlist, err := sess.ListTransactions(accnt, 25, 0)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("listtransactions failed")
 	}
 	if len(txlist) > 0 {
 		txid := txlist[0].ID
 		if _, err = sess.GetTransaction(txid); err != nil {
-			t.Fatal()
+			t.Fatal("gettransaction failed")
 		}
 	}
 
 	txlist, _, err = sess.ListSinceBlock("", 1)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("listsinceblock failed")
 	}
 	if len(txlist) == 0 {
-		t.Fatal()
+		t.Fatal("no transactions")
 	}
 }
 
 func TestFee(t *testing.T) {
 	if err = sess.SetTxFee(0.0001); err != nil {
-		t.Fatal()
+		t.Fatal("settxfee failed")
 	}
 }

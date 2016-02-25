@@ -37,9 +37,9 @@ func TestParser(t *testing.T) {
 	pos = 0
 	err := Parser(rdr, callback)
 	if err != nil {
-		t.Fatal()
+		t.Fatal("parser failed with error")
 	} else if !rc {
-		t.Fatal()
+		t.Fatal("parser failed with rc")
 	}
 }
 
@@ -100,7 +100,6 @@ func callback(mode int, param *Parameter) bool {
 						", Address=" + currAddress +
 						", Port(" + strconv.Itoa(countPort) + ")=" + currPort +
 						", Service=" + param.Value
-					fmt.Println(msg)
 					rc = rc && (msg == res[pos])
 					pos++
 				}

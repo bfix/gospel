@@ -46,8 +46,8 @@ func TestPrng(t *testing.T) {
 			n++
 		}
 		fTU := sum / (float64(n) * math.Log(2))
-		if fTU-eTU > 0.0001 {
-			t.Fatal()
+		if fTU-eTU > 0.001 {
+			t.Fatal("random values correlate too much")
 		}
 	}
 }

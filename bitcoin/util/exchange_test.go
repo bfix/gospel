@@ -9,7 +9,7 @@ func TestExchange(t *testing.T) {
 	var err error
 
 	if _, err = ImportPrivateKey("invalid", true); err == nil {
-		t.Fatal()
+		t.Fatal("importprivatekey failed")
 	}
 
 	for n := 0; n < 100; n++ {
@@ -19,12 +19,12 @@ func TestExchange(t *testing.T) {
 		s := ExportPrivateKey(key, testnet)
 		x, _ := Base58Decode(s)
 		if len(x) != 37 && len(x) != 38 {
-			t.Fatal()
+			t.Fatal("invalid key size")
 		}
 
 		kk, err := ImportPrivateKey(s, testnet)
 		if err != nil || kk.D.Cmp(key.D) != 0 {
-			t.Fatal()
+			t.Fatal("key mismatch")
 		}
 
 		tt := make([]byte, len(x))
@@ -32,14 +32,14 @@ func TestExchange(t *testing.T) {
 		tt[0] = 0
 		ss := Base58Encode(tt)
 		if _, err = ImportPrivateKey(ss, testnet); err == nil {
-			t.Fatal()
+			t.Fatal("version check failed")
 		}
 
 		copy(tt, x)
-		tt[len(tt)-1] = 0
+		tt[len(tt)-1] ^= 255
 		ss = Base58Encode(tt)
 		if _, err = ImportPrivateKey(ss, testnet); err == nil {
-			t.Fatal()
+			t.Fatal("hash test failed")
 		}
 
 		if compr {
@@ -47,7 +47,7 @@ func TestExchange(t *testing.T) {
 			tt[33] = 0
 			ss = Base58Encode(tt)
 			if _, err = ImportPrivateKey(ss, testnet); err == nil {
-				t.Fatal()
+				t.Fatal("compression check failed")
 			}
 		}
 
@@ -59,7 +59,7 @@ func TestExchange(t *testing.T) {
 		}
 		ss = Base58Encode(tt)
 		if _, err = ImportPrivateKey(ss, testnet); err == nil {
-			t.Fatal()
+			t.Fatal("key size check failed")
 		}
 	}
 }
