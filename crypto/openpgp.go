@@ -34,12 +34,12 @@ import (
 // Module-global constants and variables
 
 const (
-	// KEY_SIGN flags a signing key
-	KEY_SIGN = iota
-	// KEY_ENCRYPT flags a encryption key
-	KEY_ENCRYPT
-	// KEY_AUTH flags an authorization key
-	KEY_AUTH
+	// KeySign returns a signing key (GetKeyFromIdentity)
+	KeySign = iota
+	// KeyEncrypt returns a encryption key (GetKeyFromIdentity)
+	KeyEncrypt
+	// KeyAuth returns an authorization key (GetKeyFromIdentity)
+	KeyAuth
 )
 
 ///////////////////////////////////////////////////////////////////////
@@ -89,17 +89,17 @@ func GetKeyFromIdentity(ent *openpgp.Entity, mode int) *openpgp.Key {
 	ki := -1
 	for i, sk := range ent.Subkeys {
 		switch mode {
-		case KEY_SIGN:
+		case KeySign:
 			if sk.PublicKey.PubKeyAlgo.CanSign() {
 				ki = i
 				break
 			}
-		case KEY_ENCRYPT:
+		case KeyEncrypt:
 			if sk.PublicKey.PubKeyAlgo.CanEncrypt() {
 				ki = i
 				break
 			}
-		case KEY_AUTH:
+		case KeyAuth:
 			ki = i
 			break
 		}
