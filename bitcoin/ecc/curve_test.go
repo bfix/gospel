@@ -1,230 +1,16 @@
 package ecc
 
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
-
 import (
-	"encoding/hex"
-	"fmt"
 	"github.com/bfix/gospel/math"
 	"math/big"
 	"testing"
 )
 
-///////////////////////////////////////////////////////////////////////
-//	public test method
+var (
+	g  = &Point{curveGx, curveGy}
+	gm = &Point{curveGx, new(big.Int).Neg(curveGy)}
 
-func TestCurve(t *testing.T) {
-
-	fmt.Println("********************************************************")
-	fmt.Println("ecc/curve Test")
-	fmt.Println("********************************************************")
-
-	g := &Point{curveGx, curveGy}
-	gm := &Point{curveGx, new(big.Int).Neg(curveGy)}
-
-	fmt.Print("Checking if base point 'g' is on curve: ")
-	if !IsOnCurve(g) {
-		fmt.Printf("Failed")
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	if !testInOut(g) {
-		t.Fail()
-		return
-	}
-
-	fmt.Print("Computing infinity '0 = n*g': ")
-	p1 := scalarMult(g, curveN)
-	if !IsEqual(p1, inf) {
-		fmt.Printf("Failed: %s\n", p1.emit())
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	if !testInOut(p1) {
-		t.Fail()
-		return
-	}
-
-	fmt.Print("Computing infinity '0 = (-g) + g': ")
-	p1 = add(g, gm)
-	if !IsEqual(p1, inf) {
-		fmt.Printf("Failed: %s\n", p1.emit())
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	fmt.Println("Checking infinity:")
-	fmt.Print("    0+p = p: ")
-	p1 = add(g, inf)
-	if !IsEqual(p1, g) {
-		fmt.Printf("Failed: %s != %s\n", p1.emit(), g.emit())
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	fmt.Print("    k*0 = 0: ")
-	p1 = scalarMult(inf, math.EIGHT)
-	if !IsEqual(p1, inf) {
-		fmt.Printf("Failed: %s != (0,0)\n", p1.emit())
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	fmt.Print("Checking for 'double(x) == scalarMult(x,2)': ")
-	p1 = double(g)
-	p2 := scalarMult(g, math.TWO)
-	if !IsEqual(p1, p2) {
-		fmt.Println("Failed")
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	if !testInOut(p2) {
-		t.Fail()
-		return
-	}
-
-	fmt.Print("Checking for 'p+q = q+p': ")
-	p1 = double(g)
-	p2 = add(g, p1)
-	p3 := add(p1, g)
-	if !IsEqual(p2, p3) {
-		fmt.Println("Failed")
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	if !testInOut(p3) {
-		t.Fail()
-		return
-	}
-
-	fmt.Print("Checking for 'add(double(x),x) == scalarMult(x,3)': ")
-	p1 = add(double(g), g)
-	p2 = scalarMult(g, math.THREE)
-	if !IsEqual(p1, p2) {
-		fmt.Println("Failed")
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	if !testInOut(p3) {
-		t.Fail()
-		return
-	}
-
-	fmt.Print("Checking if point '2*g' is on curve: ")
-	pnt := double(g)
-	if !IsOnCurve(pnt) {
-		fmt.Println("Failed")
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	if !testInOut(pnt) {
-		t.Fail()
-		return
-	}
-
-	fmt.Print("Checking if point '3*g' is on curve: ")
-	pnt = scalarMult(g, math.THREE)
-	if !IsOnCurve(pnt) {
-		fmt.Println("Failed")
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	if !testInOut(pnt) {
-		t.Fail()
-		return
-	}
-
-	fmt.Print("Checking if point '7*g' is on curve: ")
-	pnt = scalarMult(g, math.SEVEN)
-	if !IsOnCurve(pnt) {
-		fmt.Println("Failed")
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	if !testInOut(pnt) {
-		t.Fail()
-		return
-	}
-
-	fmt.Print("Checking if point '8*g' is on curve: ")
-	pnt = scalarMult(g, math.EIGHT)
-	if !IsOnCurve(pnt) {
-		fmt.Println("Failed")
-		t.Fail()
-		return
-	}
-	fmt.Println("O.K.")
-
-	if !testInOut(pnt) {
-		t.Fail()
-		return
-	}
-
-	fmt.Println("Checking curve: 'aG + bG = cG if a + b = c")
-	fmt.Print("    ")
-	failed := false
-	for n := 0; n < 32; n++ {
-		a := nRnd(math.ZERO)
-		b := nRnd(math.ZERO)
-		c := new(big.Int).Add(a, b)
-		p := scalarMult(g, a)
-		q := scalarMult(g, b)
-		r := scalarMult(g, c)
-		p1 = add(p, q)
-		p2 = add(q, p)
-
-		if !IsEqual(p1, p2) {
-			failed = true
-			fmt.Print("-")
-			fmt.Print("\nFAIL: ")
-			p1.emit()
-			fmt.Print("\nFAIL: ")
-			p2.emit()
-			fmt.Println()
-		} else {
-			if !IsEqual(p1, r) {
-				failed = true
-				fmt.Print("-")
-				fmt.Print("\nFAIL: ")
-				p1.emit()
-				fmt.Print("\nFAIL: ")
-				r.emit()
-				fmt.Println()
-			} else {
-				fmt.Print("+")
-			}
-		}
-	}
-	if failed {
-		t.Fail()
-		fmt.Println(" Failed")
-		return
-	}
-	fmt.Println(" O.K.")
-
-	fmt.Println("Checking NIST test values:")
-	fmt.Print("    ")
-	var tests = [][]string{
+	tests = [][]string{
 		{"AA5E28D6A97A2479A65527F7290311A3624D4CC0FA1578598EE3C2613BF99522",
 			"34F9460F0E4F08393D192B3C5133A6BA099AA0AD9FD54EBCCFACDFA239FF49C6",
 			"0B71EA9BD730FD8923F6D25A7A91E7DD7728A960686CB5A901BB419E0F2CA232"},
@@ -245,53 +31,142 @@ func TestCurve(t *testing.T) {
 			"F73C65EAD01C5126F28F442D087689BFA08E12763E0CEC1D35B01751FD735ED3",
 			"F449A8376906482A84ED01479BD18882B919C140D638307F0C0934BA12590BDE"},
 	}
-	failed = false
+)
+
+func TestBase(t *testing.T) {
+	if !IsOnCurve(g) {
+		t.Fatal()
+	}
+	if !testInOut(g) {
+		t.Fatal()
+	}
+	gT := GetBasePoint()
+	if !IsEqual(g, gT) {
+		t.Fatal()
+	}
+	p := NewPoint(g.x, g.y)
+	if !IsEqual(g, p) {
+		t.Fatal()
+	}
+}
+
+func TestInfinity(t *testing.T) {
+	p1 := scalarMult(g, curveN)
+	if !IsEqual(p1, inf) {
+		t.Fatal()
+	}
+	if !isInf(p1) {
+		t.Fatal()
+	}
+	if !testInOut(p1) {
+		t.Fatal()
+	}
+	p1 = add(g, gm)
+	if !IsEqual(p1, inf) {
+		t.Fatal()
+	}
+	p1 = add(g, inf)
+	if !IsEqual(p1, g) {
+		t.Fatal()
+	}
+	p1 = scalarMult(inf, math.EIGHT)
+	if !IsEqual(p1, inf) {
+		t.Fatal()
+	}
+}
+
+func TestMult(t *testing.T) {
+	p1 := double(g)
+	mult := func(n *big.Int) *Point {
+		p := ScalarMultBase(n)
+		if !IsOnCurve(p) {
+			t.Fatal()
+		}
+		if !testInOut(p) {
+			t.Fatal()
+		}
+		pp := scalarMult(g, n)
+		if !IsEqual(p, pp) {
+			t.Fatal()
+		}
+		return p
+	}
+	p2 := mult(math.TWO)
+	if !IsEqual(p1, p2) {
+		t.Fatal()
+	}
+
+	mult(math.THREE)
+	mult(math.SEVEN)
+	mult(math.EIGHT)
+}
+
+func TestAdd(t *testing.T) {
+	p1 := double(g)
+	p2 := add(g, p1)
+	p3 := add(p1, g)
+	if !IsEqual(p2, p3) {
+		t.Fatal()
+	}
+	if !testInOut(p3) {
+		t.Fatal()
+	}
+	p1 = add(double(g), g)
+	p2 = scalarMult(g, math.THREE)
+	if !IsEqual(p1, p2) {
+		t.Fatal()
+	}
+	if !testInOut(p3) {
+		t.Fatal()
+	}
+
+	for n := 0; n < 32; n++ {
+		a := nRnd(math.ZERO)
+		b := nRnd(math.ZERO)
+		c := new(big.Int).Add(a, b)
+		p := scalarMult(g, a)
+		q := scalarMult(g, b)
+		r := scalarMult(g, c)
+		p1 = add(p, q)
+		p2 = add(q, p)
+
+		if !IsEqual(p1, p2) || !IsEqual(p1, r) {
+			t.Fatal()
+		}
+	}
+}
+
+func TestDouble(t *testing.T) {
+	pnt := double(g)
+	if !IsOnCurve(pnt) {
+		t.Fatal()
+	}
+	if !testInOut(pnt) {
+		t.Fatal()
+	}
+
+}
+
+func TestNIST(t *testing.T) {
 	for _, set := range tests {
 		m := fromHex(set[0])
 		x := fromHex(set[1])
 		y := fromHex(set[2])
-		p1 = &Point{x, y}
-		p2 = scalarMult(g, m)
+		p1 := &Point{x, y}
+		p2 := scalarMult(g, m)
 
 		if !IsEqual(p1, p2) {
-			failed = true
-			fmt.Printf("-\nFAIL: %s\n", p1.emit())
-			fmt.Printf("FAIL: %s\n", p2.emit())
-		} else {
-			fmt.Print("+")
+			t.Fatal()
 		}
 		if !testInOut(p1) {
-			t.Fail()
-			return
+			t.Fatal()
 		}
 	}
-	if failed {
-		t.Fail()
-		fmt.Println(" Failed")
-		return
-	}
-	fmt.Println(" O.K.")
 }
 
-///////////////////////////////////////////////////////////////////////
-// helper methods: print a point
-
-func (p *Point) emit() string {
-	return "(" + p.x.String() + "," + p.y.String() + ")"
-}
-
-// test binary conversion for point
 func testInOut(p *Point) bool {
 	comprIn := p.x.Bit(0) == 0
 	b := pointAsBytes(p, comprIn)
 	pp, comprOut, err := pointFromBytes(b)
-	rc := (err == nil && IsEqual(pp, p) && comprIn == comprOut)
-	if !rc {
-		fmt.Printf(">> %s\n", p.emit())
-		fmt.Printf(">> %v -- %v\n", comprIn, comprOut)
-		fmt.Printf(">> %s\n", hex.EncodeToString(b))
-		fmt.Printf(">> %s\n", pp.emit())
-		fmt.Println("BinRep() failed!")
-	}
-	return rc
+	return (err == nil && IsEqual(pp, p) && comprIn == comprOut)
 }

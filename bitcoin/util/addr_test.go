@@ -1,39 +1,13 @@
-/*
- * Address-related test functions.
- *
- * (c) 2011-2013 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package util
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
 
 import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"github.com/bfix/gospel/bitcoin/ecc"
 	"testing"
 )
 
-///////////////////////////////////////////////////////////////////////
-// type for test data
-//
 // Serialization format:
 // 	--  4 byte: version bytes (mainnet: 0x0488B21E public, 0x0488ADE4 private; testnet: 0x043587CF public, 0x04358394 private)
 //  --  1 byte: depth: 0x00 for master nodes, 0x01 for level-1 descendants, ....
@@ -48,8 +22,6 @@ import (
 type TestData struct {
 	IDhex     string
 	IDaddr    string
-	SecHex    string
-	SecWif    string
 	PubHex    string
 	Chain     string
 	SerPubHex string
@@ -58,16 +30,11 @@ type TestData struct {
 	SerPrvB58 string
 }
 
-///////////////////////////////////////////////////////////////////////
-// test data definitions
-
 var (
 	data = []TestData{
 		{
 			"3442193e1bb70916e914552172cd4e2dbc9df811",
 			"15mKKb2eos1hWa6tisdPwwDC1a5J1y9nma",
-			"e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35",
-			"L52XzL2cMkHxqxBXRyEpnPQZGUs3uKiL3R11XbAdHigRzDozKZeW",
 			"0339a36013301597daef41fbe593a02cc513d0b55527ec2df1050e2e8ff49c85c2",
 			"873dff81c02f525623fd1fe5167eac3a55a049de3d314bb42ee227ffed37d508",
 			"0488b21e000000000000000000873dff81c02f525623fd1fe5167eac3a55a049de3d314bb42ee227ffed37d5080339a36013301597daef41fbe593a02cc513d0b55527ec2df1050e2e8ff49c85c2",
@@ -78,8 +45,6 @@ var (
 		{
 			"bd16bee53961a47d6ad888e29545434a89bdfe95",
 			"1JEoxevbLLG8cVqeoGKQiAwoWbNYSUyYjg",
-			"4b03d6fc340455b363f51020ad3ecca4f0850280cf436c70c727923f6db46c3e",
-			"KyjXhyHF9wTphBkfpxjL8hkDXDUSbE3tKANT94kXSyh6vn6nKaoy",
 			"03cbcaa9c98c877a26977d00825c956a238e8dddfbd322cce4f74b0b5bd6ace4a7",
 			"60499f801b896d83179a4374aeb7822aaeaceaa0db1f85ee3e904c4defbd9689",
 			"0488b21e00000000000000000060499f801b896d83179a4374aeb7822aaeaceaa0db1f85ee3e904c4defbd968903cbcaa9c98c877a26977d00825c956a238e8dddfbd322cce4f74b0b5bd6ace4a7",
@@ -95,149 +60,93 @@ var (
 	versionTestPrivate = "04358394"
 )
 
-///////////////////////////////////////////////////////////////////////
-//	public test method
-
 func TestAddress(t *testing.T) {
-
-	fmt.Println("********************************************************")
-	fmt.Println("bitcoin/util/addr Test")
-	fmt.Println("********************************************************")
-
 	for _, d := range data {
-
-		//-------------------------------------------------------------
-		// check address data
-		//-------------------------------------------------------------
-
 		idhex, err := hex.DecodeString(d.IDhex)
 		if err != nil {
-			fmt.Println("IDhex decoding error")
-			t.Fail()
-			return
+			t.Fatal()
 		}
 		idaddr, err := Base58Decode(d.IDaddr)
 		if err != nil {
-			fmt.Println("IDaddr decoding error")
-			t.Fail()
-			return
+			t.Fatal()
 		}
-
 		if !bytes.Equal(idaddr[1:len(idhex)+1], idhex) {
-			fmt.Println("IDaddr -- IDhex mismatch")
-			t.Fail()
+			t.Fatal()
 		}
-
-		//-------------------------------------------------------------
-		// check public key data
-		//-------------------------------------------------------------
-
 		pub, err := hex.DecodeString(d.PubHex)
 		if err != nil {
-			fmt.Println("PubHex decoding error")
-			t.Fail()
-			return
+			t.Fatal()
 		}
 		pubkey, err := ecc.PublicKeyFromBytes(pub)
 		if err != nil {
-			fmt.Println("PubHex conversion failed")
-			t.Fail()
-			return
+			t.Fatal()
 		}
 		if !ecc.IsOnCurve(pubkey.Q) {
-			fmt.Println("PubKey no a point on curve")
-			t.Fail()
-			return
-		}
-		addr := MakeAddress(pubkey)
-		if string(addr) != d.IDaddr {
-			fmt.Println("Address(pubKey) failed")
-			fmt.Println(">> " + addr)
-			fmt.Println(">> " + d.IDaddr)
-			t.Fail()
-			return
+			t.Fatal()
 		}
 
+		addr := MakeTestAddress(pubkey)
+
+		addr = MakeAddress(pubkey)
+		if string(addr) != d.IDaddr {
+			t.Fatal()
+		}
 		pubkeyhex := hex.EncodeToString(pubkey.Bytes())
 		if pubkeyhex != d.SerPubHex[90:] {
-			fmt.Println("SerPubHex -- key mismatch")
-			t.Fail()
+			t.Fatal()
 		}
 		if d.Chain != d.SerPubHex[26:90] {
-			fmt.Println("Chain mismatch")
-			t.Fail()
+			t.Fatal()
 		}
 		if versionMainPublic != d.SerPubHex[:8] {
-			fmt.Println("versionMainPublic mismatch")
-			t.Fail()
+			t.Fatal()
 		}
 		b, err := hex.DecodeString(d.SerPubHex)
 		if err != nil {
-			fmt.Println("SerPubHex decode failure")
-			t.Fail()
+			t.Fatal()
 		}
 		b = append(b, prefix(b)...)
 		pubser := Base58Encode(b)
 		if pubser != d.SerPubB58 {
-			fmt.Println("Public B58 mismatch")
-			t.Fail()
+			t.Fatal()
 		}
-
-		//-------------------------------------------------------------
-		// check private key data
-		//-------------------------------------------------------------
-
 		prv, err := hex.DecodeString(d.SerPrvHex[90:])
 		if err != nil {
-			fmt.Println("PrvHex decoding error: " + err.Error())
-			t.Fail()
-			return
+			t.Fatal()
 		}
-		// skip leading zeros
 		if len(prv) == 33 {
 			if prv[0] != 0 {
-				fmt.Println("PrvHex wrong format")
-				t.Fail()
-				return
+				t.Fatal()
 			}
 			prv = prv[1:]
 		}
 		prvkey, err := ecc.PrivateKeyFromBytes(prv)
 		if err != nil {
-			fmt.Println("PrvHex conversion failed: " + err.Error())
-			t.Fail()
-			return
+			t.Fatal()
 		}
 		q := ecc.ScalarMultBase(prvkey.D)
 		if !ecc.IsEqual(q, pubkey.Q) {
-			fmt.Println("public private key mismatch")
-			t.Fail()
+			t.Fatal()
 		}
 		if d.Chain != d.SerPubHex[26:90] {
-			fmt.Println("Chain mismatch")
-			t.Fail()
+			t.Fatal()
 		}
 		if versionMainPrivate != d.SerPrvHex[:8] {
-			fmt.Println("versionMainPrivate mismatch")
-			t.Fail()
+			t.Fatal()
 		}
 		b, err = hex.DecodeString(d.SerPrvHex)
 		if err != nil {
-			fmt.Println("SerPrvHex decode failure")
-			t.Fail()
+			t.Fatal()
 		}
 		b = append(b, prefix(b)...)
 		prvser := Base58Encode(b)
 		if prvser != d.SerPrvB58 {
-			fmt.Println("Public B58 mismatch")
-			t.Fail()
+			t.Fatal()
 		}
 	}
 }
 
-// helper: compute double-SHA256 prefix (4 bytes)
 func prefix(b []byte) []byte {
-
 	sha256 := sha256.New()
 	sha256.Write(b)
 	h := sha256.Sum(nil)

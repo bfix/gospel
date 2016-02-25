@@ -1,15 +1,9 @@
 package crypto
 
-///////////////////////////////////////////////////////////////////////
-// import external declarations
-
 import (
-	"fmt"
 	"math"
 	"testing"
 )
-
-///////////////////////////////////////////////////////////////////////
 
 const (
 	bitsPerBlock = 8
@@ -18,18 +12,10 @@ const (
 	eTU          = 7.1836656
 )
 
-///////////////////////////////////////////////////////////////////////
-// Test case for PRNG:
 // The test is based on the paper "A Universal Statistical Test for
 // Random Bit Generators" by Ueli Maurer, ETHZ 1992
 // [ftp://ftp.inf.ethz.ch/pub/crypto/publications/Maurer92a.pdf]
-
 func TestPrng(t *testing.T) {
-
-	fmt.Println("********************************************")
-	fmt.Println("crypto/prng Test")
-	fmt.Println("********************************************")
-	fmt.Println()
 
 	// allocate table
 	v := 1 << bitsPerBlock
@@ -47,7 +33,6 @@ func TestPrng(t *testing.T) {
 		}
 		tab[i] = q
 	}
-	fmt.Printf("Initializing table required %f over-sampling.\n", float32(q)/float32(v))
 
 	// compute statistics
 	sum := 0.0
@@ -61,6 +46,8 @@ func TestPrng(t *testing.T) {
 			n++
 		}
 		fTU := sum / (float64(n) * math.Log(2))
-		fmt.Printf("%d: %f (%f)\n", n, fTU, fTU-eTU)
+		if fTU-eTU > 0.0001 {
+			t.Fatal()
+		}
 	}
 }

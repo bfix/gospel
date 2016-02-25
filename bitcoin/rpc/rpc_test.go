@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -15,230 +16,150 @@ const (
 	blockHash  = "00000000000003fab35380c07f6773ae27727b21016a8821c88e47e241c86458"
 )
 
-func TestRPC(t *testing.T) {
+var (
+	sess  *Session
+	err   error
+	info  *Info
+	addr  = ""
+	accnt = ""
+)
 
-	fmt.Println("********************************************************")
-	fmt.Println("bitcoin/rpc/calls Test")
-	fmt.Println("********************************************************")
-
-	sess, err := NewSession("http://localhost:18332", "DonaldDuck", "MoneyMakesTheWorldGoRound")
+func init() {
+	sess, err = NewSession("http://localhost:18332", "DonaldDuck", "MoneyMakesTheWorldGoRound")
 	if err != nil {
-		fmt.Println("session creation failed: " + err.Error())
-		t.Fail()
-		return
+		sess = nil
 	}
+}
 
-	//=================================================================
-	// GENERIC methods
-	//=================================================================
-
-	info, err := sess.GetInfo()
+func TestSession(t *testing.T) {
+	if sess == nil {
+		t.Fatal()
+	}
+	info, err = sess.GetInfo()
 	if err != nil {
-		fmt.Println("GetInfo() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
+}
 
-	//-----------------------------------------------------  GetConnectionCount
+func TestConnectionCount(t *testing.T) {
 	conns, err := sess.GetConnectionCount()
 	if err != nil {
-		fmt.Println("GetConnectionCount() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	if conns != info.Connections {
-		fmt.Println("connection count mismatch")
-		t.Fail()
-		return
+		t.Fatal()
 	}
+}
 
-	//-----------------------------------------------------  GetDifficulty
+func TestDifficulty(t *testing.T) {
 	diff, err := sess.GetDifficulty()
 	if err != nil {
-		fmt.Println("GetDifficulty() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	if diff != info.Difficulty {
-		fmt.Println("difficulty mismatch")
-		t.Fail()
-		return
+		t.Fatal()
 	}
+}
 
-	//=================================================================
-	// WALLET-related methods
-	//=================================================================
-
-	//-----------------------------------------------------  BackupWallet
-	err = sess.BackupWallet(walletCopy)
-	if err != nil {
-		fmt.Println("BackupWallet(): " + err.Error())
-		t.Fail()
-		return
+func TestWallet(t *testing.T) {
+	if err = sess.BackupWallet(walletCopy); err != nil {
+		t.Fatal()
 	}
-	_, err = os.Stat(walletCopy)
-	if err != nil {
-		fmt.Println("Wallet file: " + err.Error())
-		t.Fail()
-		return
+	if _, err = os.Stat(walletCopy); err != nil {
+		t.Fatal()
 	}
 	if err = os.Remove(walletCopy); err != nil {
-		fmt.Println("Wallet file: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
-
-	//-----------------------------------------------------  WalletLock
-	err = sess.WalletLock()
-	if err != nil {
-		fmt.Println("WalletLock(): " + err.Error())
-		t.Fail()
-		return
+	if err = sess.WalletLock(); err != nil {
+		t.Fatal()
 	}
-
-	//-----------------------------------------------------  WalletPassphrase
-	err = sess.WalletPassphrase(passphrase, 600)
-	if err != nil {
-		fmt.Println("WalletPassphrase(): " + err.Error())
-		t.Fail()
-		return
+	if err = sess.WalletPassphrase(passphrase, 600); err != nil {
+		t.Fatal()
 	}
+}
 
-	//-----------------------------------------------------  KeypoolRefill
+func TestKeypool(t *testing.T) {
 	err = sess.KeypoolRefill()
 	if err != nil {
-		fmt.Println("KeypoolRefill(): " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
+}
 
+func TestImport(t *testing.T) {
 	if newAccount {
-		//-------------------------------------------------  ImportPrivateKey
-		err = sess.ImportPrivateKey(prvKey)
-		if err != nil {
-			fmt.Println("ImportPrivateKey(): " + err.Error())
-			t.Fail()
+		if err = sess.ImportPrivateKey(prvKey); err != nil {
+			t.Fatal()
 			return
 		}
 	}
+}
 
-	//=================================================================
-	// ACCOUNT-related methods
-	//=================================================================
-
-	//-----------------------------------------------------  ListUnspent
-	_, err = sess.ListUnspent(1, 999999)
-	if err != nil {
-		fmt.Println("ListUnspent() failed: " + err.Error())
-		t.Fail()
-		return
+func TestListUnspend(t *testing.T) {
+	if _, err = sess.ListUnspent(1, 999999); err != nil {
+		t.Fatal()
 	}
 
-	var (
-		addr  = ""
-		accnt = ""
-	)
+}
+
+func TestAccount(t *testing.T) {
 	if newAccount {
-		//-------------------------------------------------  GetNewAddress
 		label := fmt.Sprintf("Account %d", time.Now().Unix())
 		addr, err = sess.GetNewAddress(label)
 		if err != nil {
-			fmt.Println("GetNewAddress() failed: " + err.Error())
-			t.Fail()
-			return
+			t.Fatal()
 		}
-
-		//-------------------------------------------------  SetAccount
 		accnt = "Renamed " + label
 		err = sess.SetAccount(addr, accnt)
 		if err != nil {
-			fmt.Println("SetAccount() failed: " + err.Error())
-			t.Fail()
-			return
+			t.Fatal()
 		}
-
-		//-------------------------------------------------  GetAccount
 		label, err = sess.GetAccount(addr)
 		if err != nil {
-			fmt.Println("GetAccount() failed: " + err.Error())
-			t.Fail()
-			return
+			t.Fatal()
 		}
 		if accnt != label {
-			fmt.Println("account label mismatch")
-			t.Fail()
-			return
+			t.Fatal()
 		}
-
-		//-------------------------------------------------  GetAccountAddress
 		_, err = sess.GetAccountAddress(accnt)
 		if err != nil {
-			fmt.Println("GetAccountAddress() failed: " + err.Error())
-			t.Fail()
-			return
-		}
-	} else {
-		//-------------------------------------------------  ListAccounts
-		accnts, err := sess.ListAccounts(0)
-		if err != nil {
-			fmt.Println("ListAccounts() failed: " + err.Error())
-			t.Fail()
-			return
-		}
-		for label := range accnts {
-			//---------------------------------------------  GetAddressByAccount
-			addrList, err := sess.GetAddressesByAccount(label)
-			if err != nil {
-				fmt.Println("GetAddressesByAccount() failed: " + err.Error())
-				t.Fail()
-				return
-			}
-			if len(addrList) == 0 {
-				continue
-			}
-			// use first valid pair
-			if len(label) > 0 {
-				//-------------------------------------------------  GetBalance
-				bal, err := sess.GetBalance(label)
-				if err != nil {
-					fmt.Println("GetBalance(label) failed: " + err.Error())
-					t.Fail()
-					return
-				}
-				if bal > 0 {
-					accnt = label
-					addr = addrList[0]
-					break
-				}
-			}
-		}
-		if len(accnt) == 0 {
-			fmt.Println("No valid account label found")
-			t.Fail()
-			return
+			t.Fatal()
 		}
 	}
-	//fmt.Println ("Using account '" + accnt + "' with address '" + addr + "'")
 
-	//-----------------------------------------------------  ListAccounts
 	accnts, err := sess.ListAccounts(0)
 	if err != nil {
-		fmt.Println("ListAccounts() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
-	if _, ok := accnts[accnt]; !ok {
-		fmt.Println("ListAccounts(label) failed")
-		t.Fail()
-		return
+	for label := range accnts {
+		addrList, err := sess.GetAddressesByAccount(label)
+		if err != nil {
+			t.Fatal()
+		}
+		if len(addrList) == 0 {
+			continue
+		}
+		if len(label) > 0 {
+			bal, err := sess.GetBalance(label)
+			if err != nil {
+				t.Fatal()
+			}
+			if bal > 0 {
+				accnt = label
+				addr = addrList[0]
+				break
+			}
+		}
+	}
+	if len(accnt) > 0 {
+		if _, ok := accnts[accnt]; !ok {
+			t.Fatal()
+		}
 	}
 
-	//-----------------------------------------------------  GetAddressesByAccount
 	addrList, err := sess.GetAddressesByAccount(accnt)
 	if err != nil {
-		fmt.Println("GetAddressesByAccount('" + accnt + "') failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	found := false
 	for _, a := range addrList {
@@ -248,149 +169,94 @@ func TestRPC(t *testing.T) {
 		}
 	}
 	if !found {
-		fmt.Println("GetAddressesByAccount() fail to deliver known address")
-		t.Fail()
-		return
+		t.Fatal()
 	}
+}
 
-	//-----------------------------------------------------  GetBalance
-	_, err = sess.GetBalance(accnt)
-	if err != nil {
-		fmt.Println("GetBalance(accnt) failed: " + err.Error())
-		t.Fail()
-		return
+func TestBalance(t *testing.T) {
+	if _, err = sess.GetBalance(accnt); err != nil {
+		t.Fatal()
 	}
-
-	//-----------------------------------------------------  GetBalanceAll
-	_, err = sess.GetBalanceAll()
-	if err != nil {
-		fmt.Println("GetBalance() failed: " + err.Error())
-		t.Fail()
-		return
+	if _, err = sess.GetBalanceAll(); err != nil {
+		t.Fatal()
 	}
+}
 
-	//-----------------------------------------------------  ListReceivedByAccount
+func TestReceived(t *testing.T) {
 	rcv1, err := sess.ListReceivedByAccount(1, false)
 	if err != nil {
-		fmt.Println("ListReceivedByAccount() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
-
-	//-----------------------------------------------------  ListReceivedByAddress
 	rcv2, err := sess.ListReceivedByAddress(1, false)
 	if err != nil {
-		fmt.Println("ListReceivedByAddress() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	if len(rcv1) != len(rcv2) {
-		fmt.Println("received count mismatch")
-		t.Fail()
-		return
+		t.Fatal()
 	}
+}
 
-	//-----------------------------------------------------  ValidateAddress
+func TestAddress(t *testing.T) {
 	val, err := sess.ValidateAddress(addr)
 	if err != nil {
-		fmt.Println("ValidateAddress() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	if val.Address != addr {
-		fmt.Println("ValidateAddress(): address mismatch")
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	if val.Account != accnt {
-		fmt.Println("ValidateAddress(): account mismatch")
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	if !val.IsMine {
-		fmt.Println("ValidateAddress(): owner mismatch")
-		t.Fail()
+		t.Fatal()
 		return
 	}
+}
 
-	//=================================================================
-	// BLOCKCHAIN-related methods
-	//=================================================================
-
-	//-----------------------------------------------------  GetBlockCount
+func TestBlock(t *testing.T) {
 	blks, err := sess.GetBlockCount()
 	if err != nil {
-		fmt.Println("GetBlockCount() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	if blks != info.Blocks {
-		fmt.Println("block count mismatch")
-		t.Fail()
-		return
+		t.Fatal()
 	}
-
-	//-----------------------------------------------------  GetBlock
 	block, err := sess.GetBlock(blockHash)
 	if err != nil {
-		fmt.Println("GetBlock() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
-
-	//-----------------------------------------------------  GetBlockHash
 	blkhash, err := sess.GetBlockHash(block.Height)
 	if err != nil {
-		fmt.Println("GetBlockHash() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	if blkhash != block.Hash {
-		fmt.Println("GetBlockHash() mismatch")
-		t.Fail()
-		return
+		t.Fatal()
 	}
+}
 
-	//=================================================================
-	// TRANSACTION-related methods
-	//=================================================================
-
-	//-----------------------------------------------------  ListTransactions
+func TestTransaction(t *testing.T) {
 	txlist, err := sess.ListTransactions(accnt, 25, 0)
 	if err != nil {
-		fmt.Println("ListTransactions() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	if len(txlist) > 0 {
 		txid := txlist[0].ID
-		//-------------------------------------------------  GetTransaction
-		_, err = sess.GetTransaction(txid)
-		if err != nil {
-			fmt.Println("GetTransaction() failed: " + err.Error())
-			t.Fail()
-			return
+		if _, err = sess.GetTransaction(txid); err != nil {
+			t.Fatal()
 		}
 	}
 
-	//-----------------------------------------------------  ListSinceBlock
 	txlist, _, err = sess.ListSinceBlock("", 1)
 	if err != nil {
-		fmt.Println("ListSinceBlock() failed: " + err.Error())
-		t.Fail()
-		return
+		t.Fatal()
 	}
 	if len(txlist) == 0 {
-		fmt.Println("ListSinceBlock() with no results")
-		t.Fail()
-		return
+		t.Fatal()
 	}
+}
 
-	//-----------------------------------------------------  SetTxFee
-	err = sess.SetTxFee(0.0001)
-	if err != nil {
-		fmt.Println("SetTxFee() failed: " + err.Error())
-		t.Fail()
-		return
+func TestFee(t *testing.T) {
+	if err = sess.SetTxFee(0.0001); err != nil {
+		t.Fatal()
 	}
 }

@@ -1,77 +1,62 @@
 package data
 
-///////////////////////////////////////////////////////////////////////
-// import external declarations
-
 import (
-	"fmt"
 	"testing"
 )
 
-///////////////////////////////////////////////////////////////////////
-// Test case for Stacks
-
-func TestStack(t *testing.T) {
-
-	fmt.Println("********************************************")
-	fmt.Println("data/stack Test")
-	fmt.Println("********************************************")
-	fmt.Println()
-
-	// test integer stack
-	fmt.Println("Testing integer stack")
+func TestIntStack(t *testing.T) {
 	is := NewIntStack()
 	if is.Len() != 0 {
-		t.Fail()
+		t.Fatal()
 	}
 	for i := 0; i < 10; i++ {
 		is.Push(i)
 		if !is.IsTop(i) {
-			t.Fail()
+			t.Fatal()
 		}
 	}
 	if is.Len() != 10 {
-		t.Fail()
+		t.Fatal()
 	}
 	for i := 0; i < 10; i++ {
 		j := 9 - i
 		if is.Peek() != j {
-			t.Fail()
+			t.Fatal()
 		}
 		if is.Pop() != j {
-			t.Fail()
+			t.Fatal()
 		}
 		if is.Len() != j {
-			t.Fail()
+			t.Fatal()
 		}
 	}
+}
 
-	// test string stack
-	fmt.Println("Testing generic stack with strings")
+func TestStringStack(t *testing.T) {
 	list := []string{
 		"aa", "bb", "cc", "dd", "ee",
 		"ff", "gg", "hh", "ii", "kk",
 	}
 	ss := NewStack()
 	if ss.Len() != 0 {
-		t.Fail()
+		t.Fatal()
 	}
 	for _, v := range list {
 		ss.Push(v)
 	}
 	if ss.Len() != 10 {
-		t.Fail()
+		t.Fatal()
 	}
 	for i := 0; i < 10; i++ {
 		j := 9 - i
 		if ss.Peek().(string) != list[j] {
-			t.Fail()
+			t.Fatal()
 		}
 		if ss.Pop().(string) != list[j] {
-			t.Fail()
+			t.Fatal()
 		}
 		if ss.Len() != j {
-			t.Fail()
+			t.Fatal()
 		}
 	}
 }

@@ -1,59 +1,65 @@
-/*
- * Exchange-related test functions.
- *
- * (c) 2013 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package util
 
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
-
 import (
-	"fmt"
 	"github.com/bfix/gospel/bitcoin/ecc"
 	"testing"
 )
 
-///////////////////////////////////////////////////////////////////////
-//	public test method
-
 func TestExchange(t *testing.T) {
+	var err error
 
-	fmt.Println("********************************************************")
-	fmt.Println("bitcoin/util/exchange Test")
-	fmt.Println("********************************************************")
+	if _, err = ImportPrivateKey("invalid", true); err == nil {
+		t.Fatal()
+	}
 
 	for n := 0; n < 100; n++ {
 		testnet := (n&1 == 1)
-		key := ecc.GenerateKeys()
-
+		compr := (n%3 == 0)
+		key := ecc.GenerateKeys(compr)
 		s := ExportPrivateKey(key, testnet)
-
-		kk, err := ImportPrivateKey(s, testnet)
-		if err != nil {
-			fmt.Println("ImportPrivateKey() failed: " + err.Error())
-			t.Fail()
-			return
+		x, _ := Base58Decode(s)
+		if len(x) != 37 && len(x) != 38 {
+			t.Fatal()
 		}
 
-		if kk.D.Cmp(key.D) != 0 {
-			fmt.Println("key mismatch")
-			t.Fail()
-			return
+		kk, err := ImportPrivateKey(s, testnet)
+		if err != nil || kk.D.Cmp(key.D) != 0 {
+			t.Fatal()
+		}
+
+		tt := make([]byte, len(x))
+		copy(tt, x)
+		tt[0] = 0
+		ss := Base58Encode(tt)
+		if _, err = ImportPrivateKey(ss, testnet); err == nil {
+			t.Fatal()
+		}
+
+		copy(tt, x)
+		tt[len(tt)-1] = 0
+		ss = Base58Encode(tt)
+		if _, err = ImportPrivateKey(ss, testnet); err == nil {
+			t.Fatal()
+		}
+
+		if compr {
+			tt = x
+			tt[33] = 0
+			ss = Base58Encode(tt)
+			if _, err = ImportPrivateKey(ss, testnet); err == nil {
+				t.Fatal()
+			}
+		}
+
+		copy(tt, x)
+		if len(tt) == 37 {
+			tt = tt[:36]
+		} else {
+			tt = append(tt, 0)
+		}
+		ss = Base58Encode(tt)
+		if _, err = ImportPrivateKey(ss, testnet); err == nil {
+			t.Fatal()
 		}
 	}
 }

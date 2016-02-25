@@ -1,28 +1,11 @@
-//*********************************************************************
-//*   PGMID.        TEST PARSER IMPLEMENTATION.                       *
-//*   AUTHOR.       BERND R. FIX   >Y<                                *
-//*   DATE WRITTEN. 10/11/01.                                         *
-//*   COPYRIGHT.    (C) BY BERND R. FIX. ALL RIGHTS RESERVED.         *
-//*                 LICENSED MATERIAL - PROGRAM PROPERTY OF THE       *
-//*                 AUTHOR. REFER TO COPYRIGHT INSTRUCTIONS.          *
-//*   REMARKS.      REVISION HISTORY AT END OF FILE.                  *
-//*********************************************************************
-
 package parser
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
 
 import (
 	"bufio"
-	"fmt"
 	"strconv"
 	"strings"
 	"testing"
 )
-
-///////////////////////////////////////////////////////////////////////
-//	test variables
 
 var (
 	currName    string // current name of machine
@@ -45,20 +28,7 @@ var (
 	}
 )
 
-///////////////////////////////////////////////////////////////////////
-//	public test method
-
-//---------------------------------------------------------------------
-/**
- * Test parser implementation.
- * @param t *testing.T - test handler
- */
-//---------------------------------------------------------------------
 func TestParser(t *testing.T) {
-
-	fmt.Println("********************************************************")
-	fmt.Println("parser/parser Test")
-	fmt.Println("********************************************************")
 
 	data := GetTestData1()
 
@@ -67,22 +37,13 @@ func TestParser(t *testing.T) {
 	pos = 0
 	err := Parser(rdr, callback)
 	if err != nil {
-		fmt.Printf("Error: %v", err)
-		t.Fail()
-
+		t.Fatal()
 	} else if !rc {
-		t.Fail()
+		t.Fatal()
 	}
 }
 
-//---------------------------------------------------------------------
-/**
- * Get test data definition with given id for testing.
- * @param id int - test data identifier
- * @return string - test data definition
- */
-//---------------------------------------------------------------------
-
+// Get test data definition with given id for testing.
 func GetTestData1() string {
 
 	// assemble test data
@@ -113,18 +74,7 @@ func GetTestData1() string {
 	return data
 }
 
-///////////////////////////////////////////////////////////////////////
-//	private test helper method
-
-//---------------------------------------------------------------------
-/**
- * Handle callback from parser.
- * @param mode int - parameter mode
- * @param param *Parameter - reference to new parameter
- * @return bool - successful operation?
- */
-//---------------------------------------------------------------------
-
+// Handle callback from parser.
 func callback(mode int, param *Parameter) bool {
 
 	// if parameter is specified
@@ -161,14 +111,3 @@ func callback(mode int, param *Parameter) bool {
 	}
 	return rc
 }
-
-///////////////////////////////////////////////////////////////////////
-//	Revision history:
-///////////////////////////////////////////////////////////////////////
-//
-//	Revision 2.0  2012-01-09 16:03:23  brf
-//  First release as free software (GPL3+)
-//
-//	Revision 1.6  2010-11-28 13:14:26  brf
-//	New test layout.
-//
