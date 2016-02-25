@@ -116,7 +116,7 @@ func TestAddress(t *testing.T) {
 		}
 		if len(prv) == 33 {
 			if prv[0] != 0 {
-				t.Fatal()
+				t.Fatal("no leading zero")
 			}
 			prv = prv[1:]
 		}
