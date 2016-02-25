@@ -1,28 +1,4 @@
-/*
- * Bitcoin RPC return types.
- *
- * (c) 2011-2013 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package rpc
-
-///////////////////////////////////////////////////////////////////////
-// public types
-
-//---------------------------------------------------------------------
 
 // Info is a generic information about running Bitcoin server.
 type Info struct {
@@ -42,8 +18,6 @@ type Info struct {
 	Blocks          int
 }
 
-//---------------------------------------------------------------------
-
 // Block (element of the Bitcoin blockchain)
 type Block struct {
 	IDList            []string
@@ -61,8 +35,6 @@ type Block struct {
 	Size              int
 }
 
-//---------------------------------------------------------------------
-
 //Transaction is a Bitcoin transaction
 type Transaction struct {
 	Amount        float64
@@ -76,8 +48,6 @@ type Transaction struct {
 	TimeReceived  int
 }
 
-//---------------------------------------------------------------------
-
 // Vinput is a raw transaction input slot
 type Vinput struct {
 	ID        string
@@ -85,8 +55,6 @@ type Vinput struct {
 	ScriptSig string
 	Sequence  int
 }
-
-//---------------------------------------------------------------------
 
 // Voutput is a raw transaction output slot
 type Voutput struct {
@@ -98,8 +66,6 @@ type Voutput struct {
 	Addresses    []string
 }
 
-//---------------------------------------------------------------------
-
 // RawTransaction is a Bitcoin transaction in raw format
 type RawTransaction struct {
 	ID       string
@@ -109,8 +75,6 @@ type RawTransaction struct {
 	Vout     []Voutput
 }
 
-//---------------------------------------------------------------------
-
 // Output of a transaction
 type Output struct {
 	ID           string
@@ -119,16 +83,12 @@ type Output struct {
 	RedeemScript string
 }
 
-//---------------------------------------------------------------------
-
 // Unspent transactions for accounts
 type Unspent struct {
 	Output
 	Amount        float64
 	Confirmations int
 }
-
-//---------------------------------------------------------------------
 
 // Received transactions for account/address (accumulated)
 type Received struct {
@@ -139,8 +99,6 @@ type Received struct {
 	Confirmations int
 }
 
-//---------------------------------------------------------------------
-
 // Validity check on address
 type Validity struct {
 	Address      string
@@ -150,8 +108,6 @@ type Validity struct {
 	IsMine       bool
 	IsValid      bool
 }
-
-//---------------------------------------------------------------------
 
 // Balance of Bitcoin address (used for outgoing transactions as well)
 type Balance struct {

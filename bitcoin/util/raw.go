@@ -136,7 +136,7 @@ func LengthPrefix(size int) []byte {
 		prefix = append(prefix, 0x4d)
 		prefix = append(prefix, byte(size&0xFF))
 		prefix = append(prefix, byte((size>>8)&0xFF))
-	case size < 65536:
+	default:
 		prefix = append(prefix, 0x4d)
 		prefix = append(prefix, byte(size&0xFF))
 		prefix = append(prefix, byte((size>>8)&0xFF))

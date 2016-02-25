@@ -2,7 +2,7 @@ package parser
 
 /*
  * --------------------------------------------------------------------
- * Configuraion parser:
+ * Configuration parser:
  * --------------------------------------------------------------------
  *     A Parser method can traverse data definitions according to
  *  the format described in section [2] as BNF. The methods has two
@@ -64,7 +64,7 @@ package parser
  *  last parameter in a stream!
  * --------------------------------------------------------------------
  *
- * (c) 2010 Bernd Fix   >Y<
+ * (c) 2010-2016 Bernd Fix   >Y<
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

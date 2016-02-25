@@ -10,7 +10,7 @@ package ecc
  * are defined in [http://www.secg.org/collateral/sec2_final.pdf]
  * on page 15.
  *
- * (c) 2011-2012 Bernd Fix   >Y<
+ * (c) 2011-2016 Bernd Fix   >Y<
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

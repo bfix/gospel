@@ -1,33 +1,9 @@
-/*
- * Stack: FIFO stack data class for generic types and integers.
- *
- * (c) 2012 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package data
-
-///////////////////////////////////////////////////////////////////////
-// Generic Stack type and implementation.
 
 // Stack for generic data types.
 type Stack struct {
 	data [](interface{}) // list of stack elements
 }
-
-//=====================================================================
 
 // NewStack instantiates a new generic Stack object.
 func NewStack() *Stack {
@@ -36,8 +12,6 @@ func NewStack() *Stack {
 	}
 }
 
-//---------------------------------------------------------------------
-
 // Pop last entry from stack and return it to caller.
 func (s *Stack) Pop() (v interface{}) {
 	pos := len(s.data) - 1
@@ -45,21 +19,15 @@ func (s *Stack) Pop() (v interface{}) {
 	return
 }
 
-//---------------------------------------------------------------------
-
 // Push generic entry to stack.
 func (s *Stack) Push(v interface{}) {
 	s.data = append(s.data, v)
 }
 
-//---------------------------------------------------------------------
-
 // Len returns the number of elements on stack.
 func (s *Stack) Len() int {
 	return len(s.data)
 }
-
-//---------------------------------------------------------------------
 
 // Peek at the last element pushed to stack without dropping it.
 func (s *Stack) Peek() (v interface{}) {
@@ -70,14 +38,10 @@ func (s *Stack) Peek() (v interface{}) {
 	return s.data[pos]
 }
 
-///////////////////////////////////////////////////////////////////////
-
 // IntStack is an Integer-based Stack type and implementation.
 type IntStack struct {
 	data []int // list of stack elements
 }
-
-//=====================================================================
 
 // NewIntStack instantiates a new integer-based Stack object.
 func NewIntStack() *IntStack {
@@ -86,8 +50,6 @@ func NewIntStack() *IntStack {
 	}
 }
 
-//---------------------------------------------------------------------
-
 // Pop last entry from stack and return it to caller.
 func (s *IntStack) Pop() (v int) {
 	pos := len(s.data) - 1
@@ -95,28 +57,20 @@ func (s *IntStack) Pop() (v int) {
 	return
 }
 
-//---------------------------------------------------------------------
-
 // Push entry to stack.
 func (s *IntStack) Push(v int) {
 	s.data = append(s.data, v)
 }
-
-//---------------------------------------------------------------------
 
 // Len returns the number of elements on stack.
 func (s *IntStack) Len() int {
 	return len(s.data)
 }
 
-//---------------------------------------------------------------------
-
 // Peek at the last element pushed to stack without dropping it.
 func (s *IntStack) Peek() (v int) {
 	return s.data[len(s.data)-1]
 }
-
-//---------------------------------------------------------------------
 
 // IsTop compares last element with given value.
 func (s *IntStack) IsTop(v int) bool {

@@ -1,35 +1,10 @@
-/*
- * Logging-related functions.
- *
- * (c) 2011-2012 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package logger
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
 
 import (
 	"fmt"
 	"os"
 	"time"
 )
-
-///////////////////////////////////////////////////////////////////////
-// Logging constants
 
 const (
 	// CRITICAL errors
@@ -49,9 +24,6 @@ const (
 	ROTATE = iota // rotate log file
 )
 
-///////////////////////////////////////////////////////////////////////
-// Local types
-
 type logger struct {
 	msgChan chan string // message to be logged
 	cmdChan chan int    // commands to be executed
@@ -60,18 +32,11 @@ type logger struct {
 	level   int         // current log level
 }
 
-///////////////////////////////////////////////////////////////////////
-// Local variables
-
 var (
 	logInst *logger // singleton logger instance
 )
 
-///////////////////////////////////////////////////////////////////////
-// Logger-internal methods / functions
-/*
- * Instantiate new logger (to stdout) and run its handler loop.
- */
+// Instantiate new logger (to stdout) and run its handler loop.
 func init() {
 	logInst = new(logger)
 	logInst.msgChan = make(chan string)
@@ -108,9 +73,6 @@ func init() {
 	}()
 }
 
-///////////////////////////////////////////////////////////////////////
-// Public logging functions.
-
 // Println punches logging data for given level.
 func Println(level int, line string) {
 	if level <= logInst.level {
@@ -118,18 +80,12 @@ func Println(level int, line string) {
 	}
 }
 
-//---------------------------------------------------------------------
-
 // Printf punches formatted logging data for givel level
 func Printf(level int, format string, v ...interface{}) {
 	if level <= logInst.level {
 		logInst.msgChan <- getTag(level) + fmt.Sprintf(format, v...)
 	}
 }
-
-//=====================================================================
-// Logfile functions
-//=====================================================================
 
 // LogToFile starts logging messages to file.
 func LogToFile(filename string) bool {
@@ -146,23 +102,15 @@ func LogToFile(filename string) bool {
 	return false
 }
 
-//---------------------------------------------------------------------
-
 // Rotate log file.
 func Rotate() {
 	logInst.cmdChan <- ROTATE
 }
 
-//=====================================================================
-// Human-readable log tags
-//=====================================================================
-
 // GetLogLevel returns a numeric log level.
 func GetLogLevel() int {
 	return logInst.level
 }
-
-//---------------------------------------------------------------------
 
 // GetLogLevelName returns the current loglevel in human-readable form.
 func GetLogLevelName() string {
@@ -183,8 +131,6 @@ func GetLogLevelName() string {
 	return "UNKNOWN_LOGLEVEL"
 }
 
-//---------------------------------------------------------------------
-
 // SetLogLevel sets the logging level from numeric value
 func SetLogLevel(lvl int) {
 	if lvl < CRITICAL || lvl > DBG {
@@ -192,8 +138,6 @@ func SetLogLevel(lvl int) {
 	}
 	logInst.level = lvl
 }
-
-//---------------------------------------------------------------------
 
 // SetLogLevelFromName sets the logging level from symbolic name.
 func SetLogLevelFromName(name string) {
@@ -214,8 +158,6 @@ func SetLogLevelFromName(name string) {
 		Println(WARN, "[logger] Unknown loglevel '"+name+"' requested.")
 	}
 }
-
-//---------------------------------------------------------------------
 
 // GetTag returns the loglevel tag as prefix for message
 func getTag(level int) string {

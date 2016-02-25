@@ -1,26 +1,4 @@
-/*
- * Base58 en- and decoding.
- *
- * (c) 2011-2013 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package util
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
 
 import (
 	"bytes"
@@ -28,16 +6,11 @@ import (
 	"math/big"
 )
 
-///////////////////////////////////////////////////////////////////////
-// global variables
-
 var (
 	alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 	zero     = big.NewInt(0)
 	b58      = big.NewInt(58)
 )
-
-///////////////////////////////////////////////////////////////////////
 
 // Base58Encode converts byte array to base58 string representation
 func Base58Encode(in []byte) string {
@@ -63,8 +36,6 @@ func Base58Encode(in []byte) string {
 	// return base58 representation
 	return string(reverse(b))
 }
-
-///////////////////////////////////////////////////////////////////////
 
 // Base58Decode converts a base58 representation into byte array
 func Base58Decode(s string) ([]byte, error) {
@@ -95,9 +66,7 @@ func Base58Decode(s string) ([]byte, error) {
 	return append(pf, val.Bytes()...), nil
 }
 
-///////////////////////////////////////////////////////////////////////
 // reverse byte array
-
 func reverse(in []byte) []byte {
 	n := len(in)
 	out := make([]byte, n)

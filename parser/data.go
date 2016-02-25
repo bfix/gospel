@@ -1,26 +1,4 @@
-/*
- * Parser data: handle nested data structures.
- *
- * (c) 2010 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package parser
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations.
 
 import (
 	"bufio"
@@ -29,18 +7,12 @@ import (
 	"strings"
 )
 
-///////////////////////////////////////////////////////////////////////
-//	Public types
-
 // Data represents parsed data
 type Data struct {
 	Parameter
 	data.Vector
 	parent *Data
 }
-
-///////////////////////////////////////////////////////////////////////
-//	Public methods
 
 // Read data definition from reader and re-built as internal data
 // structure.
@@ -108,14 +80,10 @@ func (d *Data) Read(rdr *bufio.Reader) error {
 	return Parser(rdr, callback)
 }
 
-//---------------------------------------------------------------------
-
 // Write data structure to stream writer.
 func (d *Data) Write(wrt *bufio.Writer) {
 	d.writeData(wrt, 0)
 }
-
-//---------------------------------------------------------------------
 
 // Elem accesses the n.th sub-element of nested data structure.
 func (d *Data) Elem(n int) *Data {
@@ -126,8 +94,6 @@ func (d *Data) Elem(n int) *Data {
 	// return indexed element
 	return d.At(n).(*Data)
 }
-
-//---------------------------------------------------------------------
 
 // GetPath returns the access path for current object from root.
 func (d *Data) GetPath() string {
@@ -155,8 +121,6 @@ func (d *Data) GetPath() string {
 	// unknown access (should not happen)
 	return path + "?"
 }
-
-//---------------------------------------------------------------------
 
 // Lookup element in nested data structure by a path description.
 // allows for automatic reference resolution (link processing)
@@ -223,16 +187,7 @@ func (d *Data) Lookup(path string) *Data {
 	return elem
 }
 
-///////////////////////////////////////////////////////////////////////
-//	Private methods
-
-//---------------------------------------------------------------------
-/*
- * Write internal data structure to stream writer.
- * @this d *Data - pointer to data object
- * @param wrt *bufio.Writer - stream writer
- * @param level int - nesting level of lists
- */
+// Write internal data structure to stream writer.
 func (d *Data) writeData(wrt *bufio.Writer, level int) {
 
 	// emit name (if defined)
@@ -268,12 +223,7 @@ func (d *Data) writeData(wrt *bufio.Writer, level int) {
 	}
 }
 
-//---------------------------------------------------------------------
-/*
- * Find root instance for current object.
- * @this d *Data - pointer to data object
- * @return *Data - root instance
- */
+// Find root instance for current object.
 func (d *Data) getRoot() *Data {
 	p := d
 	for p.parent != nil {
@@ -282,14 +232,7 @@ func (d *Data) getRoot() *Data {
 	return p
 }
 
-//---------------------------------------------------------------------
-/*
- * Add element to sub-list of this element.
- * @this d *Data - current element
- * @param name string - parameter/element name
- * @param value string - parameter value (or nil)
- * @return *Data - newly allocated element
- */
+// Add element to sub-list of this element.
 func (d *Data) addToList(param *Parameter) *Data {
 
 	// start new list object

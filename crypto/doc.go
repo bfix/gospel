@@ -5,9 +5,11 @@ package crypto
  * Cryptographic functionality:
  *     - Shared Secret Scheme based on polynominals (Shamir)
  *     - Cryptographically strong random number generation
+ *     - Paillier cryptographic counters
+ *     - OpenPGP helper functions
  * --------------------------------------------------------------------
  *
- * (c) 2010-2012 Bernd Fix   >Y<
+ * (c) 2010-2016 Bernd Fix   >Y<
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

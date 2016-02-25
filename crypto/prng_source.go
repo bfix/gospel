@@ -1,42 +1,14 @@
-/*
- * Cryptographically strong source of randomness: Based on the
- * io.Reader instance assigned to "rand.Reader"; usually "/dev/urandom"
- *
- * (c) 2012 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package crypto
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations.
 
 import (
 	"crypto/rand"
 	"math/big"
 )
 
-///////////////////////////////////////////////////////////////////////
-// Cryptographically strong source of random bits
-
 // Prng is a pseudo random number generator; a source of randomness
 type Prng struct {
 	mask *big.Int
 }
-
-//=====================================================================
 
 // Int63 returns the next random (unsigned) 64-bit integer value.
 func (p *Prng) Int63() int64 {
@@ -48,16 +20,12 @@ func (p *Prng) Int63() int64 {
 	return val.Int64()
 }
 
-//---------------------------------------------------------------------
-
 // Seed for a random source: not necessary, because random bits are
 // generated on a system level by either a hardware RNG or a
 // cryptographically secure PRNG algorithm.
 func (p *Prng) Seed(seed int64) {
 	// intentionally not implemented
 }
-
-//=====================================================================
 
 // NewPrngSource instantiates a new source for random bits.
 func NewPrngSource() *Prng {

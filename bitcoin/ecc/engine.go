@@ -1,39 +1,12 @@
-/*
- * Elliptic curve 'Secp256k1' engine for ECDSA.
- *
- * (c) 2011-2012 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package ecc
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
 
 import (
 	"github.com/bfix/gospel/math"
 	"math/big"
 )
 
-///////////////////////////////////////////////////////////////////////
-
 // Sign a hash value with private key.
 // [http://www.nsa.gov/ia/_files/ecdsa.pdf, page 13f]
-// @param key *PrivateKey - key used to sign hash value
-// @param hash []byte - hash value to be signed
-// @return r,s *big.Int - signature values
 func Sign(key *PrivateKey, hash []byte) (r, s *big.Int) {
 
 	var k, invK *big.Int
@@ -62,14 +35,8 @@ func Sign(key *PrivateKey, hash []byte) (r, s *big.Int) {
 	return
 }
 
-///////////////////////////////////////////////////////////////////////
-
 // Verify a hash value with public key.
 // [http://www.nsa.gov/ia/_files/ecdsa.pdf, page 15f]
-// @param key *PublicKey - key used to verify signature
-// @param hash []byte - hash value of signed content
-// @param r,s *big.Int - signature values
-// @return bool - correct signature?
 func Verify(key *PublicKey, hash []byte, r, s *big.Int) bool {
 
 	// sanity checks for arguments
@@ -96,10 +63,8 @@ func Verify(key *PublicKey, hash []byte, r, s *big.Int) bool {
 	return rr.Cmp(r) == 0
 }
 
-///////////////////////////////////////////////////////////////////////
 // convert hash value to integer
 // [http://www.secg.org/download/aid-780/sec1-v2.pdf]
-
 func convertHash(hash []byte) *big.Int {
 
 	// trim hash value (if required)
@@ -111,5 +76,11 @@ func convertHash(hash []byte) *big.Int {
 	// convert to integer
 	val := new(big.Int).SetBytes(hash)
 	val.Rsh(val, uint(maxSize*8-curveN.BitLen()))
+	return val
+}
+
+// helper for initialization of big.Int from hex string
+func fromHex(s string) *big.Int {
+	val, _ := new(big.Int).SetString(s, 16)
 	return val
 }

@@ -1,26 +1,4 @@
-/*
- * Network helper functions: Send and receive data over socket buffer.
- *
- * (c) 2012 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package network
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations.
 
 import (
 	"github.com/bfix/gospel/logger"
@@ -28,15 +6,11 @@ import (
 	"time"
 )
 
-///////////////////////////////////////////////////////////////////////
-// Global attributes
-
-var delay, _ = time.ParseDuration("1ms")
-var retries = 1000
-var timeout, _ = time.ParseDuration("100us")
-
-///////////////////////////////////////////////////////////////////////
-// Public functions
+var (
+	delay, _   = time.ParseDuration("1ms")
+	retries    = 1000
+	timeout, _ = time.ParseDuration("100us")
+)
 
 // SendData sends data over network connection (stream-oriented).
 func SendData(conn net.Conn, data []byte, srv string) bool {
@@ -82,8 +56,6 @@ func SendData(conn net.Conn, data []byte, srv string) bool {
 	}
 	return true
 }
-
-//---------------------------------------------------------------------
 
 // RecvData receives data over network connection (stream-oriented).
 func RecvData(conn net.Conn, data []byte, srv string) (int, bool) {

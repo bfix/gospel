@@ -1,33 +1,9 @@
-/*
- * Vector: Indexable data class for generic types.
- *
- * (c) 2012 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package data
-
-///////////////////////////////////////////////////////////////////////
-// Generic Vector type and implementation.
 
 // Vector data structure
 type Vector struct {
 	data [](interface{}) // list of elements
 }
-
-//=====================================================================
 
 // NewVector instantiates a new (empty) Vector object.
 func NewVector() *Vector {
@@ -36,21 +12,15 @@ func NewVector() *Vector {
 	}
 }
 
-//---------------------------------------------------------------------
-
 // Len returns the number of elements in the vector.
 func (vec *Vector) Len() int {
 	return len(vec.data)
 }
 
-//---------------------------------------------------------------------
-
 // Add element to the end of the vector.
 func (vec *Vector) Add(v interface{}) {
 	vec.data = append(vec.data, v)
 }
-
-//---------------------------------------------------------------------
 
 // Insert element at given position. Add 'nil' elements if index
 // is beyond the end of the vector.
@@ -74,16 +44,12 @@ func (vec *Vector) Insert(i int, v interface{}) {
 	}
 }
 
-//---------------------------------------------------------------------
-
 // Drop the last element from the vector.
 func (vec *Vector) Drop() (v interface{}) {
 	pos := len(vec.data) - 1
 	v, vec.data = vec.data[pos], vec.data[:pos]
 	return
 }
-
-//---------------------------------------------------------------------
 
 // Delete indexed element from the vector.
 func (vec *Vector) Delete(i int) (v interface{}) {
@@ -94,8 +60,6 @@ func (vec *Vector) Delete(i int) (v interface{}) {
 	vec.data = append(vec.data[:i], vec.data[i+1:]...)
 	return
 }
-
-//---------------------------------------------------------------------
 
 // At return the indexed element from vector.
 func (vec *Vector) At(i int) (v interface{}) {

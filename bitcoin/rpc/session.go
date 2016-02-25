@@ -1,27 +1,5 @@
 package rpc
 
-/*
- * Bitcoin RPC session calls to running Bitcoin server
- *
- * (c) 2011-2013 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-///////////////////////////////////////////////////////////////////////
-// import external declaratiuons
-
 import (
 	"encoding/json"
 	"errors"
@@ -32,15 +10,8 @@ import (
 	"strings"
 )
 
-///////////////////////////////////////////////////////////////////////
-// Call-related types
-
-//---------------------------------------------------------------------
-
 // Data is a generic data structure for RPC data (in/out)
 type Data interface{}
-
-//---------------------------------------------------------------------
 
 // Request is a JSON-RPC task to a running Bitcoin server
 type Request struct {
@@ -50,24 +21,17 @@ type Request struct {
 	Params  []Data `json:"params"`
 }
 
-//---------------------------------------------------------------------
-
 // Error is a Response-related failure code.
 type Error struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 
-//---------------------------------------------------------------------
-
 // Response is a JSON-encoded reply from a running Bitcoin server
 type Response struct {
 	Result Data  `json:"result"`
 	Error  Error `json:"error"`
 }
-
-///////////////////////////////////////////////////////////////////////
-// Helper functions to retrieve intrinsic values from generic data
 
 // GetInt returns an integer value from named RPC data
 func GetInt(d Data, key string) int {
@@ -110,8 +74,6 @@ func GetObject(d Data, key string) interface{} {
 	return d.(map[string]interface{})[key]
 }
 
-///////////////////////////////////////////////////////////////////////
-
 // Session type
 type Session struct {
 	Address string // server address/name
@@ -120,8 +82,6 @@ type Session struct {
 
 	client *http.Client
 }
-
-//---------------------------------------------------------------------
 
 // NewSession allocates a new Session instance for communication
 func NewSession(addr, user, pw string) (*Session, error) {
@@ -134,11 +94,8 @@ func NewSession(addr, user, pw string) (*Session, error) {
 	return s, nil
 }
 
-//---------------------------------------------------------------------
-/*
- * Generic call to running server: Handles input parameters and
- * returns generic result data.
- */
+// Generic call to running server: Handles input parameters and
+// returns generic result data.
 func (s *Session) call(methodname string, args []Data) (result *Response, err error) {
 	request := &Request{
 		Version: "1.0",
@@ -184,8 +141,6 @@ func (s *Session) BackupWallet(dest string) error {
 	return err
 }
 
-//---------------------------------------------------------------------
-
 // CreateRawTransaction [{"txid":txid,"vout":n},...] {address:amount,...}
 // Create a transaction spending given inputs (array of objects containing
 // transaction outputs to spend), sending to given address(es). Returns the
@@ -214,8 +169,6 @@ func (s *Session) CreateRawTransaction(slots []Output, targets []Balance) (strin
 	return res.Result.(string), nil
 }
 
-//---------------------------------------------------------------------
-
 // DecodeRawTransactionAsObject <hex string>
 // Returns JSON object with information about a serialized, hex-encoded
 // transaction.
@@ -226,8 +179,6 @@ func (s *Session) DecodeRawTransactionAsObject(raw string) (interface{}, error) 
 	}
 	return res.Result, nil
 }
-
-//---------------------------------------------------------------------
 
 // DecodeRawTransaction <hex string>
 // Returns instance with information about a serialized, hex-encoded
@@ -276,8 +227,6 @@ func (s *Session) DecodeRawTransaction(raw string) (*RawTransaction, error) {
 	return t, nil
 }
 
-//---------------------------------------------------------------------
-
 // DumpPrivKey reveals the private key corresponding to <bitcoinaddress>
 func (s *Session) DumpPrivKey(address string, testnet bool) (*ecc.PrivateKey, error) {
 	res, err := s.call("dumpprivkey", []Data{address})
@@ -286,8 +235,6 @@ func (s *Session) DumpPrivKey(address string, testnet bool) (*ecc.PrivateKey, er
 	}
 	return util.ImportPrivateKey(res.Result.(string), testnet)
 }
-
-//---------------------------------------------------------------------
 
 // GetAccount returns the label for a Bitcoin address.
 func (s *Session) GetAccount(address string) (string, error) {
@@ -299,8 +246,6 @@ func (s *Session) GetAccount(address string) (string, error) {
 	return label, err
 }
 
-//---------------------------------------------------------------------
-
 // GetAccountAddress returns the first Bitcoin address matching label.
 func (s *Session) GetAccountAddress(label string) (string, error) {
 	res, err := s.call("getaccountaddress", []Data{label})
@@ -310,8 +255,6 @@ func (s *Session) GetAccountAddress(label string) (string, error) {
 	addr := res.Result.(string)
 	return addr, nil
 }
-
-//---------------------------------------------------------------------
 
 // GetAddressesByAccount returns the an array of bitcoin addresses
 // matching label.
@@ -328,8 +271,6 @@ func (s *Session) GetAddressesByAccount(label string) ([]string, error) {
 	return list, nil
 }
 
-//---------------------------------------------------------------------
-
 // GetBalance returns the balance in the account.
 func (s *Session) GetBalance(label string) (float64, error) {
 	res, err := s.call("getbalance", []Data{label})
@@ -339,8 +280,6 @@ func (s *Session) GetBalance(label string) (float64, error) {
 	return res.Result.(float64), nil
 }
 
-//---------------------------------------------------------------------
-
 // GetBalanceAll returns the balance in all accounts in the wallet.
 func (s *Session) GetBalanceAll() (float64, error) {
 	res, err := s.call("getbalance", nil)
@@ -349,8 +288,6 @@ func (s *Session) GetBalanceAll() (float64, error) {
 	}
 	return res.Result.(float64), nil
 }
-
-//---------------------------------------------------------------------
 
 // GetBlock returns information about the given block hash.
 func (s *Session) GetBlock(hash string) (*Block, error) {
@@ -378,8 +315,6 @@ func (s *Session) GetBlock(hash string) (*Block, error) {
 	return block, nil
 }
 
-//---------------------------------------------------------------------
-
 // GetBlockCount returns the number of blocks in the longest
 // block chain.
 func (s *Session) GetBlockCount() (int, error) {
@@ -391,8 +326,6 @@ func (s *Session) GetBlockCount() (int, error) {
 	return num, err
 }
 
-//---------------------------------------------------------------------
-
 // GetBlockHash returns hash of block in best-block-chain at height.
 func (s *Session) GetBlockHash(height int) (string, error) {
 	res, err := s.call("getblockhash", []Data{height})
@@ -401,8 +334,6 @@ func (s *Session) GetBlockHash(height int) (string, error) {
 	}
 	return res.Result.(string), nil
 }
-
-//---------------------------------------------------------------------
 
 // GetConnectionCount returns the number of connections to other nodes.
 func (s *Session) GetConnectionCount() (int, error) {
@@ -413,8 +344,6 @@ func (s *Session) GetConnectionCount() (int, error) {
 	return int(res.Result.(float64)), nil
 }
 
-//---------------------------------------------------------------------
-
 // GetDifficulty returns the proof-of-work difficulty as a multiple
 // of the minimum difficulty.
 func (s *Session) GetDifficulty() (float64, error) {
@@ -424,8 +353,6 @@ func (s *Session) GetDifficulty() (float64, error) {
 	}
 	return res.Result.(float64), nil
 }
-
-//---------------------------------------------------------------------
 
 // GetInfo returns an object containing various state info.
 func (s *Session) GetInfo() (*Info, error) {
@@ -451,8 +378,6 @@ func (s *Session) GetInfo() (*Info, error) {
 	return info, err
 }
 
-//---------------------------------------------------------------------
-
 // GetNewAddress returns a new bitcoin address for receiving payments.
 // It is added to the address book for the given account, so payments
 // received with the address will be credited to [account].
@@ -465,8 +390,6 @@ func (s *Session) GetNewAddress(account string) (string, error) {
 	return addr, nil
 }
 
-//---------------------------------------------------------------------
-
 // GetRawTransaction returns a serialized, hex-encoded data for
 // transaction txid.
 func (s *Session) GetRawTransaction(txid string) (string, error) {
@@ -476,8 +399,6 @@ func (s *Session) GetRawTransaction(txid string) (string, error) {
 	}
 	return res.Result.(string), nil
 }
-
-//---------------------------------------------------------------------
 
 // GetTransaction returns an object about the given transaction hash.
 func (s *Session) GetTransaction(hash string) (*Transaction, error) {
@@ -499,8 +420,6 @@ func (s *Session) GetTransaction(hash string) (*Transaction, error) {
 	return t, nil
 }
 
-//---------------------------------------------------------------------
-
 // KeypoolRefill creates a number of new Bitcoin addresses for later use.
 // Remarks: Requires unlocked wallet
 func (s *Session) KeypoolRefill() error {
@@ -510,8 +429,6 @@ func (s *Session) KeypoolRefill() error {
 	}
 	return nil
 }
-
-//---------------------------------------------------------------------
 
 // ImportPrivateKey imports a private key into your bitcoin wallet.
 // Private key must be in wallet import format (Sipa) beginning
@@ -524,8 +441,6 @@ func (s *Session) ImportPrivateKey(key string) error {
 	}
 	return nil
 }
-
-//---------------------------------------------------------------------
 
 // ListAccounts returns Object that has account names as keys and
 // account balances as values.
@@ -541,8 +456,6 @@ func (s *Session) ListAccounts(confirmations int) (map[string]float64, error) {
 	}
 	return list, nil
 }
-
-//---------------------------------------------------------------------
 
 // ListReceivedByAccount returns an array of accounts with the the
 // total received and more info.
@@ -566,8 +479,6 @@ func (s *Session) ListReceivedByAccount(minConf int, includeEmpty bool) ([]Recei
 	return rcv, nil
 }
 
-//---------------------------------------------------------------------
-
 // ListReceivedByAddress returns an array of addresses with the the
 // total received and more info.
 func (s *Session) ListReceivedByAddress(minConf int, includeEmpty bool) ([]Received, error) {
@@ -589,8 +500,6 @@ func (s *Session) ListReceivedByAddress(minConf int, includeEmpty bool) ([]Recei
 	}
 	return rcv, nil
 }
-
-//---------------------------------------------------------------------
 
 // ListSinceBlock gets all transactions in blocks since block
 // [blockhash] (not inclusive), or all transactions if omitted.
@@ -620,8 +529,6 @@ func (s *Session) ListSinceBlock(hash string, minConf int) ([]Transaction, strin
 	return list, last, nil
 }
 
-//---------------------------------------------------------------------
-
 // ListTransactions returns up to [count] most recent transactions
 // skipping the first [from] transactions for account [account].
 func (s *Session) ListTransactions(accnt string, count, offset int) ([]Transaction, error) {
@@ -648,8 +555,6 @@ func (s *Session) ListTransactions(accnt string, count, offset int) ([]Transacti
 	return list, nil
 }
 
-//---------------------------------------------------------------------
-
 // ListAllTransactions returns up to [count] most recent transactions
 // skipping the first [from] transactions for all accounts.
 func (s *Session) ListAllTransactions(count, offset int) ([]Transaction, error) {
@@ -675,8 +580,6 @@ func (s *Session) ListAllTransactions(count, offset int) ([]Transaction, error) 
 	}
 	return list, nil
 }
-
-//---------------------------------------------------------------------
 
 // ListUnspent [minconf=1] [maxconf=999999]
 // Returns an array of unspent transaction outputs in the wallet that have
@@ -705,8 +608,6 @@ func (s *Session) ListUnspent(minconf, maxconf int) ([]Unspent, error) {
 	return unspent, nil
 }
 
-//---------------------------------------------------------------------
-
 // ListLockUnspent lists all temporarily locked transaction outputs.
 func (s *Session) ListLockUnspent() ([]Output, error) {
 	res, err := s.call("listlockunspent", nil)
@@ -724,8 +625,6 @@ func (s *Session) ListLockUnspent() ([]Output, error) {
 	}
 	return list, nil
 }
-
-//---------------------------------------------------------------------
 
 // LockUnspent temporarily locks (true) or unlocks (false) specified
 // transaction outputs. A locked transaction output will not be chosen
@@ -748,8 +647,6 @@ func (s *Session) LockUnspent(lock bool, slots []Output) error {
 	return nil
 }
 
-//---------------------------------------------------------------------
-
 // Move shifts funds from one account in your wallet to another.
 func (s *Session) Move(fromAccount, toAccount string, amount float64) (string, error) {
 	res, err := s.call("move", []Data{fromAccount, toAccount, amount})
@@ -758,8 +655,6 @@ func (s *Session) Move(fromAccount, toAccount string, amount float64) (string, e
 	}
 	return res.Result.(string), nil
 }
-
-//---------------------------------------------------------------------
 
 // SendFrom sends a given amount (real; rounded to 8 decimal places).
 // Will send the given amount to the given address, ensuring the account
@@ -773,8 +668,6 @@ func (s *Session) SendFrom(fromAccount, toAddress string, amount float64) (strin
 	}
 	return res.Result.(string), nil
 }
-
-//---------------------------------------------------------------------
 
 // SendMany sends numerous amounts to different receiving addresses.
 // Amounts are double-precision floating point numbers.
@@ -791,8 +684,6 @@ func (s *Session) SendMany(fromAccount string, targets []Balance) (string, error
 	return res.Result.(string), nil
 }
 
-//---------------------------------------------------------------------
-
 // SendToAddress sends an amount (real, rounded to 8 decimal places) to
 // a receiving address. Returns the transaction hash if successful.
 // Remarks: Requires unlocked wallet
@@ -804,15 +695,11 @@ func (s *Session) SendToAddress(addr string, amount float64) (string, error) {
 	return res.Result.(string), nil
 }
 
-//---------------------------------------------------------------------
-
 // SetAccount set a label for a Bitcoin address.
 func (s *Session) SetAccount(address, label string) error {
 	_, err := s.call("setaccount", []Data{address, label})
 	return err
 }
-
-//---------------------------------------------------------------------
 
 // SetTxFee  sets the default transaction fee for 24 hours (must be
 // called every 24 hours).
@@ -820,8 +707,6 @@ func (s *Session) SetTxFee(amount float64) error {
 	_, err := s.call("settxfee", []Data{amount})
 	return err
 }
-
-//---------------------------------------------------------------------
 
 // SendRawTransaction submits a raw transaction (serialized, hex-encoded)
 // to local node and network. Returns transaction id, or an error if the
@@ -833,8 +718,6 @@ func (s *Session) SendRawTransaction(raw string) error {
 	}
 	return nil
 }
-
-//---------------------------------------------------------------------
 
 // SignRawTransaction <hex string> [{"txid":txid,"vout":n,"scriptPubKey":hex},...] [<privatekey1>,...] [sighash="ALL"]
 // Sign as many inputs as possible for raw transaction (serialized,
@@ -884,8 +767,6 @@ func (s *Session) SignRawTransaction(raw string, ins []Output, keys []string, mo
 	return signed, complete, nil
 }
 
-//---------------------------------------------------------------------
-
 // ValidateAddress returns information about a Bitcoin address.
 // Remarks: Requires unlocked wallet
 func (s *Session) ValidateAddress(addr string) (*Validity, error) {
@@ -904,15 +785,11 @@ func (s *Session) ValidateAddress(addr string) (*Validity, error) {
 	return v, nil
 }
 
-//---------------------------------------------------------------------
-
 // WalletLock removes second password from memory.
 func (s *Session) WalletLock() error {
 	_, err := s.call("walletlock", []Data{})
 	return err
 }
-
-//---------------------------------------------------------------------
 
 // WalletPassphrase stores the wallet second password in cache for
 // timeout in seconds. Only required for double encrypted wallets.

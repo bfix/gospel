@@ -1,26 +1,4 @@
-/*
- * OpenPGP helper functions.
- *
- * (c) 2013-2014 Bernd Fix    >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
 package crypto
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations.
 
 import (
 	"bytes"
@@ -30,9 +8,6 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
-///////////////////////////////////////////////////////////////////////
-// Module-global constants and variables
-
 const (
 	// KeySign returns a signing key (GetKeyFromIdentity)
 	KeySign = iota
@@ -41,8 +16,6 @@ const (
 	// KeyAuth returns an authorization key (GetKeyFromIdentity)
 	KeyAuth
 )
-
-///////////////////////////////////////////////////////////////////////
 
 // GetPublicKey converts an ASCII-armored public key representation
 // into an OpenPGP key.
@@ -62,8 +35,6 @@ func GetPublicKey(buf []byte) (*packet.PublicKey, error) {
 	return key, nil
 }
 
-//---------------------------------------------------------------------
-
 // GetArmoredPublicKey returns an armored public key for entity.
 func GetArmoredPublicKey(ent *openpgp.Entity) ([]byte, error) {
 	out := new(bytes.Buffer)
@@ -78,8 +49,6 @@ func GetArmoredPublicKey(ent *openpgp.Entity) ([]byte, error) {
 	}
 	return out.Bytes(), nil
 }
-
-//---------------------------------------------------------------------
 
 // GetKeyFromIdentity returns a suitable subkey from entity for the
 // given operation.

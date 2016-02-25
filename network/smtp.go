@@ -1,34 +1,4 @@
-/*
- * Send mail messages through SMTP server
- * ======================================
- *
- * - The connections to the service can be either plain (port 25)
- *   or SSL/TLS (port 465)
- * - If the server supports STARTTLS and the channel is not already
- *   encrypted (via SSL), the application will use the "STLS" command
- *   to initiate a channel encryption.
- * - Connections can be tunneled through any SOCKS5 proxy (like Tor)
- *
- * (c) 2013-2014 Bernd Fix    >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
 package network
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations.
 
 import (
 	"bytes"
@@ -51,9 +21,16 @@ import (
 	"strings"
 )
 
-///////////////////////////////////////////////////////////////////////
-
 // SendMailMessage handles outgoing message to SMTP server.
+//
+// - The connections to the service can be either plain (port 25)
+//   or SSL/TLS (port 465)
+//
+// - If the server supports STARTTLS and the channel is not already
+//   encrypted (via SSL), the application will use the "STLS" command
+//   to initiate a channel encryption.
+//
+// - Connections can be tunneled through any SOCKS5 proxy (like Tor)
 func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) error {
 	var (
 		c0  net.Conn
@@ -133,16 +110,11 @@ func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) error {
 	return nil
 }
 
-///////////////////////////////////////////////////////////////////////
-// Message creation functions
-
 // MailAttachment is a data structure for data attached to a mail.
 type MailAttachment struct {
 	Header textproto.MIMEHeader
 	Data   []byte
 }
-
-//---------------------------------------------------------------------
 
 // CreateMailMessage creates a (plain) SMTP email with body and
 // optional attachments.
@@ -173,8 +145,6 @@ func CreateMailMessage(body []byte, att []*MailAttachment) ([]byte, error) {
 	wrt.Close()
 	return buf.Bytes(), nil
 }
-
-//---------------------------------------------------------------------
 
 // EncryptMailMessage encrypts a mail with given public key.
 func EncryptMailMessage(key, body []byte) ([]byte, error) {
@@ -226,8 +196,6 @@ func EncryptMailMessage(key, body []byte) ([]byte, error) {
 	return msg.Bytes(), nil
 }
 
-//---------------------------------------------------------------------
-
 // MailContent is the result type for parsing mail messages
 type MailContent struct {
 	Mode    int    // message type (MDOE_XXX)
@@ -241,14 +209,7 @@ type MailContent struct {
 // MailUserInfo is a callback function to request user information:
 type MailUserInfo func(key int, data string) interface{}
 
-//---------------------------------------------------------------------
-/*
- * Get email-related OpenPGP identity.
- * @param getInfo MailUserInfo - callback for info retrieval
- * @param key int - info type requested (INFO_XXX)
- * @param data string - additional data
- * @return *openpgp.Entity
- */
+// Get email-related OpenPGP identity.
 func getIdentity(getInfo MailUserInfo, key int, data string) *openpgp.Entity {
 	var id *openpgp.Entity
 	tmp := getInfo(key, data)
@@ -259,10 +220,7 @@ func getIdentity(getInfo MailUserInfo, key int, data string) *openpgp.Entity {
 	return id
 }
 
-//---------------------------------------------------------------------
-/*
- * Parsing-related constants
- */
+// Parsing-related constants
 const (
 	ctPLAIN  = "text/plain;"
 	ctMPMIX  = "multipart/mixed;"
@@ -280,8 +238,6 @@ const (
 	infoPASSPHRASE
 	infoSENDER
 )
-
-//---------------------------------------------------------------------
 
 // ParseMailMessage dissects an incoming mail message
 func ParseMailMessage(msg io.Reader, getInfo MailUserInfo) (*MailContent, error) {
@@ -327,8 +283,6 @@ func ParseMailMessage(msg io.Reader, getInfo MailUserInfo) (*MailContent, error)
 	return mc, nil
 }
 
-//---------------------------------------------------------------------
-
 // ParsePlain disassembles a plain email message.
 func ParsePlain(ct string, body io.Reader) (*MailContent, error) {
 	mc := new(MailContent)
@@ -361,8 +315,6 @@ func ParsePlain(ct string, body io.Reader) (*MailContent, error) {
 	}
 	return mc, nil
 }
-
-//---------------------------------------------------------------------
 
 // ParseEncrypted parses a encrypted (and possibly signed) message.
 func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (*MailContent, error) {
@@ -418,7 +370,7 @@ func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (*Mai
 						mc.Body = string(content)
 						continue
 					}
-					md.SignedBy = crypto.GetKeyFromIdentity(id, crypto.KEY_SIGN)
+					md.SignedBy = crypto.GetKeyFromIdentity(id, crypto.KeySign)
 					md.SignedByKeyId = md.SignedBy.PublicKey.KeyId
 					mc.Key, err = crypto.GetArmoredPublicKey(id)
 					if err != nil {
@@ -455,8 +407,6 @@ func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (*Mai
 	}
 	return mc, nil
 }
-
-//---------------------------------------------------------------------
 
 // ParseSigned reads an unencrypted, but signed message.
 func ParseSigned(ct, addr string, getInfo MailUserInfo, body io.Reader) (*MailContent, error) {
@@ -495,13 +445,7 @@ func ParseSigned(ct, addr string, getInfo MailUserInfo, body io.Reader) (*MailCo
 	return mc, nil
 }
 
-//---------------------------------------------------------------------
-/*
- * Extract value from string ('... key="value" ...')
- * @param s string - input string
- * @param key string - name of key
- * @param string - value string (or empty)
- */
+// Extract value from string ('... key="value" ...')
 func extractValue(s, key string) string {
 	idx := strings.Index(s, key)
 	skip := idx + len(key) + 2

@@ -1,45 +1,13 @@
-/*
- * --------------------------------------------------------------------
- * Shamir Secret Sharing Scheme:
- * --------------------------------------------------------------------
- * Split a secret number into 'n' shares where any 'k' combined shares
- * yield the original secret number. The underlying prime field needs a
- * generator that is larger than the secret to be shared.
- *
- * (c) 2011-2012 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package crypto
-
-///////////////////////////////////////////////////////////////////////
-// import external declarations
 
 import (
 	"math/big"
 )
 
-///////////////////////////////////////////////////////////////////////
-
 // Share is a data structure for a partial secret.
 type Share struct {
 	X, Y, P *big.Int
 }
-
-///////////////////////////////////////////////////////////////////////
-// Public methods
 
 // Split a 'secret' into 'n' shares, where a 'k' shares are sufficient
 // to reconstruct 'secret'.
@@ -69,8 +37,6 @@ func Split(secret, p *big.Int, n, k int) []Share {
 	}
 	return shares
 }
-
-//---------------------------------------------------------------------
 
 // Reconstruct secrets from number of shares: if not sufficient shares
 // are available, the resulting secret is "random"

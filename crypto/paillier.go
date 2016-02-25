@@ -1,74 +1,9 @@
-/*
- * Paillier crypto scheme implementation.
- *
- * (c) 2012 Bernd Fix   >Y<
- *
- *---------------------------------------------------------------------
- * #### Key generation
- *
- * The key used in the Paillier crypto system consists of four integer
- * values. The public key has two parameters; the private key has three
- * parameters (one parameter is shared between the keys). As in RSA it
- * starts with two random primes 'p' and 'q'; the public key parameter
- * are computed as:
- *
- *   n := p * q
- *   g := random number from interval [0,n^2[
- *
- * The private key parameters are computed as:
- *
- *   n := p * q
- *   l := lcm (p-1,q-1)
- *   u := (((g^l mod n^2)-1)/n) ^-1 mod n
- *
- * N.B. The division by n is integer based and rounds toward zero!
- *
- * #### Encryption
- *
- * The encryption function in the Paillier crypto scheme is:
- *
- *   c = E(m) = (g^m * r^n) mod n^2
- *
- * where 'r' is a random number from the interval [0,n[. This encryption
- * allows different encryption results for the same message, based on
- * the actual value of 'r'.
- *
- * #### Decryption
- *
- * The decryption function in the Paillier crypto scheme is:
- *
- *   m = D(c) = ((((c^l mod n^2)-1)/n) * u) mod n
- *
- * N.B. As in the key generation process the division by n is integer
- *      based and rounds toward zero!
- *---------------------------------------------------------------------
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package crypto
-
-///////////////////////////////////////////////////////////////////////
-// import external declarations
 
 import (
 	"crypto/rand"
 	"math/big"
 )
-
-///////////////////////////////////////////////////////////////////////
-// Paillier key pair
 
 // PaillierPublicKey data structure
 type PaillierPublicKey struct {
@@ -82,9 +17,24 @@ type PaillierPrivateKey struct {
 	P, Q *big.Int
 }
 
-///////////////////////////////////////////////////////////////////////
-
 // NewPaillierPrivateKey generates a new Paillier private key (key pair).
+//
+// The key used in the Paillier crypto system consists of four integer
+// values. The public key has two parameters; the private key has three
+// parameters (one parameter is shared between the keys). As in RSA it
+// starts with two random primes 'p' and 'q'; the public key parameter
+// are computed as:
+//
+//   n := p * q
+//   g := random number from interval [0,n^2[
+//
+// The private key parameters are computed as:
+//
+//   n := p * q
+//   l := lcm (p-1,q-1)
+//   u := (((g^l mod n^2)-1)/n) ^-1 mod n
+//
+// N.B. The division by n is integer based and rounds toward zero!
 func NewPaillierPrivateKey(bits int) (key *PaillierPrivateKey, err error) {
 
 	// generate primes 'p' and 'q' and their factor 'n'
@@ -145,17 +95,19 @@ func NewPaillierPrivateKey(bits int) (key *PaillierPrivateKey, err error) {
 	return prvkey, nil
 }
 
-///////////////////////////////////////////////////////////////////////
-// Methods related to the Paillier private key:
-
 // GetPublicKey returns the corresponding public key from a private key.
 func (p *PaillierPrivateKey) GetPublicKey() *PaillierPublicKey {
 	return p.PaillierPublicKey
 }
 
-//---------------------------------------------------------------------
-
 // Decrypt message with private key.
+//
+// The decryption function in the Paillier crypto scheme is:
+//
+//   m = D(c) = ((((c^l mod n^2)-1)/n) * u) mod n
+//
+// N.B. As in the key generation process the division by n is integer
+//      based and rounds toward zero!
 func (p *PaillierPrivateKey) Decrypt(c *big.Int) (m *big.Int, err error) {
 
 	// initialize variables
@@ -172,10 +124,15 @@ func (p *PaillierPrivateKey) Decrypt(c *big.Int) (m *big.Int, err error) {
 	return m, nil
 }
 
-///////////////////////////////////////////////////////////////////////
-// Methods related to the Paillier public key:
-
 // Encrypt message with public key.
+//
+// The encryption function in the Paillier crypto scheme is:
+//
+//   c = E(m) = (g^m * r^n) mod n^2
+//
+// where 'r' is a random number from the interval [0,n[. This encryption
+// allows different encryption results for the same message, based on
+// the actual value of 'r'.
 func (p *PaillierPublicKey) Encrypt(m *big.Int) (c *big.Int, err error) {
 
 	// initialize variables

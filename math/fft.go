@@ -1,36 +1,9 @@
-/*
- * Fast Fourier Transformation.
- *
- * (c) 2011-2012 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package math
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
 
 import (
 	"errors"
 	"math"
 )
-
-///////////////////////////////////////////////////////////////////////
-// Public types
-
-//---------------------------------------------------------------------
 
 // Transformer type declaration (worker object for FF transformations).
 type Transformer struct {
@@ -40,15 +13,8 @@ type Transformer struct {
 	scale   complex128   // helper: scale constant
 }
 
-//---------------------------------------------------------------------
-
 // Field instances are input/output objects for transformation methods.
 type Field []complex128
-
-///////////////////////////////////////////////////////////////////////
-// Public methods
-
-//---------------------------------------------------------------------
 
 // NewTransformer creates a new transformer worker instance.
 func NewTransformer(n int) (*Transformer, error) {
@@ -75,14 +41,10 @@ func NewTransformer(n int) (*Transformer, error) {
 	return t, nil
 }
 
-//---------------------------------------------------------------------
-
 // GetSize returns the field size for a transformation worker instance.
 func (t *Transformer) GetSize() int {
 	return t.size
 }
-
-//---------------------------------------------------------------------
 
 // Time2Freq transforms a time series into the frequency domain.
 func (t *Transformer) Time2Freq(in Field) (Field, error) {
@@ -124,8 +86,6 @@ func (t *Transformer) Time2Freq(in Field) (Field, error) {
 	// return result
 	return out, nil
 }
-
-//---------------------------------------------------------------------
 
 // Freq2Time transforms a frequency series into the time domain.
 func (t *Transformer) Freq2Time(in Field) (Field, error) {
@@ -170,14 +130,7 @@ func (t *Transformer) Freq2Time(in Field) (Field, error) {
 	return out, nil
 }
 
-//---------------------------------------------------------------------
-/*
- * Helper method for index computation.
- * @this t *Transformer - worker instance for transformation
- * @param j int - current field index
- * @oaram n int - current sub-field size
- * @return int - associated index
- */
+// Helper method for index computation.
 func (t *Transformer) index(j, n int) int {
 	a := j / n
 	d := 0

@@ -1,34 +1,10 @@
-/*
- * Elliptic curve cryptography key handling.
- *
- * (c) 2011-2012 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package ecc
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
 
 import (
 	"errors"
 	"github.com/bfix/gospel/math"
 	"math/big"
 )
-
-///////////////////////////////////////////////////////////////////////
 
 // PublicKey is a Point on the elliptic curve: (x,y) = d*G, where
 // 'G' is the base Point of the curve and 'd' is the secret private
@@ -38,15 +14,10 @@ type PublicKey struct {
 	IsCompressed bool
 }
 
-///////////////////////////////////////////////////////////////////////
-
 // Bytes returns the byte representation of public key.
-// @return []byte - byte array representing a public key
 func (k *PublicKey) Bytes() []byte {
 	return pointAsBytes(k.Q, k.IsCompressed)
 }
-
-///////////////////////////////////////////////////////////////////////
 
 // PublicKeyFromBytes returns a public key from a byte representation.
 func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
@@ -61,8 +32,6 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	return key, nil
 }
 
-///////////////////////////////////////////////////////////////////////
-
 // PrivateKey is a random factor 'd' for the base Point that yields
 // the associated PublicKey (Point on the curve (x,y) = d*G)
 type PrivateKey struct {
@@ -70,10 +39,7 @@ type PrivateKey struct {
 	D *big.Int
 }
 
-///////////////////////////////////////////////////////////////////////
-
 // Bytes returns a byte representation of private key.
-// @return []byte - byte array representing a private key
 func (k *PrivateKey) Bytes() []byte {
 	b := coordAsBytes(k.D)
 	if k.IsCompressed {
@@ -81,8 +47,6 @@ func (k *PrivateKey) Bytes() []byte {
 	}
 	return b
 }
-
-///////////////////////////////////////////////////////////////////////
 
 // PrivateKeyFromBytes returns a private key from a byte representation.
 func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
@@ -111,13 +75,10 @@ func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 	return key, nil
 }
 
-///////////////////////////////////////////////////////////////////////
-
 // GenerateKeys creates a new set of keys.
 // [http://www.nsa.gov/ia/_files/ecdsa.pdf] page 19f but with a
 // different range (value 1 and 2 for exponent are not allowed)
-// @return *PrivateKey - generated key pair
-func GenerateKeys() *PrivateKey {
+func GenerateKeys(compr bool) *PrivateKey {
 
 	prv := new(PrivateKey)
 	for {
@@ -125,7 +86,7 @@ func GenerateKeys() *PrivateKey {
 		prv.D = nRnd(math.THREE)
 		// generate Point p = d*G
 		prv.Q = ScalarMultBase(prv.D)
-		prv.IsCompressed = true
+		prv.IsCompressed = compr
 
 		// check for valid key
 		if !isInf(prv.PublicKey.Q) {

@@ -1,33 +1,9 @@
-/*
- * Square root of a quadratic residue mod p.
- *
- * (c) 2011-2013 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package math
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
 
 import (
 	"errors"
 	"math/big"
 )
-
-///////////////////////////////////////////////////////////////////////
 
 // SqrtModP computes the square root of a quadratic residue mod p
 // It uses the Shanks-Tonelli algorithm to compute the square root
@@ -74,9 +50,7 @@ func SqrtModP(a, p *big.Int) (r *big.Int, err error) {
 	return
 }
 
-///////////////////////////////////////////////////////////////////////
 // check if a number is a quadratic residue mod p
-
 func isQuadraticResidue(a, p *big.Int) bool {
 	p1 := new(big.Int).Sub(p, ONE)
 	exp := new(big.Int).Rsh(p1, 1)

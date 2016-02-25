@@ -1,26 +1,4 @@
-/*
- * Parser: Read/Access/Write nested data structures.
- *
- * (c) 2010 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package parser
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations.
 
 import (
 	"bufio"
@@ -30,9 +8,6 @@ import (
 	"strconv"
 	"unicode"
 )
-
-///////////////////////////////////////////////////////////////////////
-// Define public constants (pair types).
 
 const (
 	// DONE for undefined/success
@@ -49,26 +24,17 @@ const (
 	LIST
 )
 
-///////////////////////////////////////////////////////////////////////
-// Public types
-
 // Parameter type declaration.
 type Parameter struct {
 	Name  string // name of parameter
 	Value string // value of parameter (encoded as string)
 }
 
-//---------------------------------------------------------------------
-/*
- * Reset parameter instance.
- * @this p *Parameter
- */
+// Reset parameter instance.
 func (p *Parameter) reset() {
 	p.Name = ""
 	p.Value = ""
 }
-
-//---------------------------------------------------------------------
 
 // String returns a human-readable parameter instance.
 func (p *Parameter) String() string {
@@ -82,13 +48,8 @@ func (p *Parameter) String() string {
 	return "`" + val + "`"
 }
 
-//---------------------------------------------------------------------
-
 // Callback prototype
 type Callback func(mode int, param *Parameter) bool
-
-///////////////////////////////////////////////////////////////////////
-// Public methods
 
 // Parser reads data definitions from reader and pass parameters
 // to callback.
@@ -385,16 +346,7 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 	return nil
 }
 
-///////////////////////////////////////////////////////////////////////
-// Private methods
-
-/*
- * generate error message.
- * @param msg string - error message
- * @param line int - current line number
- * @param offset int - offset into line
- * @return os.Error - error object
- */
+// generate error message.
 func mkError(msg string, line int, offset int) error {
 	out := msg + " (Line:" + strconv.Itoa(line)
 	out += ", Offset:" + strconv.Itoa(offset) + ")"

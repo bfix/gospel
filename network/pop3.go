@@ -1,34 +1,4 @@
-/*
- * Handle POP3 server to receive messages
- * ======================================
- *
- * - The connections to the service can be either plain (port 110)
- *   or SSL/TLS (port 995)
- * - If the server supports STARTTLS and the channel is not already
- *   encrypted (via SSL), the application will use the "STLS" command
- *   to initiate a channel encryption.
- * - Connections can be tunneled through any SOCKS5 proxy (like Tor)
- *
- * (c) 2013-2014 Bernd Fix    >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
 package network
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations.
 
 import (
 	"crypto/tls"
@@ -41,9 +11,6 @@ import (
 	"time"
 )
 
-///////////////////////////////////////////////////////////////////////
-// POP3-related types and methods
-
 // POP3Session data structure
 type POP3Session struct {
 	conn        *textproto.Conn
@@ -52,9 +19,16 @@ type POP3Session struct {
 	established bool
 }
 
-//---------------------------------------------------------------------
-
 // POP3Connect establishes a session with POP3 mailbox.
+//
+// - The connections to the service can be either plain (port 110)
+//   or SSL/TLS (port 995)
+//
+// - If the server supports STARTTLS and the channel is not already
+//   encrypted (via SSL), the application will use the "STLS" command
+//   to initiate a channel encryption.
+//
+// - Connections can be tunneled through any SOCKS5 proxy (like Tor)
 func POP3Connect(service, proxy string) (*POP3Session, error) {
 	sess := new(POP3Session)
 	sess.conn = nil
@@ -158,8 +132,6 @@ func POP3Connect(service, proxy string) (*POP3Session, error) {
 	return sess, nil
 }
 
-//---------------------------------------------------------------------
-
 // Close a POP3 session with the server.
 func (sess *POP3Session) Close() {
 	sess.Exec("QUIT", false)
@@ -169,8 +141,6 @@ func (sess *POP3Session) Close() {
 		sess.c1.Close()
 	}
 }
-
-//---------------------------------------------------------------------
 
 // Exec executes a command on the POP3 server:
 // Expected data is assumed to be terminated by a line
@@ -205,8 +175,6 @@ func (sess *POP3Session) Exec(cmd string, expectData bool) ([]string, error) {
 	return []string{res}, nil
 }
 
-//---------------------------------------------------------------------
-
 // ListUnread returns a list of unread messages.
 func (sess *POP3Session) ListUnread() ([]int, error) {
 	res, err := sess.Exec("LIST", true)
@@ -229,8 +197,6 @@ func (sess *POP3Session) ListUnread() ([]int, error) {
 	return idList, nil
 }
 
-//---------------------------------------------------------------------
-
 // Retrieve message# <id> from the server.
 func (sess *POP3Session) Retrieve(id int) ([]string, error) {
 	sess.c0.SetDeadline(time.Now().Add(30 * time.Minute))
@@ -245,8 +211,6 @@ func (sess *POP3Session) Retrieve(id int) ([]string, error) {
 	return res[1:], nil
 }
 
-//---------------------------------------------------------------------
-
 // Delete message# <id> from the server.
 func (sess *POP3Session) Delete(id int) error {
 	res, err := sess.Exec("DELE "+strconv.Itoa(id), false)
@@ -260,15 +224,7 @@ func (sess *POP3Session) Delete(id int) error {
 	return nil
 }
 
-///////////////////////////////////////////////////////////////////////
-// Helper methods.
-
-/*
- * Check the response from the server.
- * @param res string - response code from server
- * @return success bool - successful operation?
- * @return msg string - response message
- */
+// Check the response from the server.
 func checkResponse(res string) (success bool, msg string) {
 	success = false
 	if strings.HasPrefix(res, "+OK") {
