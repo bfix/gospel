@@ -30,6 +30,8 @@ type logger struct {
 	logfile *os.File    // current log file (can be stdout/stderr)
 	started time.Time   // start time of current log file
 	level   int         // current log level
+	lastMsg string      // last log message
+	repeats int         // number of repeats of last message
 }
 
 var (
@@ -44,12 +46,24 @@ func init() {
 	logInst.logfile = os.Stdout
 	logInst.started = time.Now()
 	logInst.level = DBG
+	logInst.lastMsg = ""
+	logInst.repeats = 0
 
 	go func() {
 		for {
 			select {
 			case msg := <-logInst.msgChan:
+				if msg == logInst.lastMsg {
+					logInst.repeats++
+					continue
+				}
 				ts := time.Now().Format(time.Stamp)
+				if logInst.repeats > 0 {
+					s := fmt.Sprintf("...(last message repeated %d times)", logInst.repeats)
+					logInst.logfile.WriteString(ts + s)
+				}
+				logInst.repeats = 0
+				logInst.lastMsg = msg
 				logInst.logfile.WriteString(ts + msg)
 			case cmd := <-logInst.cmdChan:
 				switch cmd {
