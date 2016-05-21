@@ -59,7 +59,7 @@ func init() {
 				}
 				ts := time.Now().Format(time.Stamp)
 				if logInst.repeats > 0 {
-					s := fmt.Sprintf("...(last message repeated %d times)", logInst.repeats)
+					s := fmt.Sprintf("...(last message repeated %d times)\n", logInst.repeats)
 					logInst.logfile.WriteString(ts + s)
 				}
 				logInst.repeats = 0
