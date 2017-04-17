@@ -8,7 +8,7 @@ package rpc
  * This functions allow to create a session to the local Bitcoin server
  * (local instance of bitcoind) and to query the instance for data.
  *
- * (c) 2011-2016 Bernd Fix   >Y<
+ * (c) 2011-2017 Bernd Fix   >Y<
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
