@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"fmt"
 	"math"
 	"testing"
 )
@@ -47,7 +46,7 @@ func TestPrng(t *testing.T) {
 			n++
 		}
 		fTU := sum / (float64(n) * math.Log(2))
-		eps := math.Abs(fTU-eTU)
+		eps := math.Abs(fTU - eTU)
 		if eps > 0.002 {
 			t.Fatal("random values correlate too much")
 		}
