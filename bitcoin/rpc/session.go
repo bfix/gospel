@@ -7,6 +7,7 @@ import (
 	"github.com/bfix/gospel/bitcoin/util"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -85,6 +86,12 @@ type Session struct {
 
 // NewSession allocates a new Session instance for communication
 func NewSession(addr, user, pw string) (*Session, error) {
+	if _, err := url.Parse(addr); err != nil {
+		return nil, err
+	}
+	if len(user) == 0 || len(pw) == 0 {
+		return nil, errors.New("Missing credentials")
+	}
 	s := &Session{
 		Address: addr,
 		User:    user,
