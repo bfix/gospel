@@ -68,7 +68,7 @@ func TestWallet(t *testing.T) {
 	}
 	walletCopy := os.Getenv("BTC_WALLET_COPY")
 	if len(walletCopy) == 0 {
-		t.Skip("skipping test: no copy location for wallet specified)
+		t.Skip("skipping test: no copy location for wallet specified")
 	}
 	if err = sess.BackupWallet(walletCopy); err != nil {
 		t.Fatal("backupwallet failed")
@@ -81,7 +81,7 @@ func TestWallet(t *testing.T) {
 	}
 	passphrase := os.Getenv("BTC_WALLET_PP")
 	if len(passphrase) == 0 {
-		t.Skip("skipping test: no copy location for wallet specified)
+		t.Skip("skipping test: no passphrase for wallet specified")
 	}
 	if err = sess.WalletLock(); err != nil {
 		t.Fatal("walletlock failed")
