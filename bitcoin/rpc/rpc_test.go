@@ -7,14 +7,6 @@ import (
 	"time"
 )
 
-const (
-	walletCopy = "/tmp/testwallet.dat"
-	newAccount = false
-	passphrase = "HellFreezesOver"
-	prvKey     = ""
-	blockHash  = "00000000000003fab35380c07f6773ae27727b21016a8821c88e47e241c86458"
-)
-
 var (
 	sess  *Session
 	err   error
@@ -24,7 +16,10 @@ var (
 )
 
 func init() {
-	sess, err = NewSession("http://localhost:18332", "DonaldDuck", "MoneyMakesTheWorldGoRound")
+	rpcaddr := os.Getenv("BTC_HOST")
+	user := os.Getenv("BTC_USER")
+	passwd := os.Getenv("BTC_PASSWORD")
+	sess, err = NewSession(rpcaddr, user, passwd)
 	if err != nil {
 		sess = nil
 	}
@@ -32,15 +27,19 @@ func init() {
 
 func TestSession(t *testing.T) {
 	if sess == nil {
-		t.Fatal("no session")
+		t.Skip("skipping test: session not available")
 	}
 	info, err = sess.GetInfo()
 	if err != nil {
-		t.Fatal("getinfo failed")
+		sess = nil
+		t.Fatal(err)
 	}
 }
 
 func TestConnectionCount(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
 	conns, err := sess.GetConnectionCount()
 	if err != nil {
 		t.Fatal("getsessioncount failed")
@@ -51,9 +50,12 @@ func TestConnectionCount(t *testing.T) {
 }
 
 func TestDifficulty(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
 	diff, err := sess.GetDifficulty()
 	if err != nil {
-		t.Fatal("getdifficulty faied")
+		t.Fatal("getdifficulty failed")
 	}
 	if diff != info.Difficulty {
 		t.Fatal("difficulty mismatch in info")
@@ -61,6 +63,10 @@ func TestDifficulty(t *testing.T) {
 }
 
 func TestWallet(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	walletCopy := os.Getenv("BTC_WALLET_COPY")
 	if err = sess.BackupWallet(walletCopy); err != nil {
 		t.Fatal("backupwallet failed")
 	}
@@ -73,12 +79,16 @@ func TestWallet(t *testing.T) {
 	if err = sess.WalletLock(); err != nil {
 		t.Fatal("walletlock failed")
 	}
+	passphrase := os.Getenv("BTC_WALLET_PP")
 	if err = sess.WalletPassphrase(passphrase, 600); err != nil {
 		t.Fatal("walletpassphrase failed")
 	}
 }
 
 func TestKeypool(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
 	err = sess.KeypoolRefill()
 	if err != nil {
 		t.Fatal("keypoolrefill failed")
@@ -86,15 +96,23 @@ func TestKeypool(t *testing.T) {
 }
 
 func TestImport(t *testing.T) {
-	if newAccount {
-		if err = sess.ImportPrivateKey(prvKey); err != nil {
-			t.Fatal("import privkey failed")
-			return
-		}
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	prvKey := os.Getenv("BTC_PRIVKEY")
+	if len(prvKey) == 0 {
+		prvKey = "L3W5UAHUmxYHF3iE7Biaky7JXA94o1NWrCFT3BMpq1FrzorfbPeM"
+	}
+	if err = sess.ImportPrivateKey(prvKey); err != nil {
+		t.Fatal(err)
+		return
 	}
 }
 
 func TestListUnspend(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
 	if _, err = sess.ListUnspent(1, 999999); err != nil {
 		t.Fatal("listunspend failed")
 	}
@@ -102,30 +120,30 @@ func TestListUnspend(t *testing.T) {
 }
 
 func TestAccount(t *testing.T) {
-	if newAccount {
-		label := fmt.Sprintf("Account %d", time.Now().Unix())
-		addr, err = sess.GetNewAddress(label)
-		if err != nil {
-			t.Fatal("getnewaddress failed")
-		}
-		accnt = "Renamed " + label
-		err = sess.SetAccount(addr, accnt)
-		if err != nil {
-			t.Fatal("setaccount failed")
-		}
-		label, err = sess.GetAccount(addr)
-		if err != nil {
-			t.Fatal("getaccount failed")
-		}
-		if accnt != label {
-			t.Fatal("account label mismatch")
-		}
-		_, err = sess.GetAccountAddress(accnt)
-		if err != nil {
-			t.Fatal("getaccountaddress failed")
-		}
+	if sess == nil {
+		t.Skip("skipping test: session not available")
 	}
-
+	label := fmt.Sprintf("Account %d", time.Now().Unix())
+	addr, err = sess.GetNewAddress(label)
+	if err != nil {
+		t.Fatal("getnewaddress failed")
+	}
+	accnt = "Renamed " + label
+	err = sess.SetAccount(addr, accnt)
+	if err != nil {
+		t.Fatal("setaccount failed")
+	}
+	label, err = sess.GetAccount(addr)
+	if err != nil {
+		t.Fatal("getaccount failed")
+	}
+	if accnt != label {
+		t.Fatal("account label mismatch")
+	}
+	_, err = sess.GetAccountAddress(accnt)
+	if err != nil {
+		t.Fatal("getaccountaddress failed")
+	}
 	accnts, err := sess.ListAccounts(0)
 	if err != nil {
 		t.Fatal("listaccounts failed")
@@ -173,6 +191,9 @@ func TestAccount(t *testing.T) {
 }
 
 func TestBalance(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
 	if _, err = sess.GetBalance(accnt); err != nil {
 		t.Fatal("getbalance failed")
 	}
@@ -182,6 +203,9 @@ func TestBalance(t *testing.T) {
 }
 
 func TestReceived(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
 	rcv1, err := sess.ListReceivedByAccount(1, false)
 	if err != nil {
 		t.Fatal("listreceivedbyaccount failed")
@@ -196,6 +220,9 @@ func TestReceived(t *testing.T) {
 }
 
 func TestAddress(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
 	val, err := sess.ValidateAddress(addr)
 	if err != nil {
 		t.Fatal("validateaddress failed")
@@ -213,12 +240,19 @@ func TestAddress(t *testing.T) {
 }
 
 func TestBlock(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
 	blks, err := sess.GetBlockCount()
 	if err != nil {
 		t.Fatal("getblockcount failed")
 	}
 	if blks != info.Blocks {
 		t.Fatal("blockcount mismatch in info")
+	}
+	blockHash := os.Getenv("BTC_BLOCK_HASH")
+	if len(blockHash) == 0 {
+		blockHash = "00000000000003fab35380c07f6773ae27727b21016a8821c88e47e241c86458"
 	}
 	block, err := sess.GetBlock(blockHash)
 	if err != nil {
@@ -234,6 +268,9 @@ func TestBlock(t *testing.T) {
 }
 
 func TestTransaction(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
 	txlist, err := sess.ListTransactions(accnt, 25, 0)
 	if err != nil {
 		t.Fatal("listtransactions failed")
@@ -250,11 +287,14 @@ func TestTransaction(t *testing.T) {
 		t.Fatal("listsinceblock failed")
 	}
 	if len(txlist) == 0 {
-		t.Fatal("no transactions")
+		fmt.Println("no transactions")
 	}
 }
 
 func TestFee(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
 	if err = sess.SetTxFee(0.0001); err != nil {
 		t.Fatal("settxfee failed")
 	}
