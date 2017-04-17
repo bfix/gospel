@@ -435,7 +435,7 @@ func (s *Session) KeypoolRefill() error {
 // with a '5'.
 // Remarks: Requires unlocked wallet
 func (s *Session) ImportPrivateKey(key string) error {
-	_, err := s.call("importprivatekey", []Data{key})
+	_, err := s.call("importprivkey", []Data{key})
 	if err != nil {
 		return err
 	}
