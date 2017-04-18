@@ -86,7 +86,7 @@ func TestWallet(t *testing.T) {
 	if err = sess.WalletLock(); err != nil {
 		t.Fatal("walletlock failed")
 	}
-	if err = sess.WalletPassphrase(passphrase, 600); err != nil {
+	if err = sess.WalletPassphrase(passphrase, 3600); err != nil {
 		t.Fatal("walletpassphrase failed")
 	}
 }
@@ -107,7 +107,7 @@ func TestImport(t *testing.T) {
 	}
 	prvKey := os.Getenv("BTC_PRIVKEY")
 	if len(prvKey) == 0 {
-		prvKey = "L3W5UAHUmxYHF3iE7Biaky7JXA94o1NWrCFT3BMpq1FrzorfbPeM"
+		t.Skip("skipping test: no private key for import found")
 	}
 	if err = sess.ImportPrivateKey(prvKey); err != nil {
 		t.Fatal(err)

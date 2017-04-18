@@ -84,6 +84,9 @@ want to run all implemented test paths.
 
 #### 4. Export environment variables for the RPC tests
 
+	If none of these variables are defined, the RPC tests will be
+	silently skipped:
+
     $ export BTC_HOST="http://127.0.0.1:8332"
     $ export BTC_USER="<username>"
     $ export BTC_PASSWORD="<password>"
@@ -93,9 +96,20 @@ want to run all implemented test paths.
    The following environment variables are optional and listed with
    their default value; you can replace them with other valid data:
 
-    $ export BTC_PRIVKEY="L3W5UAHUmxYHF3iE7Biaky7JXA94o1NWrCFT3BMpq1FrzorfbPeM"
+    $ export BTC_PRIVKEY=""
     $ export BTC_BLOCK_HASH="00000000000003fab35380c07f6773ae27727b21016a8821c88e47e241c86458"
+    
+    N.B.: The variable BTC_PRIVKEY is a string representing a private Bitcoin key
+    (like "L3W5UAHUmxYHF3iE7Biaky7JXA94o1NWrCFT3BMpq1FrzorfbPeM"). If defined,
+    it will be imported into the wallet and triggers a rescanning to evaluate
+    its balance -- this could take a long time (see next step).
 
 #### 5. Run the tests
 
     $ go test github.com/bfix/gospel/bitcoin/rpc
+
+    If you import a private key the rescanning will timeout the test run and result
+    in a failure. Please run the test command with a 'timeout' setting in this case:
+    
+    $ go test -timeout 3600s github.com/bfix/gospel/bitcoin/rpc
+    
