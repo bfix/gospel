@@ -22,4 +22,16 @@ package rpc
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * ====================================================================
+ *
+ * The 'Session' methods are implementing Bitcoin JSON-RPC API calls,
+ * that are documented on the following webpages:
+ *
+ * -- http://blockchain.info/api/json_rpc_api
+ * -- https://bitcoin.org/en/developer-reference#bitcoin-core-apis
+ * -- https://en.bitcoin.it/wiki/Original_Bitcoin_client/API_calls_list
+ * -- https://en.bitcoin.it/wiki/Elis-API
+ * -- https://en.bitcoin.it/wiki/Raw_Transactions (with corrections from
+ *    the author, where required)
  */
