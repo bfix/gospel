@@ -24,6 +24,7 @@ func init() {
 	sess, err = NewSession(rpcaddr, user, passwd)
 	if err != nil {
 		sess = nil
+		return
 	}
 	info, err = sess.GetInfo()
 	if err != nil {
