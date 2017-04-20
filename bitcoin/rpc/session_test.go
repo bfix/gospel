@@ -29,7 +29,7 @@ func init() {
 	info, err = sess.GetInfo()
 	if err != nil {
 		sess = nil
-		fmt.Printf("ERROR: " + err.Error())
+		fmt.Println("ERROR: " + err.Error())
 	} else if verbose {
 		dumpObj("Info: %s\n", info)
 	}

@@ -1,7 +1,7 @@
 package crypto
 
 import (
-	"crypto/rand"
+	"github.com/bfix/gospel/math"
 	"testing"
 )
 
@@ -12,11 +12,8 @@ func TestPaillier(t *testing.T) {
 			t.Fatal("newpaillierprivatekey failed")
 		}
 		pub := priv.GetPublicKey()
-		for i := 0; i < 40; i++ {
-			m, err := rand.Int(rand.Reader, pub.N)
-			if err != nil {
-				t.Fatal("rand failed")
-			}
+		for i := 0; i < 5; i++ {
+			m := math.NewIntRnd(pub.N)
 			c, err := pub.Encrypt(m)
 			if err != nil {
 				t.Fatal("encrypt failed")
@@ -25,7 +22,7 @@ func TestPaillier(t *testing.T) {
 			if err != nil {
 				t.Fatal("decrypt failed")
 			}
-			if d.Cmp(m) != 0 {
+			if !d.Equals(m) {
 				t.Fatal("message mismatch")
 			}
 		}

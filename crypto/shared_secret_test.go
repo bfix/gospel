@@ -1,7 +1,7 @@
 package crypto
 
 import (
-	"math/big"
+	"github.com/bfix/gospel/math"
 	"math/rand"
 	"testing"
 )
@@ -9,7 +9,7 @@ import (
 func TestKeys(t *testing.T) {
 
 	n, k := 10, 7
-	s := big.NewInt(1234567890123456)
+	s := math.NewInt(1234567890123456)
 
 	p := nextPrime(s) // TEST ONLY!!! 'p' should be a random prime >> 's'!!!
 	shares := Split(s, p, n, k)
@@ -24,24 +24,22 @@ func TestKeys(t *testing.T) {
 		s2 := Reconstruct(coop)
 
 		switch {
-		case s.Cmp(s2) != 0 && kk >= k:
+		case !s.Equals(s2) && kk >= k:
 			t.Fatal("failed reconstruction")
-		case s.Cmp(s2) == 0 && kk < k:
+		case s.Equals(s2) && kk < k:
 			t.Fatal("pre-mature reconstruction")
 		}
 	}
 }
 
-func nextPrime(p *big.Int) *big.Int {
-
+func nextPrime(p *math.Int) *math.Int {
 	// make sure p is odd
 	if p.Bit(0) == 0 {
-		p = new(big.Int).Add(p, big.NewInt(1))
+		p = p.Add(math.ONE)
 	}
-
-	step := big.NewInt(2)
+	step := math.TWO
 	for {
-		p = new(big.Int).Add(p, step)
+		p = p.Add(step)
 		if p.ProbablyPrime(128) {
 			break
 		}

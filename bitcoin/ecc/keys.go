@@ -3,7 +3,6 @@ package ecc
 import (
 	"errors"
 	"github.com/bfix/gospel/math"
-	"math/big"
 )
 
 // PublicKey is a Point on the elliptic curve: (x,y) = d*G, where
@@ -36,7 +35,7 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 // the associated PublicKey (Point on the curve (x,y) = d*G)
 type PrivateKey struct {
 	PublicKey
-	D *big.Int
+	D *math.Int
 }
 
 // Bytes returns a byte representation of private key.
@@ -67,7 +66,7 @@ func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 	}
 	// set private factor.
 	key := &PrivateKey{}
-	key.D = new(big.Int).SetBytes(kd)
+	key.D = math.NewIntFromBytes(kd)
 	// compute public key
 	g := GetBasePoint()
 	key.Q = scalarMult(g, key.D)

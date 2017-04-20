@@ -2,20 +2,18 @@ package util
 
 import (
 	"bytes"
-	"github.com/bfix/gospel/crypto"
-	"math/big"
+	"github.com/bfix/gospel/math"
 	"testing"
 )
 
 func TestBase58(t *testing.T) {
-	one := big.NewInt(1)
-	if !test1(big.NewInt(57)) {
+	if !test1(math.NewInt(57)) {
 		t.Fatal("base58 failure")
 	}
-	if !test1(big.NewInt(58)) {
+	if !test1(math.NewInt(58)) {
 		t.Fatal("base58 failure")
 	}
-	if !test1(big.NewInt(255)) {
+	if !test1(math.NewInt(255)) {
 		t.Fatal("base58 failure")
 	}
 	if !test2([]byte{0, 255}) {
@@ -24,12 +22,12 @@ func TestBase58(t *testing.T) {
 	if !test2([]byte{0, 0, 255}) {
 		t.Fatal("base58 failure")
 	}
-	bound := big.NewInt(256)
+	bound := math.NewInt(256)
 	for n := 0; n < 128; n++ {
-		if !test1(crypto.RandBigInt(one, bound)) {
+		if !test1(math.NewIntRndRange(math.ONE, bound)) {
 			t.Fatal("base58 failure")
 		}
-		bound = new(big.Int).Lsh(bound, 1)
+		bound = bound.Lsh(1)
 	}
 
 	if _, err := Base58Decode("invalid"); err == nil {
@@ -37,15 +35,14 @@ func TestBase58(t *testing.T) {
 	}
 }
 
-func test1(x *big.Int) bool {
+func test1(x *math.Int) bool {
 	s := Base58Encode(x.Bytes())
 	b, err := Base58Decode(s)
 	if err != nil {
 		return false
 	}
-	y := new(big.Int).SetBytes(b)
-	res := x.Cmp(y) == 0
-	return res
+	y := math.NewIntFromBytes(b)
+	return x.Equals(y)
 }
 
 func test2(x []byte) bool {

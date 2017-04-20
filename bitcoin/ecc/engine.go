@@ -2,14 +2,13 @@ package ecc
 
 import (
 	"github.com/bfix/gospel/math"
-	"math/big"
 )
 
 // Sign a hash value with private key.
 // [http://www.nsa.gov/ia/_files/ecdsa.pdf, page 13f]
-func Sign(key *PrivateKey, hash []byte) (r, s *big.Int) {
+func Sign(key *PrivateKey, hash []byte) (r, s *math.Int) {
 
-	var k, invK *big.Int
+	var k, invK *math.Int
 	for {
 		// compute value of 'r' as x-coordinate of k*G with random k
 		for {
@@ -27,7 +26,7 @@ func Sign(key *PrivateKey, hash []byte) (r, s *big.Int) {
 		}
 		// compute value of 's := (rd + e)/k'
 		e := convertHash(hash)
-		s = nMul(addIntJac(nMul(key.D, r), e), invK)
+		s = nMul(nMul(key.D, r).Add(e), invK)
 		if s.Sign() != 0 {
 			break
 		}
@@ -37,7 +36,7 @@ func Sign(key *PrivateKey, hash []byte) (r, s *big.Int) {
 
 // Verify a hash value with public key.
 // [http://www.nsa.gov/ia/_files/ecdsa.pdf, page 15f]
-func Verify(key *PublicKey, hash []byte, r, s *big.Int) bool {
+func Verify(key *PublicKey, hash []byte, r, s *math.Int) bool {
 
 	// sanity checks for arguments
 	if r.Sign() == 0 || s.Sign() == 0 {
@@ -50,8 +49,8 @@ func Verify(key *PublicKey, hash []byte, r, s *big.Int) bool {
 	e := convertHash(hash)
 	w := nInv(s)
 
-	u1 := e.Mul(e, w)
-	u2 := w.Mul(r, w)
+	u1 := e.Mul(w)
+	u2 := w.Mul(r)
 
 	p1 := ScalarMultBase(u1)
 	p2 := scalarMult(key.Q, u2)
@@ -65,22 +64,12 @@ func Verify(key *PublicKey, hash []byte, r, s *big.Int) bool {
 
 // convert hash value to integer
 // [http://www.secg.org/download/aid-780/sec1-v2.pdf]
-func convertHash(hash []byte) *big.Int {
-
+func convertHash(hash []byte) *math.Int {
 	// trim hash value (if required)
 	maxSize := (curveN.BitLen() + 7) / 8
 	if len(hash) > maxSize {
 		hash = hash[:maxSize]
 	}
-
 	// convert to integer
-	val := new(big.Int).SetBytes(hash)
-	val.Rsh(val, uint(maxSize*8-curveN.BitLen()))
-	return val
-}
-
-// helper for initialization of big.Int from hex string
-func fromHex(s string) *big.Int {
-	val, _ := new(big.Int).SetString(s, 16)
-	return val
+	return math.NewIntFromBytes(hash).Rsh(uint(maxSize*8 - curveN.BitLen()))
 }

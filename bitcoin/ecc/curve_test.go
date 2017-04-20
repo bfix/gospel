@@ -2,13 +2,12 @@ package ecc
 
 import (
 	"github.com/bfix/gospel/math"
-	"math/big"
 	"testing"
 )
 
 var (
 	g  = &Point{curveGx, curveGy}
-	gm = &Point{curveGx, new(big.Int).Neg(curveGy)}
+	gm = &Point{curveGx, curveGy.Neg()}
 
 	tests = [][]string{
 		{"AA5E28D6A97A2479A65527F7290311A3624D4CC0FA1578598EE3C2613BF99522",
@@ -77,7 +76,7 @@ func TestInfinity(t *testing.T) {
 
 func TestMult(t *testing.T) {
 	p1 := double(g)
-	mult := func(n *big.Int) *Point {
+	mult := func(n *math.Int) *Point {
 		p := ScalarMultBase(n)
 		if !IsOnCurve(p) {
 			t.Fatal("point not on curve")
@@ -119,7 +118,7 @@ func TestAdd(t *testing.T) {
 	for n := 0; n < 32; n++ {
 		a := nRnd(math.ZERO)
 		b := nRnd(math.ZERO)
-		c := new(big.Int).Add(a, b)
+		c := a.Add(b)
 		p := scalarMult(g, a)
 		q := scalarMult(g, b)
 		r := scalarMult(g, c)
@@ -143,9 +142,9 @@ func TestDouble(t *testing.T) {
 
 func TestNIST(t *testing.T) {
 	for _, set := range tests {
-		m := fromHex(set[0])
-		x := fromHex(set[1])
-		y := fromHex(set[2])
+		m := math.NewIntFromHex(set[0])
+		x := math.NewIntFromHex(set[1])
+		y := math.NewIntFromHex(set[2])
 		p1 := &Point{x, y}
 		p2 := scalarMult(g, m)
 		if !IsEqual(p1, p2) {

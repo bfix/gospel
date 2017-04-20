@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"crypto/rand"
 	"github.com/bfix/gospel/math"
 	"testing"
 )
@@ -13,17 +12,14 @@ func TestCounter(t *testing.T) {
 			t.Fatal("newpaillierprivatekey failed")
 		}
 		pub := priv.GetPublicKey()
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 3; i++ {
 			cnt, err := NewCounter(pub)
 			if err != nil {
 				t.Fatal("newcounter failed")
 			}
 			var inc int64
-			for i := 0; i < 100; i++ {
-				v, err := rand.Int(rand.Reader, math.TWO)
-				if err != nil {
-					t.Fatal("rand failed")
-				}
+			for i := 0; i < 5; i++ {
+				v := math.NewIntRnd(math.TWO)
 				cnt.Increment(v)
 				if v.Bit(0) == 1 {
 					inc++

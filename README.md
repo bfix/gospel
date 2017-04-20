@@ -37,6 +37,7 @@ Packages
       transactions, hasing, Base58,...)
 - gospel/math: Mathematical helpers
     * Fast Fourier Transformation
+    * Arbitrary precision integers with chainable methods
 - gospel/crypto: cryptographic helpers
     * secret sharing
     * prime fields

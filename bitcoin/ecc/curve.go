@@ -2,22 +2,17 @@ package ecc
 
 import (
 	"errors"
-	"github.com/bfix/gospel/crypto"
 	"github.com/bfix/gospel/math"
-	"math/big"
 )
 
 // Point (x,y) on the curve
 type Point struct { // exported Point type
-	x, y *big.Int // coordinate values
+	x, y *math.Int // coordinate values
 }
 
 // NewPoint instaniates a new Point
-func NewPoint(a, b *big.Int) *Point {
-	p := &Point{}
-	p.x = new(big.Int).Set(a)
-	p.y = new(big.Int).Set(b)
-	return p
+func NewPoint(a, b *math.Int) *Point {
+	return &Point{x: a, y: b}
 }
 
 // Point at infinity
@@ -50,7 +45,7 @@ func pointAsBytes(p *Point, compressed bool) []byte {
 }
 
 // helper: convert coordinate to byte array of correct length
-func coordAsBytes(v *big.Int) []byte {
+func coordAsBytes(v *math.Int) []byte {
 	bv := v.Bytes()
 	plen := 32 - len(bv)
 	if plen == 0 {
@@ -68,17 +63,17 @@ func pointFromBytes(b []byte) (p *Point, compr bool, err error) {
 	switch b[0] {
 	case 0:
 	case 4:
-		p.x.SetBytes(b[1:33])
-		p.y.SetBytes(b[33:])
+		p.x = math.NewIntFromBytes(b[1:33])
+		p.y = math.NewIntFromBytes(b[33:])
 		compr = false
 	case 3:
-		p.x.SetBytes(b[1:])
+		p.x = math.NewIntFromBytes(b[1:])
 		p.y, err = computeY(p.x, 1)
 		if err != nil {
 			return
 		}
 	case 2:
-		p.x.SetBytes(b[1:])
+		p.x = math.NewIntFromBytes(b[1:])
 		p.y, err = computeY(p.x, 0)
 		if err != nil {
 			return
@@ -90,14 +85,14 @@ func pointFromBytes(b []byte) (p *Point, compr bool, err error) {
 }
 
 // helper: reconstruct y-coordinate of Point
-func computeY(x *big.Int, m uint) (y *big.Int, err error) {
-	y = big.NewInt(0)
+func computeY(x *math.Int, m uint) (y *math.Int, err error) {
+	y = math.ZERO
 	err = nil
 	y2 := pAddJac(pCub(x), curveB)
 	y, err = math.SqrtModP(y2, curveP)
 	if err == nil {
 		if y.Bit(0) != m {
-			y = new(big.Int).Sub(curveP, y)
+			y = curveP.Sub(y)
 		}
 	}
 	return
@@ -147,12 +142,12 @@ func double(p *Point) *Point {
 
 // Multiply a Point on the curve with a scalar value k using
 // a Montgomery multiplication approach
-func scalarMult(p *Point, k *big.Int) *Point {
+func scalarMult(p *Point, k *math.Int) *Point {
 	return conv(scalarMultJac(newJacPoint(p.x, p.y, math.ONE), k))
 }
 
 // ScalarMultBase multiplies the base Point of the curve with a scalar value k
-func ScalarMultBase(k *big.Int) *Point {
+func ScalarMultBase(k *math.Int) *Point {
 	return scalarMult(GetBasePoint(), k)
 }
 
@@ -160,16 +155,12 @@ func ScalarMultBase(k *big.Int) *Point {
 // Jacobian coordinates (X,Y,Z) with "x = X/Z^2" and "y = Y/Z^3". See:
 // [http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html]
 type jacPoint struct { // internal Point type
-	x, y, z *big.Int // using Jacobian coordinates
+	x, y, z *math.Int // using Jacobian coordinates
 }
 
 // NewJacPoint instaniates a new Point
-func newJacPoint(a, b, c *big.Int) *jacPoint {
-	p := &jacPoint{}
-	p.x = new(big.Int).Set(a)
-	p.y = new(big.Int).Set(b)
-	p.z = new(big.Int).Set(c)
-	return p
+func newJacPoint(a, b, c *math.Int) *jacPoint {
+	return &jacPoint{x: a, y: b, z: c}
 }
 
 // Point at infinity
@@ -177,7 +168,7 @@ var jacInf = newJacPoint(inf.x, inf.y, math.ONE)
 
 // check if a Point is at infinity
 func isInfJac(p *jacPoint) bool {
-	return p.x.Cmp(math.ZERO) == 0 && p.y.Cmp(math.ZERO) == 0
+	return p.x.Equals(math.ZERO) && p.y.Equals(math.ZERO)
 }
 
 // convert internal Point to external representation
@@ -225,7 +216,7 @@ func doubleJac(p *jacPoint) *jacPoint {
 	b := pSqr(p.y)
 	zz := pSqr(p.z)
 	c := pSqr(b)
-	d := pMul(math.TWO, pSub(pSub(pSqr(addIntJac(p.x, b)), a), c))
+	d := pMul(math.TWO, pSub(pSub(pSqr(p.x.Add(b)), a), c))
 	e := pMul(math.THREE, a)
 	f := pSqr(e)
 	x := pSub(f, pMul(math.TWO, d))
@@ -236,15 +227,13 @@ func doubleJac(p *jacPoint) *jacPoint {
 
 // Multiply a Point on the curve with a scalar value k using
 // a Montgomery multiplication algorithm
-func scalarMultJac(p *jacPoint, k *big.Int) *jacPoint {
-
+func scalarMultJac(p *jacPoint, k *math.Int) *jacPoint {
 	if isInfJac(p) {
 		return p
 	}
 	if k.Cmp(math.ZERO) == 0 {
 		return jacInf
 	}
-
 	r := jacInf
 	for _, val := range k.Bytes() {
 		for pos := 0; pos < 8; pos++ {
@@ -259,67 +248,55 @@ func scalarMultJac(p *jacPoint, k *big.Int) *jacPoint {
 }
 
 // modulus
-func _mod(a, n *big.Int) *big.Int {
-	return new(big.Int).Mod(a, n)
-}
-
-func nMod(a *big.Int) *big.Int {
-	return _mod(a, curveN)
+func nMod(a *math.Int) *math.Int {
+	return a.Mod(curveN)
 }
 
 // modular inverse
-func _inv(a, n *big.Int) *big.Int {
-	return new(big.Int).ModInverse(a, n)
+func pInv(a *math.Int) *math.Int {
+	return a.ModInverse(curveP)
 }
 
-func pInv(a *big.Int) *big.Int {
-	return _inv(a, curveP)
-}
-
-func nInv(a *big.Int) *big.Int {
-	return _inv(a, curveN)
+func nInv(a *math.Int) *math.Int {
+	return a.ModInverse(curveN)
 }
 
 // multiplication
-func _mul(a, b, n *big.Int) *big.Int {
-	return _mod(new(big.Int).Mul(a, b), n)
+func pMul(a, b *math.Int) *math.Int {
+	return a.Mul(b).Mod(curveP)
 }
 
-func pMul(a, b *big.Int) *big.Int {
-	return _mul(a, b, curveP)
-}
-
-func nMul(a, b *big.Int) *big.Int {
-	return _mul(a, b, curveN)
+func nMul(a, b *math.Int) *math.Int {
+	return a.Mul(b).Mod(curveN)
 }
 
 // squares and cubes
-func pSqr(a *big.Int) *big.Int {
+func pSqr(a *math.Int) *math.Int {
 	return pMul(a, a)
 }
 
-func pCub(a *big.Int) *big.Int {
+func pCub(a *math.Int) *math.Int {
 	return pMul(pSqr(a), a)
 }
 
 //	addJacition and subtraction
-func pSub(a, b *big.Int) *big.Int {
-	x := new(big.Int).Sub(a, b)
+func pSub(a, b *math.Int) *math.Int {
+	x := a.Sub(b)
 	if x.Sign() == -1 {
-		x.Add(x, curveP)
+		x = x.Add(curveP)
 	}
 	return x
 }
 
-func addIntJac(a, b *big.Int) *big.Int {
-	return new(big.Int).Add(a, b)
+func xaddIntJac(a, b *math.Int) *math.Int {
+	return a.Add(b)
 }
 
-func pAddJac(a, b *big.Int) *big.Int {
-	return _mod(addIntJac(a, b), curveP)
+func pAddJac(a, b *math.Int) *math.Int {
+	return a.Add(b).Mod(curveP)
 }
 
 // generate random integer value in given range
-func nRnd(a *big.Int) *big.Int {
-	return crypto.RandBigInt(a, curveN)
+func nRnd(a *math.Int) *math.Int {
+	return math.NewIntRndRange(a, curveN)
 }

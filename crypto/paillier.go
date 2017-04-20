@@ -1,20 +1,19 @@
 package crypto
 
 import (
-	"crypto/rand"
-	"math/big"
+	"github.com/bfix/gospel/math"
 )
 
 // PaillierPublicKey data structure
 type PaillierPublicKey struct {
-	N, G *big.Int
+	N, G *math.Int
 }
 
 // PaillierPrivateKey data structure
 type PaillierPrivateKey struct {
 	*PaillierPublicKey
-	L, U *big.Int
-	P, Q *big.Int
+	L, U *math.Int
+	P, Q *math.Int
 }
 
 // NewPaillierPrivateKey generates a new Paillier private key (key pair).
@@ -39,46 +38,32 @@ func NewPaillierPrivateKey(bits int) (key *PaillierPrivateKey, err error) {
 
 	// generate primes 'p' and 'q' and their factor 'n'
 	// repeat until the requested factor bitsize is reached
-	var p, q, n *big.Int
+	var p, q, n *math.Int
 	for {
 		bitsP := (bits - 5) / 2
 		bitsQ := bits - bitsP
 
-		p, err = rand.Prime(rand.Reader, bitsP)
-		if err != nil {
-			return nil, err
-		}
-		q, err = rand.Prime(rand.Reader, bitsQ)
-		if err != nil {
-			return nil, err
-		}
-
-		n = new(big.Int).Mul(p, q)
+		p = math.NewIntRndPrimeBits(bitsP)
+		q = math.NewIntRndPrimeBits(bitsQ)
+		n = p.Mul(q)
 		if n.BitLen() == bits {
 			break
 		}
 	}
 
 	// initialize variables
-	one := big.NewInt(1)
-	n2 := new(big.Int).Mul(n, n)
+	n2 := n.Mul(n)
 
 	// compute public key parameter 'g' (generator)
-	g, err := rand.Int(rand.Reader, n2)
-	if err != nil {
-		return nil, err
-	}
+	g := math.NewIntRnd(n2)
 
 	// compute private key parameters
-	p1 := new(big.Int).Sub(p, one)
-	q1 := new(big.Int).Sub(q, one)
-	l := new(big.Int).Mul(q1, p1)
-	l.Div(l, new(big.Int).GCD(nil, nil, p1, q1))
+	p1 := p.Sub(math.ONE)
+	q1 := q.Sub(math.ONE)
+	l := q1.Mul(p1).Div(p1.GCD(q1))
 
-	a := new(big.Int).Exp(g, l, n2)
-	a.Sub(a, one)
-	a.Div(a, n)
-	u := new(big.Int).ModInverse(a, n)
+	a := g.ModPow(l, n2).Sub(math.ONE).Div(n)
+	u := a.ModInverse(n)
 
 	// return key pair
 	pubkey := &PaillierPublicKey{
@@ -108,19 +93,14 @@ func (p *PaillierPrivateKey) GetPublicKey() *PaillierPublicKey {
 //
 // N.B. As in the key generation process the division by n is integer
 //      based and rounds toward zero!
-func (p *PaillierPrivateKey) Decrypt(c *big.Int) (m *big.Int, err error) {
+func (p *PaillierPrivateKey) Decrypt(c *math.Int) (m *math.Int, err error) {
 
 	// initialize variables
 	pub := p.GetPublicKey()
-	n2 := new(big.Int).Mul(pub.N, pub.N)
-	one := big.NewInt(1)
+	n2 := pub.N.Mul(pub.N)
 
 	// perform decryption function
-	m = new(big.Int).Exp(c, p.L, n2)
-	m.Sub(m, one)
-	m.Div(m, pub.N)
-	m.Mul(m, p.U)
-	m.Mod(m, pub.N)
+	m = c.ModPow(p.L, n2).Sub(math.ONE).Div(pub.N).Mul(p.U).Mod(pub.N)
 	return m, nil
 }
 
@@ -133,19 +113,15 @@ func (p *PaillierPrivateKey) Decrypt(c *big.Int) (m *big.Int, err error) {
 // where 'r' is a random number from the interval [0,n[. This encryption
 // allows different encryption results for the same message, based on
 // the actual value of 'r'.
-func (p *PaillierPublicKey) Encrypt(m *big.Int) (c *big.Int, err error) {
+func (p *PaillierPublicKey) Encrypt(m *math.Int) (c *math.Int, err error) {
 
 	// initialize variables
-	n2 := new(big.Int).Mul(p.N, p.N)
+	n2 := p.N.Mul(p.N)
 
 	// compute decryption function
-	c1 := new(big.Int).Exp(p.G, m, n2)
-	r, err := rand.Int(rand.Reader, p.N)
-	if err != nil {
-		return nil, err
-	}
-	c2 := new(big.Int).Exp(r, p.N, n2)
-	c = new(big.Int).Mul(c1, c2)
-	c.Mod(c, n2)
+	c1 := p.G.ModPow(m, n2)
+	r := math.NewIntRnd(p.N)
+	c2 := r.ModPow(p.N, n2)
+	c = c1.Mul(c2).Mod(n2)
 	return c, nil
 }
