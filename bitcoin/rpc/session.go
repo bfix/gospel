@@ -261,9 +261,5 @@ func checkJSON(a, b interface{}) (bool, string) {
 		return false, buf.String()
 	}
 	rc := compare(am, bm, 0, buf)
-	if !rc && verbose {
-		fmt.Fprintf(buf, "IN: %v\n", am)
-		fmt.Fprintf(buf, "OUT: %v\n", bm)
-	}
 	return rc, buf.String()
 }
