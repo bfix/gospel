@@ -5,53 +5,147 @@ import (
 	"testing"
 )
 
+var (
+	_txid  string
+	_block string
+)
+
 func TestTransaction(t *testing.T) {
 	if sess == nil {
 		t.Skip("skipping test: session not available")
 	}
-	txlist, err := sess.ListTransactions(accnt, 25, 0)
+	txlist, err := sess.ListTransactions(_accnt, 25, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(txlist) > 0 {
-		txid := txlist[0].TxID
-		tx, err := sess.GetTransaction(txid, false)
+		_txid = txlist[0].TxID
+		tx, err := sess.GetTransaction(_txid, false)
+		_block = tx.BlockHash
 		if err != nil {
 			t.Fatal(err)
 		}
 		if verbose {
 			dumpObj("Transaction: %s\n", tx)
 		}
-		rtxHex, err := sess.GetRawTransaction(txid)
-		if err != nil {
-			t.Fatal(err)
-		}
-		rtx, err := sess.DecodeRawTransaction(rtxHex)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if verbose {
-			dumpObj("RawTransaction: %s\n", rtx)
-		}
-		ent, err := sess.GetMemPoolEntry(txid)
-		if err == nil && verbose {
-			dumpObj("MemPoolEntry: %v\n", ent)
-		}
-		anc, err := sess.GetMemPoolAncestorObjs(txid)
-		if err == nil && verbose {
-			dumpObj("MemPoolAncestors: %v\n", anc)
-		}
-		dec, err := sess.GetMemPoolDecendantObjs(txid)
-		if err == nil && verbose {
-			dumpObj("MemPoolDecendants: %v\n", dec)
-		}
 	}
+}
 
-	txlist, _, err = sess.ListSinceBlock("", 1)
+func TestRawTransaction(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if len(_txid) == 0 {
+		t.Skip("skipping test: no transaction available")
+	}
+	rtxHex, err := sess.GetRawTransaction(_txid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rtx, err := sess.DecodeRawTransaction(rtxHex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("RawTransaction: %s\n", rtx)
+	}
+}
+
+func TestMemPoolEntry(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if len(_txid) == 0 {
+		t.Skip("skipping test: no transaction available")
+	}
+	ent, err := sess.GetMemPoolEntry(_txid)
+	if err == nil && verbose {
+		dumpObj("MemPoolEntry: %v\n", ent)
+	}
+}
+
+func TestMemPoolAncestors(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if len(_txid) == 0 {
+		t.Skip("skipping test: no transaction available")
+	}
+	anc, err := sess.GetMemPoolAncestorObjs(_txid)
+	if err == nil && verbose {
+		dumpObj("MemPoolAncestors: %v\n", anc)
+	}
+}
+
+func TestMemPoolDescendants(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if len(_txid) == 0 {
+		t.Skip("skipping test: no transaction available")
+	}
+	dec, err := sess.GetMemPoolDecendantObjs(_txid)
+	if err == nil && verbose {
+		dumpObj("MemPoolDecendants: %v\n", dec)
+	}
+}
+
+func TestListSinceBlock(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	txlist, _, err := sess.ListSinceBlock("", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(txlist) == 0 {
 		fmt.Println("no transactions")
 	}
+}
+
+func TestGetTxOut(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if len(_txid) == 0 {
+		t.Skip("skipping test: no transaction available")
+	}
+	oi, err := sess.GetTxOut(_txid, 0, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("OutputInfo: %s\n", oi)
+	}
+}
+
+func TestGetTxOutProof(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if len(_txid) == 0 {
+		t.Skip("skipping test: no transaction available")
+	}
+	p, err := sess.GetTxOutProof([]string{_txid}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("TxOutProof: %s\n", p)
+	}
+}
+
+func TestGetTxOutSetInfo(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	/*
+		si, err := sess.GetTxOutSetInfo()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if verbose {
+			dumpObj("TxOutSetInfo: %s\n", si)
+		}
+	*/
 }

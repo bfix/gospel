@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	addr  = ""
-	accnt = ""
+	_addr  = ""
+	_xaddr = "18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX"
+	_accnt = ""
 )
 
 func TestWallet(t *testing.T) {
@@ -20,23 +21,23 @@ func TestWallet(t *testing.T) {
 	if len(walletCopy) == 0 {
 		t.Skip("skipping test: no copy location for wallet specified")
 	}
-	if err = sess.BackupWallet(walletCopy); err != nil {
+	if err := sess.BackupWallet(walletCopy); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = os.Stat(walletCopy); err != nil {
+	if _, err := os.Stat(walletCopy); err != nil {
 		t.Fatal(err)
 	}
-	if err = os.Remove(walletCopy); err != nil {
+	if err := os.Remove(walletCopy); err != nil {
 		t.Fatal(err)
 	}
 	passphrase := os.Getenv("BTC_WALLET_PP")
 	if len(passphrase) == 0 {
 		t.Skip("skipping test: no passphrase for wallet specified")
 	}
-	if err = sess.WalletLock(); err != nil {
+	if err := sess.WalletLock(); err != nil {
 		t.Fatal(err)
 	}
-	if err = sess.WalletPassphrase(passphrase, 3600); err != nil {
+	if err := sess.WalletPassphrase(passphrase, 3600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -45,8 +46,7 @@ func TestKeypool(t *testing.T) {
 	if sess == nil {
 		t.Skip("skipping test: session not available")
 	}
-	err = sess.KeypoolRefill()
-	if err != nil {
+	if err := sess.KeypoolRefill(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -59,7 +59,7 @@ func TestImport(t *testing.T) {
 	if len(prvKey) == 0 {
 		t.Skip("skipping test: no private key for import found")
 	}
-	if err = sess.ImportPrivateKey(prvKey); err != nil {
+	if err := sess.ImportPrivateKey(prvKey); err != nil {
 		t.Fatal(err)
 		return
 	}
@@ -69,7 +69,7 @@ func TestListUnspent(t *testing.T) {
 	if sess == nil {
 		t.Skip("skipping test: session not available")
 	}
-	if _, err = sess.ListUnspent(1, 999999); err != nil {
+	if _, err := sess.ListUnspent(1, 999999); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -78,25 +78,22 @@ func TestAccount(t *testing.T) {
 	if sess == nil {
 		t.Skip("skipping test: session not available")
 	}
+	var err error
 	label := fmt.Sprintf("Account %d", time.Now().Unix())
-	addr, err = sess.GetNewAddress(label)
-	if err != nil {
+	if _addr, err = sess.GetNewAddress(label); err != nil {
 		t.Fatal(err)
 	}
-	accnt = "Renamed " + label
-	err = sess.SetAccount(addr, accnt)
-	if err != nil {
+	_accnt = "Renamed " + label
+	if err = sess.SetAccount(_addr, _accnt); err != nil {
 		t.Fatal(err)
 	}
-	label, err = sess.GetAccount(addr)
-	if err != nil {
+	if label, err = sess.GetAccount(_addr); err != nil {
 		t.Fatal(err)
 	}
-	if accnt != label {
+	if _accnt != label {
 		t.Fatal("account label mismatch")
 	}
-	_, err = sess.GetAccountAddress(accnt)
-	if err != nil {
+	if _, err := sess.GetAccountAddress(_accnt); err != nil {
 		t.Fatal(err)
 	}
 	accnts, err := sess.ListAccounts(0)
@@ -117,25 +114,25 @@ func TestAccount(t *testing.T) {
 				t.Fatal(err)
 			}
 			if bal > 0 {
-				accnt = label
-				addr = addrList[0]
+				_accnt = label
+				_addr = addrList[0]
 				break
 			}
 		}
 	}
-	if len(accnt) > 0 {
-		if _, ok := accnts[accnt]; !ok {
+	if len(_accnt) > 0 {
+		if _, ok := accnts[_accnt]; !ok {
 			t.Fatal("account list failure")
 		}
 	}
 
-	addrList, err := sess.GetAddressesByAccount(accnt)
+	addrList, err := sess.GetAddressesByAccount(_accnt)
 	if err != nil {
 		t.Fatal(err)
 	}
 	found := false
 	for _, a := range addrList {
-		if a == addr {
+		if a == _addr {
 			found = true
 			break
 		}
@@ -149,10 +146,10 @@ func TestBalance(t *testing.T) {
 	if sess == nil {
 		t.Skip("skipping test: session not available")
 	}
-	if _, err = sess.GetBalance(accnt); err != nil {
+	if _, err := sess.GetBalance(_accnt); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = sess.GetBalanceAll(); err != nil {
+	if _, err := sess.GetBalanceAll(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -184,29 +181,78 @@ func TestAddress(t *testing.T) {
 	if sess == nil {
 		t.Skip("skipping test: session not available")
 	}
-	val, err := sess.ValidateAddress(addr)
+	val, err := sess.ValidateAddress(_addr)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if verbose {
 		dumpObj("Validity: %s\n", val)
 	}
-	if val.Address != addr {
+	if val.Address != _addr {
 		t.Fatal("address mismatch")
 	}
 	if !val.IsMine {
 		t.Fatal("owner mismatch")
 		return
 	}
-	/*
-		found := false
-		for _, a := range val.Addresses {
-			if a.Account == accnt {
-				found = true
-			}
-		}
-		if !found {
-			t.Fatal("account mismatch")
-		}
-	*/
+}
+
+func TestGetRawChangeAddress(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if _, err := sess.GetRawChangeAddress(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGetUnconfirmedBalance(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if _, err := sess.GetUnconfirmedBalance(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGetWalletInfo(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	wi, err := sess.GetWalletInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("WalletInfo: %s\n", wi)
+	}
+	b, err := sess.GetBalance("*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b != wi.Balance {
+		t.Fatal("Balance mismatch")
+	}
+}
+
+func TestImportAddress(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if err := sess.ImportAddress(_xaddr, "", false); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestListAddressGroupings(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	ag, err := sess.ListAddressGroupings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("AddressGroups: %s\n", ag)
+	}
 }

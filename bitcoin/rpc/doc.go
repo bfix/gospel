@@ -37,7 +37,7 @@ package rpc
  * ====================================================================
  *
  *  Method:                 File:
- *  ----------------------+-------------------------- 
+ *  ----------------------+--------------------------
  *  AbandonTransaction      wallet.go
  *  AddMultiSigAddress      wallet.go
  *  AddNode                 node.go
@@ -84,24 +84,24 @@ package rpc
  *  GetNetworkHashPS        node.go
  *  GetNetworkInfo          node.go
  *  GetNewAddress           wallet.go
- *  GetPeerInfo
- *  GetRawChangeAddress
- *  GetRawMemPool
+ *  GetPeerInfo             node.go
+ *  GetRawChangeAddress     wallet.go
+ *  GetRawMemPool           local.go
  *  GetRawTransaction       transaction.go
  *  GetReceivedByAccount    wallet.go
  *  GetReceivedByAddress    wallet.go
  *  GetTransaction          transaction.go
- *  GetTxOut
- *  GetTxOutProof
- *  GetTxOutSetInfo
- *  GetUnconfirmedBalance
- *  GetWalletInfo
- *  GetWork
- *  Help
- *  ImportAddress
+ *  GetTxOut                transaction.go
+ *  GetTxOutProof			transaction.go
+ *  GetTxOutSetInfo         transaction.go
+ *  GetUnconfirmedBalance   wallet.go
+ *  GetWalletInfo           wallet.go
+ *  GetWork                 ---
+ *  Help                    ---
+ *  ImportAddress           wallet.go
  *  ImportPrivKey           wallet.go
- *  ImportPrunedFunds
- *  ImportWallet
+ *  ImportPrunedFunds       wallet.go
+ *  ImportWallet            wallet.go
  *  KeyPoolRefill           wallet.go
  *  ListAccounts            wallet.go
  *  ListAddressGroupings

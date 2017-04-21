@@ -4,36 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"testing"
-)
-
-const (
-	verbose = false
 )
 
 var (
-	sess *Session
-	err  error
-	info *Info
+	sess    *Session
+	info    *Info
+	verbose = false
 )
 
 func init() {
+	fmt.Printf("init(): ")
+	var err error
 	rpcaddr := os.Getenv("BTC_HOST")
 	user := os.Getenv("BTC_USER")
 	passwd := os.Getenv("BTC_PASSWORD")
-	sess, err = NewSession(rpcaddr, user, passwd)
-	if err != nil {
+	if sess, err = NewSession(rpcaddr, user, passwd); err != nil {
+		fmt.Println(err.Error())
 		sess = nil
 		return
 	}
 	strictCheck = true
-	info, err = sess.GetInfo()
-	if err != nil {
+	if info, err = sess.GetInfo(); err != nil {
+		fmt.Println(err.Error())
 		sess = nil
-		fmt.Println("ERROR: " + err.Error())
-	} else if verbose {
-		dumpObj("Info: %s\n", info)
+		return
 	}
+	fmt.Println("Bitcoin JSON-RPC tests initialized!")
 }
 
 func dumpObj(fmtStr string, v interface{}) {
@@ -42,11 +38,5 @@ func dumpObj(fmtStr string, v interface{}) {
 		fmt.Printf(fmtStr, string(data))
 	} else {
 		fmt.Printf(fmtStr, "<"+err.Error()+">")
-	}
-}
-
-func TestSession(t *testing.T) {
-	if sess == nil {
-		t.Skip("skipping test: session not available")
 	}
 }

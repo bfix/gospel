@@ -49,7 +49,7 @@ type Info struct {
 	KeyPoolSize int `json:"keypoolsize,omitempty"`
 	// PayTxFee is the minimum fee to pay per kilobyte of transaction; may be
 	// 0. Only returned if wallet support is enabled.
-	PayTxFee float64 `json:"paytxfee,omitempty"`
+	PayTxFee float64 `json:"paytxfee"`
 	// RelayFee is the minimum fee a low-priority transaction must pay in
 	// order for this node to accept it into its memory pool.
 	RelayFee float64 `json:"relayfee"`
@@ -421,17 +421,17 @@ type MemPoolTransaction struct {
 	Height int `json:"height"`
 	// StartingPriority is the priority of the transaction when it first
 	// entered the memory pool.
-	StartingPriority int `json:"startingpriority"`
+	StartingPriority int `json:"startingpriority,omitempty"`
 	// CurrentPriority is the current priority of the transaction.
-	CurrentPriority int `json:"currentpriority"`
-	// DecendantCount is the number of in-mempool descendant transactions
+	CurrentPriority int `json:"currentpriority,omitempty"`
+	// DescendantCount is the number of in-mempool descendant transactions
 	// (including this one).
-	DecendantCount int `json:"decendantcount"`
-	// DecendantSize is the size of in-mempool descendants (including this one)
-	DecendantSize int `json:"decendantsize"`
-	// DecendantFees is the modified fees (see modifiedfee above) of in-mempool
+	DescendantCount int `json:"descendantcount"`
+	// DescendantSize is the size of in-mempool descendants (including this one)
+	DescendantSize int `json:"descendantsize"`
+	// DescendantFees is the modified fees (see modifiedfee above) of in-mempool
 	// descendants (including this one).
-	DecendantFees float64 `json:"decendantfees"`
+	DescendantFees float64 `json:"descendantfees"`
 	// AncestorCount is the number of in-mempool ancestor transactions
 	// (including this one).
 	AncestorCount int `json:"ancestorcount"`
@@ -577,6 +577,57 @@ type Output struct {
 	ReddemScript string `json:"redeemScript,omitempty"`
 }
 
+// OutputInfo contains info about the output of a transaction.
+type OutputInfo struct {
+	// BestBlock is the hash of the header of the block on the local best
+	// block chain which includes this transaction. The hash will encoded as
+	// hex in RPC byte order. If the transaction is not part of a block, the
+	// string will be empty.
+	BestBlock string `json:"bestblock"`
+	// Confirmations is the number of confirmations received for the
+	// transaction containing this output or 0 if the transaction hasn’t been
+	// confirmed yet.
+	Confirmations int `json:"confirmations"`
+	// Value is the amount of bitcoins spent to this output. May be 0.
+	Value float64 `json:"value"`
+	// ScriptPubKey is an object with information about the pubkey script.
+	// This may be null if there was no pubkey script.
+	ScriptPubKey *ScriptPubKey `json:"scriptPubKey"`
+	// Version is the transaction version number of the transaction containing
+	// the pubkey script.
+	Version int `json:"version"`
+	// Coinbase is set to true if the transaction output belonged to a coinbase
+	// transaction; set to false for all other transactions. Coinbase
+	// transactions need to have 101 confirmations before their outputs can be
+	// spent.
+	Coinbase bool `json:"coinbase"`
+}
+
+// TxOutSetInfo contains information about the UTXO set.
+type TxOutSetInfo struct {
+	// Height is the height of the local best block chain. A new node with
+	// only the hardcoded genesis block will have a height of 0.
+	Height int `json:"height"`
+	// BestBlock is the hash of the header of the highest block on the
+	// local best block chain, encoded as hex in RPC byte order.
+	BestBlock string `json:"bestblock"`
+	// Transactions is the number of transactions with unspent outputs.
+	Transactions int `json:"transactions"`
+	// TxOuts is the number of unspent transaction outputs.
+	TxOuts int `json:"txouts"`
+	// BytesSerialized is the size of the serialized UTXO set in bytes; not
+	// counting overhead, this is the size of the chainstate directory in the
+	// Bitcoin Core configuration directory.
+	BytesSerialized int `json:"bytes_serialized"`
+	// HashSerialized is a SHA256 hash of the serialized UTXO set; useful for
+	// comparing two nodes to see if they have the same set (they should, if
+	// they always used the same serialization format and currently have the
+	// same best block). The hash is encoded as hex in RPC byte order.
+	HashSerialized string `json:"hash_serialized"`
+	// TotalAmount is the total number of bitcoins in the UTXO set.
+	TotalAmount float64 `json:"total_amount"`
+}
+
 // Balance of Bitcoin address.
 type Balance struct {
 	// Address refers to a Bitcoin address.
@@ -614,6 +665,14 @@ type AddressInfo struct {
 	TxIDs []string `json:"txids"`
 }
 
+// AddressGroup is a group of addresses that may have had their common
+// ownership made public by common use as inputs in the same transaction or
+// from being used as change from a previous transaction.
+type AddressGroup []*AddressDetail
+
+// AddressDetail is information about an address in an address group.
+type AddressDetail []interface{}
+
 // Validity check on address
 type Validity struct {
 	// IsValid is set to true if the address is a valid P2PKH or P2SH address;
@@ -628,10 +687,10 @@ type Validity struct {
 	IsMine bool `json:"ismine,omitempty"`
 	// IsWatchOnly is set to true if the address is watch-only. Otherwise set
 	// to false. Only returned if address is in the wallet.
-	IsWatchOnly bool `json:"iswatchonly"`
+	IsWatchOnly *bool `json:"iswatchonly,omitempty"`
 	// IsScript is set to true if a P2SH address; otherwise set to false. Only
 	// returned if the address is in the wallet.
-	IsScript bool `json:"isscript"`
+	IsScript *bool `json:"isscript,omitempty"`
 	// Script is only returned for P2SH addresses belonging to this wallet.
 	// This is the type of script:
 	// -- 'pubkey' for a P2PK script inside P2SH
@@ -648,9 +707,9 @@ type Validity struct {
 	// IsCompressed is set to true if a compressed public key or set to
 	// false if an uncompressed public key. Only returned if the address
 	// is a P2PKH address in the wallet.
-	IsCompressed bool `json:"iscompressed"`
+	IsCompressed bool `json:"iscompressed,omitempty"`
 	// TimeStamp
-	TimeStamp int `json:"timestamp"`
+	TimeStamp int `json:"timestamp,omitempty"`
 	// Account this address belong to. May be an empty string for the
 	// default account. Only returned if the address belongs to the wallet.
 	Account string `json:"account,omitempty"`
@@ -701,6 +760,36 @@ type MultiSigAddr struct {
 	Address string `json:"address"`
 	// RedeemScript is the multisig redeem script encoded as hex.
 	RedeemScript string `json:"redeemScript"`
+}
+
+// WalletInfo describes the wallet.
+type WalletInfo struct {
+	// WalletVersion is the version number of the wallet.
+	WalletVersion int `json:"walletversion"`
+	// Balance is the balance of the wallet. The same as returned by the
+	// getbalance RPC with default parameters.
+	Balance float64 `json:"balance"`
+	// UnconfirmedBalance is the balance of the unconfirmed transactions in
+	// the wallet. The same as returned by the getbalance RPC with default
+	// parameters.
+	UnconfirmedBalance float64 `json:"unconfirmed_balance"`
+	// ImmatureBalance
+	ImmatureBalance float64 `json:"immature_balance"`
+	// PayTxFee
+	PayTxFee float64 `json:"paytxfee"`
+	// TxCount is the total number of transactions in the wallet (both spends
+	// and receives).
+	TxCount int `json:"txcount"`
+	// KeypoolOldest is the date as Unix epoch time when the oldest key in the
+	// wallet key pool was created; useful for only scanning blocks created
+	// since this date for transactions.
+	KeypoolOldest int `json:"keypoololdest"`
+	// KeypoolSize is the number of keys in the wallet keypool.
+	KeypoolSize int `json:"keypoolsize"`
+	// UnlockedUntil is only returned if the wallet was encrypted with the
+	// encryptwallet RPC. A Unix epoch date when the wallet will be locked, or
+	// 0 if the wallet is currently locked.
+	UnlockedUntil int `json:"unlocked_until"`
 }
 
 // NodeInfo holds information about added nodes.

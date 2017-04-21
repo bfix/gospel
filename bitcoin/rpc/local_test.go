@@ -35,7 +35,7 @@ func TestFee(t *testing.T) {
 	if sess == nil {
 		t.Skip("skipping test: session not available")
 	}
-	if err = sess.SetTxFee(0.0001); err != nil {
+	if err := sess.SetTxFee(0.0001); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -50,5 +50,30 @@ func TestMemPoolInfo(t *testing.T) {
 	}
 	if verbose {
 		dumpObj("MemPoolInfo: %s\n", mi)
+	}
+}
+
+func TestGetRawMemPool(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	list, err := sess.GetRawMemPoolList()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("RawMemPoolList: %s\n", list)
+	}
+	tx, err := sess.GetRawMemPool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("RawMemPool: %s\n", tx)
+	}
+	for _, k := range list {
+		if _, ok := tx[k]; !ok {
+			t.Fatal(fmt.Sprintf("Unknown key '%s'", k))
+		}
 	}
 }

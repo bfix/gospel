@@ -122,6 +122,54 @@ func (s *Session) GetTransaction(hash string, watchOnly bool) (*Transaction, err
 	return t, nil
 }
 
+// GetTxOut returns details about a transaction output. Only unspent
+// transaction outputs (UTXOs) are guaranteed to be available.
+func (s *Session) GetTxOut(txid string, vout int, unconfirmed bool) (*OutputInfo, error) {
+	res, err := s.call("gettxout", []Data{txid, vout, unconfirmed})
+	if err != nil {
+		return nil, err
+	}
+	oi := new(OutputInfo)
+	if err = res.UnmarshalResult(oi); err != nil {
+		return nil, err
+	}
+	return oi, nil
+}
+
+// GetTxOutProof returns a hex-encoded proof that one or more specified
+// transactions were included in a block. NOTE: By default this function only
+// works when there is an unspent output in the UTXO set for this transaction.
+// To make it always work, you need to maintain a transaction index, using the
+// -txindex command line option, or specify the block in which the transaction
+// is included in manually (by block header hash).
+func (s *Session) GetTxOutProof(txids []string, header string) (string, error) {
+	data := []Data{txids}
+	if len(header) > 0 {
+		data = append(data, header)
+	}
+	res, err := s.call("gettxoutproof", data)
+	if err != nil {
+		return "", err
+	}
+	return res.Result.(string), nil
+}
+
+// GetTxOutSetInfo returns statistics about the confirmed unspent transaction
+// output (UTXO) set. Note that this call may take some time and that it only
+// counts outputs from confirmed transactions—it does not count outputs from
+// the memory pool.
+func (s *Session) GetTxOutSetInfo() (*TxOutSetInfo, error) {
+	res, err := s.call("gettxoutsetinfo", nil)
+	if err != nil {
+		return nil, err
+	}
+	si := new(TxOutSetInfo)
+	if err = res.UnmarshalResult(si); err != nil {
+		return nil, err
+	}
+	return si, nil
+}
+
 // ListSinceBlock gets all transactions in blocks since block
 // [blockhash] (not inclusive), or all transactions if omitted.
 // Max 25 at a time.
@@ -211,16 +259,4 @@ func (s *Session) SignRawTransaction(raw string, ins []Output, keys []string, mo
 		return raw, false, err
 	}
 	return sr.Hex, sr.Complete, nil
-}
-
-// GetAddresses returns an array of addresses attached to the script.
-func (s *ScriptPubKey) GetAddresses() []string {
-	var res []string
-	switch s.Addresses.(type) {
-	case string:
-		res = append(res, s.Addresses.(string))
-	case []string:
-		res = s.Addresses.([]string)
-	}
-	return res
 }

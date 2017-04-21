@@ -103,3 +103,32 @@ func (s *Session) GetMemPoolInfo() (*MemPoolInfo, error) {
 	}
 	return mi, nil
 }
+
+// GetRawMemPoolList returns all transaction identifiers (TXIDs) in the memory.
+// pool as a JSON array.
+func (s *Session) GetRawMemPoolList() ([]string, error) {
+	res, err := s.call("getrawmempool", []Data{false})
+	if err != nil {
+		return nil, err
+	}
+	var txids []string
+	if err = res.UnmarshalResult(&txids); err != nil {
+		return nil, err
+	}
+	return txids, nil
+}
+
+// GetRawMemPool returns all transaction identifiers (TXIDs) in the memory
+// pool with detailed information about each transaction in the memory pool.
+// GetMemPoolInfo returns information about the memory pool.
+func (s *Session) GetRawMemPool() (map[string]*MemPoolTransaction, error) {
+	res, err := s.call("getrawmempool", []Data{true})
+	if err != nil {
+		return nil, err
+	}
+	var list map[string]*MemPoolTransaction
+	if err = res.UnmarshalResult(&list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}

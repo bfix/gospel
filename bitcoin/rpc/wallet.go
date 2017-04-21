@@ -156,8 +156,47 @@ func (s *Session) GetNewAddress(account string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	addr := res.Result.(string)
-	return addr, nil
+	return res.Result.(string), nil
+}
+
+// GetRawChangeAddress returns a new Bitcoin address for receiving change.
+// This is for use with raw transactions, not normal use.
+func (s *Session) GetRawChangeAddress() (string, error) {
+	res, err := s.call("getrawchangeaddress", nil)
+	if err != nil {
+		return "", err
+	}
+	return res.Result.(string), nil
+}
+
+// GetUnconfirmedBalance returns the wallet’s total unconfirmed balance.
+func (s *Session) GetUnconfirmedBalance() (float64, error) {
+	res, err := s.call("getunconfirmedbalance", nil)
+	if err != nil {
+		return 0.0, err
+	}
+	return res.Result.(float64), nil
+}
+
+// GetWalletInfo provides information about the wallet.
+func (s *Session) GetWalletInfo() (*WalletInfo, error) {
+	res, err := s.call("getwalletinfo", nil)
+	if err != nil {
+		return nil, err
+	}
+	wi := new(WalletInfo)
+	if err = res.UnmarshalResult(wi); err != nil {
+		return nil, err
+	}
+	return wi, nil
+}
+
+// ImportAddress adds an address or pubkey script to the wallet without the
+// associated private key, allowing you to watch for transactions affecting
+// that address or pubkey script without being able to spend any of its outputs.
+func (s *Session) ImportAddress(addr, account string, rescan bool) error {
+	_, err := s.call("importaddress", []Data{addr, account, rescan})
+	return err
 }
 
 // ImportPrivateKey imports a private key into your bitcoin wallet.
@@ -166,10 +205,26 @@ func (s *Session) GetNewAddress(account string) (string, error) {
 // Remarks: Requires unlocked wallet
 func (s *Session) ImportPrivateKey(key string) error {
 	_, err := s.call("importprivkey", []Data{key})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
+}
+
+// ImportPrunedFunds imports funds without the need of a rescan. Meant for use
+// with pruned wallets. Corresponding address or script must previously be
+// included in wallet. The end-user is responsible to import additional
+// transactions that subsequently spend the imported outputs or rescan after
+// the point in the blockchain the transaction is included.
+func (s *Session) ImportPrunedFunds(rtx, proof string) error {
+	_, err := s.call("importprunedfunds", []Data{rtx, proof})
+	return err
+}
+
+// ImportWallet imports private keys from a file in wallet dump file format
+// (see the dumpwallet RPC). These keys will be added to the keys currently in
+// the wallet. This call may need to rescan all or parts of the block chain for
+// transactions affecting the newly-added keys, which may take several minutes.
+func (s *Session) ImportWallet(file string) error {
+	_, err := s.call("importwallet", []Data{file})
+	return err
 }
 
 // KeypoolRefill creates a number of new Bitcoin addresses for later use.
@@ -195,6 +250,21 @@ func (s *Session) ListAccounts(confirmations int) (map[string]float64, error) {
 		list[key] = value.(float64)
 	}
 	return list, nil
+}
+
+// ListAddressGroupings lists groups of addresses that may have had their
+// common ownership made public by common use as inputs in the same
+// transaction or from being used as change from a previous transaction.
+func (s *Session) ListAddressGroupings() ([]*AddressGroup, error) {
+	res, err := s.call("listaddressgroupings", nil)
+	if err != nil {
+		return nil, err
+	}
+	var ag []*AddressGroup
+	if err = res.UnmarshalResult(&ag); err != nil {
+		return nil, err
+	}
+	return ag, nil
 }
 
 // ListReceivedByAccount returns an array of accounts with the the
@@ -358,4 +428,31 @@ func (s *Session) WalletLock() error {
 func (s *Session) WalletPassphrase(passphrase string, timeout int) error {
 	_, err := s.call("walletpassphrase", []Data{passphrase, timeout})
 	return err
+}
+
+//======================================================================
+// Various type methods related to wallets.
+
+// GetAddress returns the Bitcoin address of an address group member.
+func (a AddressDetail) GetAddress() string {
+	if len(a) < 1 {
+		return ""
+	}
+	return a[0].(string)
+}
+
+// GetBalance returns the balance of an address group member.
+func (a AddressDetail) GetBalance() float64 {
+	if len(a) < 2 {
+		return -1.0
+	}
+	return a[1].(float64)
+}
+
+// GetAccount returns the account name of an address group member.
+func (a AddressDetail) GetAccount() string {
+	if len(a) < 3 {
+		return ""
+	}
+	return a[2].(string)
 }
