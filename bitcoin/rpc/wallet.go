@@ -172,6 +172,16 @@ func (s *Session) ImportPrivateKey(key string) error {
 	return nil
 }
 
+// KeypoolRefill creates a number of new Bitcoin addresses for later use.
+// Remarks: Requires unlocked wallet
+func (s *Session) KeypoolRefill() error {
+	_, err := s.call("getnewaddress", nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // ListAccounts returns Object that has account names as keys and
 // account balances as values.
 func (s *Session) ListAccounts(confirmations int) (map[string]float64, error) {

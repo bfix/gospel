@@ -33,6 +33,18 @@ func TestTransaction(t *testing.T) {
 		if verbose {
 			dumpObj("RawTransaction: %s\n", rtx)
 		}
+		ent, err := sess.GetMemPoolEntry(txid)
+		if err == nil && verbose {
+			dumpObj("MemPoolEntry: %v\n", ent)
+		}
+		anc, err := sess.GetMemPoolAncestorObjs(txid)
+		if err == nil && verbose {
+			dumpObj("MemPoolAncestors: %v\n", anc)
+		}
+		dec, err := sess.GetMemPoolDecendantObjs(txid)
+		if err == nil && verbose {
+			dumpObj("MemPoolDecendants: %v\n", dec)
+		}
 	}
 
 	txlist, _, err = sess.ListSinceBlock("", 1)

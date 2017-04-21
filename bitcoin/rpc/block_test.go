@@ -46,3 +46,30 @@ func TestBlockchainInfo(t *testing.T) {
 		dumpObj("BlockchainInfo: %s\n", bci)
 	}
 }
+
+func TestBlockTemplate(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	caps := []string{"coinbasetxn", "workid", "coinbase/append"}
+	bt, err := sess.GetBlockTemplate(caps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("BlockTemplate: %s\n", bt)
+	}
+}
+
+func TestChainTips(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	ct, err := sess.GetChainTips()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("ChainTips: %s\n", ct)
+	}
+}

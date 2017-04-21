@@ -40,6 +40,27 @@ func (s *Session) DecodeRawTransaction(raw string) (*RawTransaction, error) {
 	return t, nil
 }
 
+// EstimateFee estimates the transaction fee per kilobyte that needs to be
+// paid for a transaction to be included within a certain number of blocks.
+func (s *Session) EstimateFee(waitBlocks int) (float64, error) {
+	res, err := s.call("estimatefee", []Data{waitBlocks})
+	if err != nil {
+		return -1, err
+	}
+	return res.Result.(float64), nil
+}
+
+// EstimatePriority estimates the priority that a transaction needs in order
+// to be included within a certain number of blocks as a free high-priority
+// transaction.
+func (s *Session) EstimatePriority(waitBlocks int) (float64, error) {
+	res, err := s.call("estimatepriority", []Data{waitBlocks})
+	if err != nil {
+		return -1, err
+	}
+	return res.Result.(float64), nil
+}
+
 // FundRawTransaction adds inputs to a transaction until it has enough in
 // value to meet its out value. This will not modify existing inputs, and
 // will add one change output to the outputs. Note that inputs which were

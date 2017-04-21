@@ -20,7 +20,7 @@ type Info struct {
 	WalletVersion int `json:"walletversion,omitempty"`
 	// Balance of the wallet in bitcoins. Only returned if wallet support
 	// is enabled.
-	Balance float64 `json:"balance,omitempty"`
+	Balance float64 `json:"balance"`
 	// Blocks is the number of blocks in the local best block chain. A new
 	// node with only the hardcoded genesis block will return 0.
 	Blocks int `json:"blocks"`
@@ -46,7 +46,7 @@ type Info struct {
 	KeyPoolOldest int `json:"keypoololdest,omitempty"`
 	// KeyPoolSize is the number of keys in the wallet keypool. Only returned
 	// if wallet support is enabled.
-	KeyPoolSize int `json:"keypoolsze,omitempty"`
+	KeyPoolSize int `json:"keypoolsize,omitempty"`
 	// PayTxFee is the minimum fee to pay per kilobyte of transaction; may be
 	// 0. Only returned if wallet support is enabled.
 	PayTxFee float64 `json:"paytxfee,omitempty"`
@@ -56,7 +56,7 @@ type Info struct {
 	// UnlockedUntil is the Unix epoch time when the wallet will automatically
 	// re-lock. Only displayed if wallet encryption is enabled. Set to 0 if
 	// wallet is currently locked.
-	UnlockedUntil int `json:"unlocked_until,omitempty"`
+	UnlockedUntil int `json:"unlocked_until"`
 	// Errors is a plain-text description of any errors this node has
 	// encountered or detected. If there are no errors, an empty string will
 	// be returned. This is not related to the JSON-RPC error field.
@@ -97,7 +97,7 @@ type BlockchainInfo struct {
 	// the genesis block to this block, encoded as big-endian hex.
 	ChainWork string `json:"chainwork"`
 	// Pruned indicates if the blocks are subject to pruning.
-	Pruned bool `json:"prune"`
+	Pruned bool `json:"pruned"`
 	// PruneHeight is the lowest-height complete block stored if prunning
 	// is activated.
 	PruneHeight int `json:"pruneheight,omitempty"`
@@ -133,6 +133,8 @@ type BlockchainInfo struct {
 		// Timeout is the Unix epoch time at which the deployment is considered
 		// failed if not yet locked in.
 		Timeout int `json:"timeout"`
+		// Since is the block number when the softfork took place.
+		Since int `json:"since"`
 	} `json:"bip9_softforks"`
 }
 
@@ -148,6 +150,34 @@ type ForkProgress struct {
 	Required int `json:"required,omitempty"`
 	// Window is the maximum size of examined window of recent blocks.
 	Window int `json:"window,omitempty"`
+}
+
+// ChainTip is an object describing a particular chain tip. The first object
+// in an array returned by 'GetChainTips()' will always describe the active
+// chain (the local best block chain).
+type ChainTip struct {
+	// Height of the highest block in the chain. A new node with only the
+	// genesis block will have a single tip with height of 0.
+	Height int `json:"height"`
+	// Hash of the highest block in the chain, encoded as hex in RPC byte order
+	Hash string `json:"hash"`
+	// BranchLen is the number of blocks that are on this chain but not on the
+	// main chain. For the local best block chain, this will be 0; for all
+	// other chains, it will be at least 1.
+	BranchLen int `json:"branchlen"`
+	// Status  of this chain. Valid values are:
+	// -- 'active' for the local best block chain
+	// -- 'invalid' for a chain that contains one or more invalid blocks
+	// -- 'headers-only' for a chain with valid headers whose corresponding
+	//    blocks both haven’t been validated and aren’t stored locally
+	// -- 'valid-headers' for a chain with valid headers whose corresponding
+	//    blocks are stored locally, but which haven’t been fully validated
+	// -- 'valid-fork' for a chain which is fully validated but which isn’t
+	//    part of the local best block chain (it was probably the local best
+	//    block chain at some point)
+	// -- 'unknown' for a chain whose reason for not being the active chain
+	//    is unknown
+	Status string `json:"status"`
 }
 
 // Block (element of the Bitcoin blockchain)
@@ -204,6 +234,42 @@ type Block struct {
 	NextBlockHash string `json:"nextblockhash,omitempty"`
 }
 
+// BlockTemplate is a data structure needed by mining applications.
+type BlockTemplate struct {
+	Capabilities      []string       `json:"capabilities"`
+	Version           int            `json:"version"`
+	Rules             []string       `json:"rules"`
+	VbAvailable       map[string]int `json:"vbavailable"`
+	VbRequired        int            `json:"vbrequired"`
+	PreviousBlockHash string         `json:"previousblockhash"`
+	Transactions      []*struct {
+		Data    string `json:"data"`
+		TxID    string `json:"txid"`
+		Hash    string `json:"hash"`
+		Depends []int  `json:"depends"`
+		Fee     int    `json:"fee"`
+		SigOps  int    `json:"sigops"`
+		Weight  int    `json:"weight"`
+	} `json:"transactions"`
+	CoinbaseAux   map[string]string `json:"coinbaseaux"`
+	CoinbaseValue int               `json:"coinbasevalue"`
+	LongPollID    string            `json:"longpollid"`
+	Target        string            `json:"target"`
+	MinTime       int               `json:"mintime"`
+	Mutable       []string          `json:"mutable"`
+	NonceRange    string            `json:"noncerange"`
+	SigOpLimit    int               `json:"sigoplimit"`
+	SizeLimit     int               `json:"sizelimit"`
+	CurTime       int               `json:"curtime"`
+	Bits          string            `json:"bits"`
+	Height        int               `json:"height"`
+}
+
+// BlockTemplateParameter defines parameters for the GetBlockTemplate call.
+type BlockTemplateParameter struct {
+	Capabilities []string `json:"capabilities"`
+}
+
 // Transaction is a Bitcoin transaction
 type Transaction struct {
 	// Amount is a positive number of bitcoins if this transaction increased
@@ -220,6 +286,11 @@ type Transaction struct {
 	// Generated marks a transaction if it is a coinbase. Not returned
 	// for regular transactions.
 	Generated bool `json:"generated,omitempty"`
+	// Abandoned indicates if a transaction is was abandoned:
+	// -- 'true' if it was abandoned (inputs are respendable)
+	// -- 'false' if it was not abandoned
+	// Only returned by send category payments
+	Abandoned *bool `json:"abandoned,omitempty"`
 	// BlockHash is the hash of the block on the local best block chain which
 	// includes this transaction, encoded as hex in RPC byte order. Only
 	// returned for confirmed transactions.
@@ -236,7 +307,7 @@ type Transaction struct {
 	// WalletConflicts is an array containing the TXIDs of other transactions
 	// that spend the same inputs (UTXOs) as this transaction. Array may be
 	// empty.
-	WalletConflicts []string `json:"walletconflicts,omitempty"`
+	WalletConflicts []string `json:"walletconflicts"`
 	// Time is a Unix epoch time when the transaction was added to the wallet.
 	Time int `json:"time"`
 	// TimeReceived is a Unix epoch time when the transaction was detected by
@@ -249,16 +320,44 @@ type Transaction struct {
 	// -- 'no' not replaceable
 	// -- 'unknown' for unconfirmed transactions not in the mempool
 	BIP125Replaceable string `json:"bip125-replaceable"`
+	// Label is the label for the transaction.
+	Label *string `json:"label,omitempty"`
 	// Comment is added to a transaction originating with this wallet. Only
 	// returned if a comment was added.
 	Comment string `json:"comment,omitempty"`
 	// To is added as a comment to a transaction originating with this wallet.
 	// Only returned if a comment-to was added
-	To      string `json:"to,omitempty"`
+	To string `json:"to,omitempty"`
+	// Category is set to one of the following values:
+	// -- 'send' if sending payment
+	// -- 'receive' if this wallet received payment in a regular transaction
+	// -- 'generate' if a matured and spendable coinbase
+	// -- 'immature' if a coinbase that is not spendable yet
+	// -- 'orphan' if a coinbase from a block that’s not in the local best block chain
+	Category string `json:"category,omitempty"`
+	// Vout on an output is the output index (vout) for this output in
+	// this transaction. For an input, the output index for the output
+	// being spent in its transaction. Because inputs list the output
+	// indexes from previous transactions, more than one entry in the
+	// details array may have the same output index.
+	Vout *int `json:"vout,omitempty"`
+	// Account which the payment was credited to or debited from. May be
+	// an empty string ("") for the default account.
+	Account *string `json:"account,omitempty"`
+	// Address on output is the address paid (may be someone else’s
+	// address not belonging to this wallet). If an input, the address
+	// paid in the previous output. May be empty if the address is
+	// unknown, such as when paying to a non-standard pubkey script.
+	Address string `json:"address,omitempty"`
+	// Hex represents the transaction in serialized transaction format.
+	Hex *string `json:"hex,omitempty"`
+	// Details is an arry of detail information
 	Details []*struct {
 		// InvolvesWatchOnly is set to true if the input or output involves
 		// a watch-only address. Otherwise not returned.
 		InvolvesWatchOnly bool `json:"involvesWatchonly,omitempty"`
+		// Label is the label for the transaction.
+		Label string `json:"label"`
 		// Account which the payment was credited to or debited from. May be
 		// an empty string ("") for the default account.
 		Account string `json:"account"`
@@ -290,16 +389,69 @@ type Transaction struct {
 		// -- 'true' if it was abandoned (inputs are respendable)
 		// -- 'false' if it was not abandoned
 		// Only returned by send category payments
-		Abandoned bool `json:"abandoned,omitempty"`
+		Abandoned bool `json:"abandoned"`
 		// Hex represents the transaction in serialized transaction format.
-		Hex string `json:"hex"`
-	} `json:"details"`
+		Hex *string `json:"hex,omitempty"`
+	} `json:"details,omitempty"`
+}
+
+// TransactionInfo contains information about a created transaction.
+type TransactionInfo struct {
+	// Hex is the resulting unsigned raw transaction in serialized transaction
+	// format encoded as hex.
+	Hex string `json:"hex"`
+	// Fee in BTC the resulting transaction pays.
+	Fee float64 `json:"fee"`
+	// ChangePos is the position of the added change output, or -1 if no
+	// change output was added
+	ChangePos int `json:"changepos"`
+}
+
+// MemPoolTransaction is an object describing a transaction in the memory pool.
+type MemPoolTransaction struct {
+	// Size of the serialized transaction in bytes.
+	Size int `json:"size"`
+	// Fee paid by the transaction in decimal bitcoins.
+	Fee float64 `json:"fee"`
+	// ModifiedFee with fee deltas used for mining priority in decimal bitcoins
+	ModifiedFee float64 `json:"modifiedfee"`
+	// Time the transaction entered the memory pool, Unix epoch time format.
+	Time int `json:"time"`
+	// Height is the block height when the transaction entered the memory pool.
+	Height int `json:"height"`
+	// StartingPriority is the priority of the transaction when it first
+	// entered the memory pool.
+	StartingPriority int `json:"startingpriority"`
+	// CurrentPriority is the current priority of the transaction.
+	CurrentPriority int `json:"currentpriority"`
+	// DecendantCount is the number of in-mempool descendant transactions
+	// (including this one).
+	DecendantCount int `json:"decendantcount"`
+	// DecendantSize is the size of in-mempool descendants (including this one)
+	DecendantSize int `json:"decendantsize"`
+	// DecendantFees is the modified fees (see modifiedfee above) of in-mempool
+	// descendants (including this one).
+	DecendantFees float64 `json:"decendantfees"`
+	// AncestorCount is the number of in-mempool ancestor transactions
+	// (including this one).
+	AncestorCount int `json:"ancestorcount"`
+	// AncestorSize is the size of in-mempool ancestors (including this one)
+	AncestorSize int `json:"ancestorsize"`
+	// AncestorFees is the modified fees (see modifiedfee above) of in-mempool
+	// ancestors (including this one).
+	AncestorFees float64 `json:"ancestorfees"`
+	// Depends is an array holding TXIDs of unconfirmed transactions this
+	// transaction depends upon (parent transactions). Those transactions must
+	// be part of a block before this transaction can be added to a block,
+	// although all transactions may be included in the same block. The array
+	// may be empty.
+	Depends []string `json:"depends"`
 }
 
 // RawTransaction is a Bitcoin transaction in raw format
 type RawTransaction struct {
 	// Hex is the serialized, hex-encoded data for the provided txid.
-	Hex string `json:"hex"`
+	Hex *string `json:"hex,omitempty"`
 	// TxID of the transaction encoded as hex in RPC byte order.
 	TxID string `json:"txid"`
 	// Hash is the transaction hash. Differs from txid for witness
@@ -476,10 +628,10 @@ type Validity struct {
 	IsMine bool `json:"ismine,omitempty"`
 	// IsWatchOnly is set to true if the address is watch-only. Otherwise set
 	// to false. Only returned if address is in the wallet.
-	IsWatchOnly bool `json:"iswatchonly,omitempty"`
+	IsWatchOnly bool `json:"iswatchonly"`
 	// IsScript is set to true if a P2SH address; otherwise set to false. Only
 	// returned if the address is in the wallet.
-	IsScript bool `json:"isscript,omitempty"`
+	IsScript bool `json:"isscript"`
 	// Script is only returned for P2SH addresses belonging to this wallet.
 	// This is the type of script:
 	// -- 'pubkey' for a P2PK script inside P2SH
@@ -490,6 +642,18 @@ type Validity struct {
 	// Hex is only returned for P2SH addresses belonging to this wallet. This
 	// is the redeem script encoded as hex.
 	Hex string `json:"hex,omitempty"`
+	// PubKey corresponding to this address. Only returned if the address
+	// is a P2PKH address in the wallet.
+	PubKey string `json:"pubkey,omitempty"`
+	// IsCompressed is set to true if a compressed public key or set to
+	// false if an uncompressed public key. Only returned if the address
+	// is a P2PKH address in the wallet.
+	IsCompressed bool `json:"iscompressed"`
+	// TimeStamp
+	TimeStamp int `json:"timestamp"`
+	// Account this address belong to. May be an empty string for the
+	// default account. Only returned if the address belongs to the wallet.
+	Account string `json:"account,omitempty"`
 	// Addresses
 	Addresses []*struct {
 		// SigRequired is only returned for multisig P2SH addresses belonging
@@ -539,18 +703,6 @@ type MultiSigAddr struct {
 	RedeemScript string `json:"redeemScript"`
 }
 
-// TransactionInfo contains information about a created transaction.
-type TransactionInfo struct {
-	// Hex is the resulting unsigned raw transaction in serialized transaction
-	// format encoded as hex.
-	Hex string `json:"hex"`
-	// Fee in BTC the resulting transaction pays.
-	Fee float64 `json:"fee"`
-	// ChangePos is the position of the added change output, or -1 if no
-	// change output was added
-	ChangePos int `json:"changepos"`
-}
-
 // NodeInfo holds information about added nodes.
 type NodeInfo struct {
 	// AddedNode is an added node in the same <IP address>:<port> format as
@@ -575,4 +727,252 @@ type NodeInfo struct {
 		// -- 'outbound' if we connected to the addnode
 		Connected string `json:"connected"`
 	} `json:"addresses"`
+}
+
+// MemPoolInfo is an object containing information about the memory pool.
+type MemPoolInfo struct {
+	// Size is the number of transactions currently in the memory pool.
+	Size int `json:"size"`
+	// Bytes is the total number of bytes in the transactions in the
+	// memory pool.
+	Bytes int `json:"bytes"`
+	// Usage is total memory usage for the mempool in bytes.
+	Usage int `json:"usage"`
+	// MaxMemPool is the maximum memory usage for the mempool in bytes.
+	MaxMemPool int `json:"maxmempool"`
+	// MemPoolMinFee is the lowest fee per kilobyte paid by any transaction
+	// in the memory pool.
+	MemPoolMinFee float64 `json:"mempoolminfee"`
+}
+
+// MiningInfo contains various mining-related information.
+type MiningInfo struct {
+	// Blocks is the height of the highest block on the local best block chain.
+	Blocks int `json:"blocks"`
+	// CurrentBlockSize is the size in bytes of the last block built by this
+	// node for header hash checking if generation was enabled since the last
+	// time this node was restarted. Otherwise, the value is 0.
+	CurrentBlockSize int `json:"currentblocksize"`
+	// CurrentBlockWeight
+	CurrentBlockWeight int `json:"currentblockweight"`
+	// CurrentBlockTx  is the number of transactions in the last block built
+	// by this node for header hash checking if generation was enabled since
+	// the last time this node was restarted. Otherwise, this is the value 0.
+	CurrentBlockTx int `json:"currentblocktx"`
+	// Difficulty of the highest-height block in the local best block chain if
+	// generation was enabled since the last time this node was restarted.
+	// Otherwise, this is the value 0.
+	Difficulty float64 `json:"difficulty"`
+	// Errors is a a plain-text description of any errors this node has
+	// encountered or detected. If there are no errors, an empty string will
+	// be returned.
+	Errors string `json:"errors"`
+	// GenProcLimit is the limit on the number of processors to use for
+	// generation. If generation was enabled since the last time this node was
+	// restarted, this is the number used in the second parameter of the
+	// setgenerate RPC (or the default). Otherwise, it is -1.
+	GenProcLimit int `json:"genproclimit,omitempty"`
+	// NetworkHashPS is an estimate of the number of hashes per second the
+	// network is generating to maintain the current difficulty. See the
+	// getnetworkhashps RPC for configurable access to this data.
+	NetworkHashPS int `json:"networkhashps"`
+	// PooledTx is the number of transactions in the memory pool.
+	PooledTx int `json:"pooledtx"`
+	// Testnet is set to true if this node is running on testnet. Set to false
+	// if this node is on mainnet or a regtest.
+	Testnet bool `json:"testnet,omitempty"`
+	// Chain is set to 'main' for mainnet, 'test' for testnet, and 'regtest'
+	// for regtest.
+	Chain string `json:"chain"`
+	// Generate is set to true if generation is currently enabled; set to
+	// false if generation is currently disabled. Only returned if the node
+	// has wallet support enabled.
+	Generate bool `json:"generate,omitempty"`
+	// HashesPerSec is the approximate number of hashes per second this node
+	// is generating across all CPUs, if generation is enabled. Otherwise 0.
+	// Only returned if the node has wallet support enabled
+	HashesPerSec int `json:"hashespersec,omitempty"`
+}
+
+// PeerInfo describes a particular connected node.
+type PeerInfo struct {
+	// ID is the node’s index number in the local node address database.
+	ID int `json:"id"`
+	// Addr is the IP address and port number used for the connection to the
+	// remote node.
+	Addr string `json:"addr"`
+	// AddrLocal is our IP address and port number according to the remote
+	// node. May be incorrect due to error or lying. Most SPV nodes set this
+	// to 127.0.0.1:8333
+	AddrLocal string `json:"addrlocal"`
+	// Services as advertised by the remote node in its version message.
+	Services string `json:"services"`
+	// LastSend is the Unix epoch time when we last successfully sent data to
+	// the TCP socket for this node.
+	LastSend int `json:"lastsend"`
+	// LastRecv is the Unix epoch time when we last received data from this
+	// node.
+	LastRecv int `json:"lastrecv"`
+	// BytesSent is the total number of bytes we’ve sent to this node.
+	BytesSent int `json:"bytessent"`
+	// BytesRecv is the total number of bytes we’ve received from this node.
+	BytesRecv int `json:"bytesrecv"`
+	// ConnTime is the Unix epoch time when we connected to this node.
+	ConnTime int `json:"conntime"`
+	// TimeOffset is the time offset in seconds.
+	TimeOffset int `json:"timeoffset"`
+	// PingTime is the number of seconds this node took to respond to our
+	// last P2P ping message.
+	PingTime float64 `json:"pingtime"`
+	// MinPing is the minimum observed ping time (if any at all).
+	MinPing float64 `json:"minping"`
+	// PingWait is the number of seconds we’ve been waiting for this node to
+	// respond to a P2P ping message. Only shown if there’s an outstanding
+	// ping message.
+	PingWait int `json:"pingwait,omitempty"`
+	// Version is the protocol version number used by this node. See the
+	// protocol versions section for more information.
+	Version int `json:"version"`
+	// Subver is the user agent this node sends in its version message.
+	// This string will have been sanitized to prevent corrupting the JSON
+	// results. May be an empty string.
+	SubVer string `json:"subver"`
+	// Inbound is set to true if this node connected to us; set to false if
+	// we connected to this node.
+	Inbound bool `json:"inbound"`
+	// AddNode
+	AddNode bool `json:"addnode"`
+	// RelayTxes is set true if this node relays transactions.
+	RelayTxes bool `json:"relaytxes"`
+	// StartingHeight is the height of the remote node’s block chain when it
+	// connected to us as reported in its version message.
+	StartingHeight int `json:"startingheight"`
+	// BanScore is the ban score we’ve assigned the node based on any
+	// misbehavior it’s made. By default, Bitcoin Core disconnects when the
+	// ban score reaches 100.
+	BanScore float64 `json:"banscore"`
+	// SyncedHeaders is the highest-height header we have in common with this
+	// node based the last P2P headers message it sent us. If a headers message
+	// has not been received, this will be set to -1.
+	SyncedHeaders int `json:"synced_headers"`
+	// SyncedBlocks is the highest-height block we have in common with this
+	// node based on P2P inv messages this node sent us. If no block inv
+	// messages have been received from this node, this will be set to -1.
+	SyncedBlocks int `json:"synced_blocks"`
+	// Inflight is an array of blocks which have been requested from this
+	// peer. May be empty.
+	Inflight []int `json:"inflight"`
+	// Whitelisted is set to true if the remote peer has been whitelisted;
+	// otherwise, set to false. Whitelisted peers will not be banned if their
+	// ban score exceeds the maximum (100 by default). By default, peers
+	// connecting from localhost are whitelisted.
+	Whitelisted bool `json:"whitelisted"`
+	// BytesSentPerMessage is the total sent bytes aggregated by message type
+	BytesSentPerMessage map[string]int `json:"bytessent_per_msg"`
+	// BytesRecvPerMessage is the total received bytes aggregated by
+	// message type
+	BytesRecvPerMessage map[string]int `json:"bytesrecv_per_msg"`
+}
+
+// NetworkInfo contains information about this node’s connection to the network.
+type NetworkInfo struct {
+	// Version is this node’s version of Bitcoin Core in its internal integer
+	// format. For example, Bitcoin Core 0.9.2 has the integer version
+	// number 90200.
+	Version int `json:"version"`
+	// Subversion is the user agent this node sends in its version message.
+	Subversion string `json:"subversion"`
+	// ProtocolVersion is the protocol version number used by this node. See
+	// the protocol versions section for more information.
+	ProtocolVersion int `json:"protocolversion"`
+	// LocalServices list the services supported by this node as advertised in
+	// its version message.
+	LocalServices string `json:"localservices"`
+	// LocalRelay is set if this node acts as a relay.
+	LocalRelay bool `json:"localrelay"`
+	// TimeOffset is the offset of the node’s clock from the computer’s clock
+	// (both in UTC) in seconds. The offset may be up to 4200 seconds
+	// (70 minutes).
+	TimeOffset int `json:"timeoffset"`
+	// NetworkActive
+	NetworkActive bool `json:"networkactive"`
+	// Connections is the total number of open connections (both outgoing and
+	// incoming) between this node and other nodes.
+	Connections int `json:"connections"`
+	// Networks is an array with three objects: one describing the IPv4
+	// connection, one describing the IPv6 connection, and one describing the
+	// Tor hidden service (onion) connection.
+	Networks []*struct {
+		// Name is the name of the network. Either ipv4, ipv6, or onion.
+		Name string `json:"name"`
+		// Limited is set to true if only connections to this network are
+		// allowed according to the -onlynet Bitcoin Core command-line/
+		// configuration-file parameter. Otherwise set to false.
+		Limited bool `json:"limited"`
+		// Reachable is set to true if connections can be made to or from this
+		// network. Otherwise set to false.
+		Reachable bool `json:"reachable"`
+		// Proxy is the hostname and port of any proxy being used for this
+		// network. If a proxy is not in use, an empty string.
+		Proxy string `json:"proxy"`
+		// ProxyRandomizeCredentials is set to true if randomized credentials
+		// are set for this proxy. Otherwise set to false.
+		ProxyRandomizeCredentials bool `json:"proxy_randomize_credentials"`
+	} `json:"networks"`
+	// RelayFee is the minimum fee a low-priority transaction must pay in
+	// order for this node to accept it into its memory pool.
+	RelayFee float64 `json:"relayfee"`
+	// IncrementalFee
+	IncrementalFee float64 `json:"incrementalfee"`
+	// LocalAddresses is an array of objects each describing the local
+	// addresses this node believes it listens on.
+	LocalAddresses []*struct {
+		// Address is an IP address or .onion address this node believes it
+		// listens on. This may be manually configured, auto detected, or based
+		// on version messages this node received from its peers.
+		Address string `json:"address"`
+		// Port number this node believes it listens on for the associated
+		// address. This may be manually configured, auto detected, or based
+		// on version messages this node received from its peers.
+		Port int `json:"port"`
+		// Score is the number of incoming connections during the uptime of
+		// this node that have used this address in their version message.
+		Score int `json:"score"`
+	} `json:"localaddresses"`
+	// Warnings is a plain-text description of any network warnings. If there
+	// are no warnings, an empty string will be returned.
+	Warnings string `json:"warnings"`
+}
+
+// NetworkStats contains information about the node’s network totals.
+type NetworkStats struct {
+	// TotalBytesRecv is the total number of bytes received since the node was
+	// last restarted.
+	TotalBytesRecv int `json:"totalbytesrecv"`
+	// TotalBytesSent is the total number of bytes sent since the node was
+	// last restarted.
+	TotalBytesSent int `json:"totalbytessent"`
+	// TimeMillis is the Unix epoch time in milliseconds according to the
+	// operating system’s clock (not the node adjusted time).
+	TimeMillis int `json:"timemillis"`
+	// UploadTarget is the upload target information.
+	UploadTarget *struct {
+		// Timeframe is the length of the measuring timeframe in seconds. The
+		// timeframe is currently set to 24 hours.
+		Timeframe int `json:"timeframe"`
+		// Target is the maximum allowed outbound traffic in bytes. The default is
+		// 0. Can be changed with -maxuploadtarget.
+		Target int `json:"target"`
+		// TargetReached indicates if the target is reached. If the target is
+		// reached the node won’t serve SPV and historical block requests anymore.
+		TargetReached bool `json:"target_reached"`
+		// ServeHistoricalBlocks indicates if historical blocks are served.
+		ServerHistoricalBlocks bool `json:"serve_historical_blocks"`
+		// BytesLeftInCycle is the amount of bytes left in current time cycle.
+		// 0 is displayed if no upload target is set.
+		BytesLeftInCycle int `json:"bytes_left_in_cycle"`
+		// TimeLeftInCycle is the number of seconds left in current time cycle.
+		// 0 is displayed if no upload target is set.
+		TimeLeftInCycle int `json:"time_left_in_cycle"`
+	} `json:"uploadtarget"`
 }

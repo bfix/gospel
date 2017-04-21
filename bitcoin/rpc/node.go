@@ -1,7 +1,5 @@
 package rpc
 
-import ()
-
 // AddNode attempts to add or remove a node from the addnode list, or to
 // try a connection to a node once.
 // The node to add as a string in the form of <IP address>:<port>. The IP
@@ -55,4 +53,68 @@ func (s *Session) GetConnectionCount() (int, error) {
 		return -1, err
 	}
 	return int(res.Result.(float64)), nil
+}
+
+// GetMiningInfo returns returns various mining-related information.
+func (s *Session) GetMiningInfo() (*MiningInfo, error) {
+	res, err := s.call("getmininginfo", nil)
+	if err != nil {
+		return nil, err
+	}
+	mi := new(MiningInfo)
+	if err = res.UnmarshalResult(mi); err != nil {
+		return nil, err
+	}
+	return mi, nil
+}
+
+// GetNetTotals returns information about network traffic, including bytes in,
+// bytes out, and the current time.
+func (s *Session) GetNetTotals() (*NetworkStats, error) {
+	res, err := s.call("getnettotals", nil)
+	if err != nil {
+		return nil, err
+	}
+	nt := new(NetworkStats)
+	if err = res.UnmarshalResult(nt); err != nil {
+		return nil, err
+	}
+	return nt, nil
+}
+
+// GetNetworkHashPS returns the estimated current or historical network
+// hashes per second based on the last n blocks.
+func (s *Session) GetNetworkHashPS(blocks, height int) (float64, error) {
+	res, err := s.call("getnetworkhashps", []Data{blocks, height})
+	if err != nil {
+		return -1, err
+	}
+	return res.Result.(float64), nil
+}
+
+// GetNetworkInfo returns information about the node’s connection to
+// the network.
+func (s *Session) GetNetworkInfo() (*NetworkInfo, error) {
+	res, err := s.call("getnetworkinfo", nil)
+	if err != nil {
+		return nil, err
+	}
+	ni := new(NetworkInfo)
+	if err = res.UnmarshalResult(ni); err != nil {
+		return nil, err
+	}
+	return ni, nil
+}
+
+// GetPeerInfo returns data about each connected network node.
+func (s *Session) GetPeerInfo() ([]*PeerInfo, error) {
+	res, err := s.call("getpeerinfo", nil)
+	if err != nil {
+		return nil, err
+	}
+	var pi []*PeerInfo
+	if err = res.UnmarshalResult(&pi); err != nil {
+		return nil, err
+	}
+	return pi, nil
 }

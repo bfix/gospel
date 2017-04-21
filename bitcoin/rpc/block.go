@@ -103,3 +103,44 @@ func (s *Session) GetBlockHash(height int) (string, error) {
 	}
 	return res.Result.(string), nil
 }
+
+// GetBlockHeader gets a block header with a particular header hash from the
+// local block database either as a JSON object or as a serialized block
+// header.
+func (s *Session) GetBlockHeader(hash string, asJSON bool) (string, error) {
+	res, err := s.call("getblockheader", []Data{hash, asJSON})
+	if err != nil {
+		return "", err
+	}
+	return res.Result.(string), nil
+}
+
+// GetBlockTemplate gets a block template or proposal for use with mining
+// software.
+func (s *Session) GetBlockTemplate(caps []string) (*BlockTemplate, error) {
+	param := new(BlockTemplateParameter)
+	param.Capabilities = caps
+	res, err := s.call("getblocktemplate", []Data{param})
+	if err != nil {
+		return nil, err
+	}
+	bt := new(BlockTemplate)
+	if err = res.UnmarshalResult(bt); err != nil {
+		return nil, err
+	}
+	return bt, nil
+}
+
+// GetChainTips returns information about the highest-height block (tip) of
+// each local block chain.
+func (s *Session) GetChainTips() ([]*ChainTip, error) {
+	res, err := s.call("getchaintips", nil)
+	if err != nil {
+		return nil, err
+	}
+	var ct []*ChainTip
+	if err = res.UnmarshalResult(&ct); err != nil {
+		return nil, err
+	}
+	return ct, nil
+}

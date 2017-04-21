@@ -26,6 +26,7 @@ func init() {
 		sess = nil
 		return
 	}
+	strictCheck = true
 	info, err = sess.GetInfo()
 	if err != nil {
 		sess = nil
@@ -44,37 +45,8 @@ func dumpObj(fmtStr string, v interface{}) {
 	}
 }
 
-func TestConnectionCount(t *testing.T) {
+func TestSession(t *testing.T) {
 	if sess == nil {
 		t.Skip("skipping test: session not available")
-	}
-	conns, err := sess.GetConnectionCount()
-	if err != nil {
-		t.Fatal("getsessioncount failed")
-	}
-	if conns != info.Connections {
-		t.Fatal(fmt.Sprintf("session-count mismatch: %d != %d", conns, info.Connections))
-	}
-}
-
-func TestDifficulty(t *testing.T) {
-	if sess == nil {
-		t.Skip("skipping test: session not available")
-	}
-	diff, err := sess.GetDifficulty()
-	if err != nil {
-		t.Fatal("getdifficulty failed")
-	}
-	if diff != info.Difficulty {
-		t.Fatal("difficulty mismatch in info")
-	}
-}
-
-func TestFee(t *testing.T) {
-	if sess == nil {
-		t.Skip("skipping test: session not available")
-	}
-	if err = sess.SetTxFee(0.0001); err != nil {
-		t.Fatal("settxfee failed")
 	}
 }
