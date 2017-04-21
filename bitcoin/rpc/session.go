@@ -5,10 +5,15 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
+)
+
+var (
+	strictCheck = false
 )
 
 // Data is a generic data structure for RPC data (in/out)
@@ -29,13 +34,27 @@ type Response struct {
 }
 
 // UnmarshalResult will unmarshal the Result field to
-// a JSON data structur.
+// a JSON data structure.
 func (r *Response) UnmarshalResult(v interface{}) error {
 	data, err := json.Marshal(r.Result)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(data, v)
+	if err = json.Unmarshal(data, v); err != nil {
+		return err
+	}
+	if strictCheck {
+		rc, msg := checkJSON(r.Result, v)
+		if !rc {
+			return errors.New(">>>>>\n" + msg)
+		}
+		rc, msg = checkJSON(v, r.Result)
+		if !rc {
+			fmt.Println("Result: " + string(data))
+			return errors.New("<<<<<\n" + msg)
+		}
+	}
+	return nil
 }
 
 // Error is a Response-related failure code.
@@ -46,12 +65,11 @@ type Error struct {
 
 // Session type
 type Session struct {
-	Address    string            // server address/name
-	User       string            // user name
-	Passwd     string            // user password
-	ServerCert *x509.Certificate // server certificate for SSL
-
-	client *http.Client
+	address    string            // server address/name
+	user       string            // user name
+	passwd     string            // user password
+	serverCert *x509.Certificate // server certificate for SSL
+	client     *http.Client      // HTTP client instance
 }
 
 // NewSession allocates a new Session instance for communication
@@ -63,12 +81,12 @@ func NewSession(addr, user, pw string) (*Session, error) {
 		return nil, errors.New("Missing credentials")
 	}
 	s := &Session{
-		Address:    addr,
-		User:       user,
-		Passwd:     pw,
-		ServerCert: nil,
+		address:    addr,
+		user:       user,
+		passwd:     pw,
+		serverCert: nil,
+		client:     &http.Client{},
 	}
-	s.client = &http.Client{}
 	return s, nil
 }
 
@@ -81,17 +99,17 @@ func NewSessionSSL(addr, user, pw string, scert *x509.Certificate) (*Session, er
 		return nil, errors.New("Missing credentials")
 	}
 	s := &Session{
-		Address:    addr,
-		User:       user,
-		Passwd:     pw,
-		ServerCert: scert,
-	}
-	s.client = &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: false,
-				VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-					return nil
+		address:    addr,
+		user:       user,
+		passwd:     pw,
+		serverCert: scert,
+		client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: false,
+					VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+						return nil
+					},
 				},
 			},
 		},
@@ -112,8 +130,8 @@ func (s *Session) call(methodname string, args []Data) (result *Response, err er
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", s.Address, strings.NewReader(string(data)))
-	req.SetBasicAuth(s.User, s.Passwd)
+	req, err := http.NewRequest("POST", s.address, strings.NewReader(string(data)))
+	req.SetBasicAuth(s.user, s.passwd)
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -132,58 +150,4 @@ func (s *Session) call(methodname string, args []Data) (result *Response, err er
 		return nil, errors.New(response.Error.Message)
 	}
 	return response, nil
-}
-
-// GetInfo returns an object containing various state info.
-func (s *Session) GetInfo() (*Info, error) {
-	res, err := s.call("getinfo", nil)
-	if err != nil {
-		return nil, err
-	}
-	info := new(Info)
-	if err = res.UnmarshalResult(info); err != nil {
-		return nil, err
-	}
-	return info, err
-}
-
-// GetDifficulty returns the proof-of-work difficulty as a multiple
-// of the minimum difficulty.
-func (s *Session) GetDifficulty() (float64, error) {
-	res, err := s.call("getdifficulty", nil)
-	if err != nil {
-		return -1, err
-	}
-	return res.Result.(float64), nil
-}
-
-// KeypoolRefill creates a number of new Bitcoin addresses for later use.
-// Remarks: Requires unlocked wallet
-func (s *Session) KeypoolRefill() error {
-	_, err := s.call("getnewaddress", nil)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// EstimateFee estimates the transaction fee per kilobyte that needs to be
-// paid for a transaction to be included within a certain number of blocks.
-func (s *Session) EstimateFee(waitBlocks int) (float64, error) {
-	res, err := s.call("estimatefee", []Data{waitBlocks})
-	if err != nil {
-		return -1, err
-	}
-	return res.Result.(float64), nil
-}
-
-// EstimatePriority estimates the priority that a transaction needs in order
-// to be included within a certain number of blocks as a free high-priority
-// transaction.
-func (s *Session) EstimatePriority(waitBlocks int) (float64, error) {
-	res, err := s.call("estimatepriority", []Data{waitBlocks})
-	if err != nil {
-		return -1, err
-	}
-	return res.Result.(float64), nil
 }
