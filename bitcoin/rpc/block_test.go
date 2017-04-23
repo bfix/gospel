@@ -18,7 +18,7 @@ func TestBlock(t *testing.T) {
 	}
 	blockHash := os.Getenv("BTC_BLOCK_HASH")
 	if len(blockHash) == 0 {
-		blockHash = "00000000000003fab35380c07f6773ae27727b21016a8821c88e47e241c86458"
+		blockHash = "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"
 	}
 	block, err := sess.GetBlock(blockHash)
 	if err != nil {
@@ -71,5 +71,14 @@ func TestChainTips(t *testing.T) {
 	}
 	if verbose {
 		dumpObj("ChainTips: %s\n", ct)
+	}
+}
+
+func TestVerifyChain(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if _, err := sess.VerifyChain(-1, -1); err != nil {
+		t.Fatal(err)
 	}
 }

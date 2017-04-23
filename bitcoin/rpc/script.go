@@ -17,7 +17,7 @@ func (s *Session) DecodeScript(script string) (*DecodedScript, error) {
 		return nil, err
 	}
 	ds := new(DecodedScript)
-	if err = res.UnmarshalResult(ds); err != nil {
+	if ok, err := res.UnmarshalResult(ds); !ok {
 		return nil, err
 	}
 	return ds, nil

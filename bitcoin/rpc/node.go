@@ -40,7 +40,7 @@ func (s *Session) GetAddedNodeInfo(detail bool, addr string) ([]*NodeInfo, error
 		return nil, err
 	}
 	var list []*NodeInfo
-	if err = res.UnmarshalResult(&list); err != nil {
+	if ok, err := res.UnmarshalResult(&list); !ok {
 		return nil, err
 	}
 	return list, nil
@@ -62,7 +62,7 @@ func (s *Session) GetMiningInfo() (*MiningInfo, error) {
 		return nil, err
 	}
 	mi := new(MiningInfo)
-	if err = res.UnmarshalResult(mi); err != nil {
+	if ok, err := res.UnmarshalResult(mi); !ok {
 		return nil, err
 	}
 	return mi, nil
@@ -76,7 +76,7 @@ func (s *Session) GetNetTotals() (*NetworkStats, error) {
 		return nil, err
 	}
 	nt := new(NetworkStats)
-	if err = res.UnmarshalResult(nt); err != nil {
+	if ok, err := res.UnmarshalResult(nt); !ok {
 		return nil, err
 	}
 	return nt, nil
@@ -100,7 +100,7 @@ func (s *Session) GetNetworkInfo() (*NetworkInfo, error) {
 		return nil, err
 	}
 	ni := new(NetworkInfo)
-	if err = res.UnmarshalResult(ni); err != nil {
+	if ok, err := res.UnmarshalResult(ni); !ok {
 		return nil, err
 	}
 	return ni, nil
@@ -113,8 +113,39 @@ func (s *Session) GetPeerInfo() ([]*PeerInfo, error) {
 		return nil, err
 	}
 	var pi []*PeerInfo
-	if err = res.UnmarshalResult(&pi); err != nil {
+	if ok, err := res.UnmarshalResult(&pi); !ok {
 		return nil, err
 	}
 	return pi, nil
+}
+
+// ListBanned lists all banned IPs/Subnets.
+func (s *Session) ListBanned() ([]*BannedNode, error) {
+	res, err := s.call("listbanned", nil)
+	if err != nil {
+		return nil, err
+	}
+	var bl []*BannedNode
+	if ok, err := res.UnmarshalResult(&bl); !ok {
+		return nil, err
+	}
+	return bl, nil
+}
+
+// Ping sends a P2P ping message to all connected nodes to measure ping time.
+// Results are provided by the getpeerinfo RPC pingtime and pingwait fields
+// as decimal seconds. The P2P ping message is handled in a queue with all
+// other commands, so it measures processing backlog, not just network ping.
+func (s *Session) Ping() error {
+	_, err := s.call("ping", nil)
+	return err
+}
+
+// SetBan attempts add or remove a IP/Subnet from the banned list.
+// Argument is the node to add or remove as a string in the form of
+// <IP address>. The IP address may be a hostname resolvable through DNS, an
+// IPv4 address, an IPv4-as-IPv6 address, or an IPv6 address.
+func (s *Session) SetBan(addr, cmd string, banTime int) error {
+	_, err := s.call("setban", []Data{addr, cmd, banTime})
+	return err
 }

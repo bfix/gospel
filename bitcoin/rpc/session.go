@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 )
 
@@ -37,25 +38,28 @@ type Response struct {
 
 // UnmarshalResult will unmarshal the Result field to
 // a JSON data structure.
-func (r *Response) UnmarshalResult(v interface{}) error {
+func (r *Response) UnmarshalResult(v interface{}) (bool, error) {
+	if r.Result == nil {
+		return false, nil
+	}
 	data, err := json.Marshal(r.Result)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err = json.Unmarshal(data, v); err != nil {
-		return err
+		return false, err
 	}
 	if strictCheck {
 		rc, msg := checkJSON(r.Result, v)
 		if !rc {
-			return errors.New(">>>>>\n" + msg)
+			return false, errors.New(">>>>>\n" + msg)
 		}
 		rc, msg = checkJSON(v, r.Result)
 		if !rc {
-			return errors.New("<<<<<\n" + msg)
+			return false, errors.New("<<<<<\n" + msg)
 		}
 	}
-	return nil
+	return true, nil
 }
 
 // Error is a Response-related failure code.
@@ -171,7 +175,11 @@ func getType(v interface{}) string {
 	case bool:
 		return "bool"
 	default:
-		return "%"
+		if t := reflect.TypeOf(v); t.Kind() == reflect.Ptr {
+			return "[*" + t.Elem().Name() + "]"
+		} else {
+			return "[" + t.Name() + "]"
+		}
 	}
 }
 
@@ -200,7 +208,7 @@ func compare(a, b interface{}, depth int, w io.Writer) bool {
 			fmt.Fprintf(w, "%d| ['%s']\n", depth, k)
 			x, ok := bm[k]
 			if !ok {
-				fmt.Fprintf(w, "Key: %s=%v\n", k, v)
+				fmt.Fprintf(w, "Key: %s=%v (%s)\n", k, v, getType(v))
 				return false
 			}
 			if !compare(v, x, depth+1, w) {
@@ -234,7 +242,7 @@ func compare(a, b interface{}, depth int, w io.Writer) bool {
 }
 
 func prepare(i interface{}, w io.Writer) (interface{}, bool) {
-	if getType(i) != "%" {
+	if getType(i)[0] != '[' {
 		return i, true
 	}
 	b, err := json.Marshal(i)

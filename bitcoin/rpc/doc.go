@@ -104,8 +104,8 @@ package rpc
  *  ImportWallet            wallet.go
  *  KeyPoolRefill           wallet.go
  *  ListAccounts            wallet.go
- *  ListAddressGroupings
- *  ListBanned
+ *  ListAddressGroupings    wallet.go
+ *  ListBanned              node.go
  *  ListLockUnspent         wallet.go
  *  ListReceivedByAccount   wallet.go
  *  ListReceivedByAddress   wallet.go
@@ -114,26 +114,26 @@ package rpc
  *  ListUnspent             wallet.go
  *  LockUnspent             wallet.go
  *  Move                    wallet.go
- *  Ping
- *  PrioritiseTransaction
- *  RemovePrunedFunds
+ *  Ping                    node.go
+ *  PrioritiseTransaction   transaction.go
+ *  RemovePrunedFunds       wallet.go
  *  SendFrom                wallet.go
  *  SendMany                wallet.go
  *  SendRawTransaction      transaction.go
  *  SendToAddress           wallet.go
  *  SetAccount              wallet.go
- *  SetBan
- *  SetGenerate
+ *  SetBan                  node.go
+ *  SetGenerate             ---
  *  SetTxFee                wallet.go
- *  SignMessage
- *  SignMessageWithPrivKey
+ *  SignMessage             wallet.go
+ *  SignMessageWithPrivKey  wallet.go
  *  SignRawTransaction      transaction.go
- *  Stop
- *  SubmitBlock
+ *  Stop                    local.go
+ *  SubmitBlock             block.go
  *  ValidateAddress         wallet.go
- *  VerifyChain
- *  VerifyMessage
- *  VerifyTxOutProof
+ *  VerifyChain             block.go
+ *  VerifyMessage           wallet.go
+ *  VerifyTxOutProof        transaction.go
  *  WalletLock              wallet.go
  *  WalletPassphrase        wallet.go
  *  WalletPassphraseChange  wallet.go

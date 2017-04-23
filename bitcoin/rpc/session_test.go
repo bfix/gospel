@@ -29,6 +29,11 @@ func init() {
 		sess = nil
 		return
 	}
+	if !info.TestNet {
+		fmt.Println("Node not on testnet")
+		sess = nil
+		return
+	}
 	fmt.Println("Bitcoin JSON-RPC tests initialized!")
 }
 

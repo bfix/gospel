@@ -1,5 +1,13 @@
 package rpc
 
+const (
+	// GenesisHash is the hash value of the very first block in the blockchain.
+	GenesisHash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+	// GenesisHashTest is the hash value of the very first block in the
+	// testnet blockchain.
+	GenesisHashTest = "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"
+)
+
 // Generate nearly instantly generates blocks.
 // if maxTries < 0, use the default retry value (1000000).
 func (s *Session) Generate(n, maxTries int) ([]string, error) {
@@ -55,7 +63,7 @@ func (s *Session) GetBlock(hash string) (*Block, error) {
 	}
 
 	block := new(Block)
-	if err = res.UnmarshalResult(block); err != nil {
+	if ok, err := res.UnmarshalResult(block); !ok {
 		return nil, err
 	}
 	return block, nil
@@ -78,7 +86,7 @@ func (s *Session) GetBlockchainInfo() (*BlockchainInfo, error) {
 		return nil, err
 	}
 	bc := new(BlockchainInfo)
-	if err = res.UnmarshalResult(bc); err != nil {
+	if ok, err := res.UnmarshalResult(bc); !ok {
 		return nil, err
 	}
 	return bc, nil
@@ -125,7 +133,7 @@ func (s *Session) GetBlockTemplate(caps []string) (*BlockTemplate, error) {
 		return nil, err
 	}
 	bt := new(BlockTemplate)
-	if err = res.UnmarshalResult(bt); err != nil {
+	if ok, err := res.UnmarshalResult(bt); !ok {
 		return nil, err
 	}
 	return bt, nil
@@ -139,8 +147,50 @@ func (s *Session) GetChainTips() ([]*ChainTip, error) {
 		return nil, err
 	}
 	var ct []*ChainTip
-	if err = res.UnmarshalResult(&ct); err != nil {
+	if ok, err := res.UnmarshalResult(&ct); !ok {
 		return nil, err
 	}
 	return ct, nil
+}
+
+// SubmitBlock accepts a block, verifies it is a valid addition to the block
+// chain, and broadcasts it to the network. Extra parameters are ignored by
+// Bitcoin Core but may be used by mining pools or other programs.
+func (s *Session) SubmitBlock(block string, param interface{}) (string, error) {
+	res, err := s.call("submitblock", []Data{block, param})
+	if err != nil {
+		return "", err
+	}
+	if res.Result == nil {
+		return "", nil
+	}
+	return res.Result.(string), nil
+}
+
+// VerifyChain verifies each entry in the local block chain database.
+// 'checkLevel' defines how thoroughly to check each block, from 0 to 4.
+// Default is the level set with the -checklevel command line argument; if
+// that isn’t set, the default is 3. Each higher level includes the tests
+// from the lower levels. Levels are:
+// -- 0. Read from disk to ensure the files are accessible
+// -- 1. Ensure each block is valid
+// -- 2. Make sure undo files can be read from disk and are in a valid format
+// -- 3. Test each block undo to ensure it results in correct state
+// -- 4. After undoing blocks, reconnect them to ensure they reconnect correctly
+// 'numBlocks' is the number of blocks to verify. Set to 0 to check all blocks.
+// Defaults to the value of the -checkblocks command-line argument; if that isn’t
+// set, the default is 288.
+func (s *Session) VerifyChain(checkLevel, numBlocks int) (bool, error) {
+	data := []Data{}
+	if checkLevel > 0 {
+		data = append(data, checkLevel)
+	}
+	if numBlocks > 0 {
+		data = append(data, numBlocks)
+	}
+	res, err := s.call("verifychain", data)
+	if err != nil {
+		return false, err
+	}
+	return res.Result.(bool), nil
 }

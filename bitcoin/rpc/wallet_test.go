@@ -2,6 +2,8 @@ package rpc
 
 import (
 	"fmt"
+	"github.com/bfix/gospel/bitcoin/ecc"
+	"github.com/bfix/gospel/bitcoin/util"
 	"os"
 	"testing"
 	"time"
@@ -9,7 +11,6 @@ import (
 
 var (
 	_addr  = ""
-	_xaddr = "18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX"
 	_accnt = ""
 )
 
@@ -239,7 +240,9 @@ func TestImportAddress(t *testing.T) {
 	if sess == nil {
 		t.Skip("skipping test: session not available")
 	}
-	if err := sess.ImportAddress(_xaddr, "", false); err != nil {
+	k := ecc.GenerateKeys(true)
+	a := util.MakeTestAddress(&k.PublicKey)
+	if err := sess.ImportAddress(a, "", false); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -254,5 +257,36 @@ func TestListAddressGroupings(t *testing.T) {
 	}
 	if verbose {
 		dumpObj("AddressGroups: %s\n", ag)
+	}
+}
+
+func TestSignMessage(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	msg := "This is a test message"
+	sig, err := sess.SignMessage(_addr, msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, err := sess.VerifyMessage(_addr, sig, msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("signature verification failed.")
+	}
+}
+
+func TestSignMessageWithPrivKey(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	key, err := sess.DumpPrivKey(_addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sess.SignMessageWithPrivKey(key, "Test message"); err != nil {
+		t.Fatal(err)
 	}
 }

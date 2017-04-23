@@ -34,7 +34,7 @@ func (s *Session) DecodeRawTransaction(raw string) (*RawTransaction, error) {
 		return nil, err
 	}
 	t := new(RawTransaction)
-	if err = res.UnmarshalResult(t); err != nil {
+	if ok, err := res.UnmarshalResult(t); !ok {
 		return nil, err
 	}
 	return t, nil
@@ -74,7 +74,7 @@ func (s *Session) FundRawTransaction(raw string, opts *Options) (*TransactionInf
 		return nil, err
 	}
 	fi := new(TransactionInfo)
-	if err = res.UnmarshalResult(fi); err != nil {
+	if ok, err := res.UnmarshalResult(fi); !ok {
 		return nil, err
 	}
 	return fi, nil
@@ -103,7 +103,7 @@ func (s *Session) GetRawTransactionObj(txid string) (*RawTransaction, error) {
 		return nil, nil
 	}
 	tx := new(RawTransaction)
-	if err = res.UnmarshalResult(tx); err != nil {
+	if ok, err := res.UnmarshalResult(tx); !ok {
 		return nil, err
 	}
 	return tx, nil
@@ -116,7 +116,7 @@ func (s *Session) GetTransaction(hash string, watchOnly bool) (*Transaction, err
 		return nil, err
 	}
 	t := new(Transaction)
-	if err = res.UnmarshalResult(t); err != nil {
+	if ok, err := res.UnmarshalResult(t); !ok {
 		return nil, err
 	}
 	return t, nil
@@ -130,7 +130,7 @@ func (s *Session) GetTxOut(txid string, vout int, unconfirmed bool) (*OutputInfo
 		return nil, err
 	}
 	oi := new(OutputInfo)
-	if err = res.UnmarshalResult(oi); err != nil {
+	if ok, err := res.UnmarshalResult(oi); !ok {
 		return nil, err
 	}
 	return oi, nil
@@ -164,7 +164,7 @@ func (s *Session) GetTxOutSetInfo() (*TxOutSetInfo, error) {
 		return nil, err
 	}
 	si := new(TxOutSetInfo)
-	if err = res.UnmarshalResult(si); err != nil {
+	if ok, err := res.UnmarshalResult(si); !ok {
 		return nil, err
 	}
 	return si, nil
@@ -183,7 +183,7 @@ func (s *Session) ListSinceBlock(hash string, minConf int) ([]*Transaction, stri
 		Transactions []*Transaction `json:"transactions"`
 	}
 	list := new(txList)
-	if err = res.UnmarshalResult(list); err != nil {
+	if ok, err := res.UnmarshalResult(list); !ok {
 		return nil, "", err
 	}
 	return list.Transactions, list.LastBlock, nil
@@ -197,7 +197,7 @@ func (s *Session) ListTransactions(accnt string, count, offset int) ([]*Transact
 		return nil, err
 	}
 	var list []*Transaction
-	if err = res.UnmarshalResult(&list); err != nil {
+	if ok, err := res.UnmarshalResult(&list); !ok {
 		return nil, err
 	}
 	return list, nil
@@ -211,10 +211,23 @@ func (s *Session) ListAllTransactions(count, offset int) ([]*Transaction, error)
 		return nil, err
 	}
 	var list []*Transaction
-	if err = res.UnmarshalResult(&list); err != nil {
+	if ok, err := res.UnmarshalResult(&list); !ok {
 		return nil, err
 	}
 	return list, nil
+}
+
+// PrioritiseTransaction adds virtual priority or fee to a transaction,
+// allowing it to be accepted into blocks mined by this node (or miners which
+// use this node) with a lower priority or fee. (It can also remove virtual
+// priority or fee, requiring the transaction have a higher priority or fee to
+// be accepted into a locally-mined block.)
+func (s *Session) PrioritiseTransaction(txid string, virtFee int) (bool, error) {
+	res, err := s.call("prioritisetransaction", []Data{txid, virtFee})
+	if err != nil {
+		return false, err
+	}
+	return res.Result.(bool), nil
 }
 
 // SendRawTransaction submits a raw transaction (serialized, hex-encoded)
@@ -222,10 +235,7 @@ func (s *Session) ListAllTransactions(count, offset int) ([]*Transaction, error)
 // transaction is invalid for any reason.
 func (s *Session) SendRawTransaction(raw string) error {
 	_, err := s.call("sendrawtransaction", []Data{raw})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // SignRawTransaction <hex string> [{"txid":txid,"vout":n,"scriptPubKey":hex},...] [<privatekey1>,...] [sighash="ALL"]
@@ -255,8 +265,23 @@ func (s *Session) SignRawTransaction(raw string, ins []Output, keys []string, mo
 		Complete bool   `json:"complete"`
 	}
 	sr := new(sigResult)
-	if err = res.UnmarshalResult(sr); err != nil {
+	if ok, err := res.UnmarshalResult(sr); !ok {
 		return raw, false, err
 	}
 	return sr.Hex, sr.Complete, nil
+}
+
+// VerifyTxOutProof verifies that a proof points to one or more transactions
+// in a block, returning the transactions the proof commits to and throwing
+// an RPC error if the block is not in our best block chain.
+func (s *Session) VerifyTxOutProof(proof string) ([]string, error) {
+	res, err := s.call("verifytxoutproof", []Data{proof})
+	if err != nil {
+		return nil, err
+	}
+	var addr []string
+	if ok, err := res.UnmarshalResult(&addr); !ok {
+		return nil, err
+	}
+	return addr, err
 }

@@ -56,7 +56,7 @@ type Info struct {
 	// UnlockedUntil is the Unix epoch time when the wallet will automatically
 	// re-lock. Only displayed if wallet encryption is enabled. Set to 0 if
 	// wallet is currently locked.
-	UnlockedUntil int `json:"unlocked_until"`
+	UnlockedUntil *int `json:"unlocked_until,omitempty"`
 	// Errors is a plain-text description of any errors this node has
 	// encountered or detected. If there are no errors, an empty string will
 	// be returned. This is not related to the JSON-RPC error field.
@@ -263,6 +263,7 @@ type BlockTemplate struct {
 	CurTime       int               `json:"curtime"`
 	Bits          string            `json:"bits"`
 	Height        int               `json:"height"`
+	WeightLimit   int               `json:"weightlimit"`
 }
 
 // BlockTemplateParameter defines parameters for the GetBlockTemplate call.
@@ -389,7 +390,7 @@ type Transaction struct {
 		// -- 'true' if it was abandoned (inputs are respendable)
 		// -- 'false' if it was not abandoned
 		// Only returned by send category payments
-		Abandoned bool `json:"abandoned"`
+		Abandoned *bool `json:"abandoned,omitempty"`
 		// Hex represents the transaction in serialized transaction format.
 		Hex *string `json:"hex,omitempty"`
 	} `json:"details,omitempty"`
@@ -577,6 +578,31 @@ type Output struct {
 	ReddemScript string `json:"redeemScript,omitempty"`
 }
 
+// Unspent describes an unspent output.
+type Unspent struct {
+	Output
+	// Solvable is set to true if the wallet knows how to spend this output.
+	// Set to false if the wallet does not know how to spend the output. It
+	// is ignored if the private keys are available.
+	Solvable bool `json:"solvable"`
+	// Spendable is set to true if the private key or keys needed to spend
+	// this output are part of the wallet. Set to false if not (such as for
+	// watch-only addresses).
+	Spendable bool `json:"spendable"`
+	// Address is the P2PKH or P2SH address the output paid. Only returned for
+	// P2PKH or P2SH output scripts.
+	Address string `json:"address"`
+	// Account is set if the address returned belongs to an account.
+	Account string `json:"account,omitempty"`
+	// Amount is paid to the output in bitcoins.
+	Amount float64 `json:"amount"`
+	// Confirmations is the number of confirmations received for the
+	// transaction containing this output.
+	Confirmations int `json:"confirmations"`
+	// Safe
+	Safe bool `json:"safe"`
+}
+
 // OutputInfo contains info about the output of a transaction.
 type OutputInfo struct {
 	// BestBlock is the hash of the header of the block on the local best
@@ -713,6 +739,10 @@ type Validity struct {
 	// Account this address belong to. May be an empty string for the
 	// default account. Only returned if the address belongs to the wallet.
 	Account string `json:"account,omitempty"`
+	// HDKeyPath is the HD keypath if the key is HD and available.
+	HDKeyPath string `json:"hdkeypath,omitempty"`
+	// HDMasterKeyID is the Hash160 of the HD master public key.
+	HDMasterKeyID string `json:"hdmasterkeyid,omitempty"`
 	// Addresses
 	Addresses []*struct {
 		// SigRequired is only returned for multisig P2SH addresses belonging
@@ -728,10 +758,6 @@ type Validity struct {
 		// Account this address belong to. May be an empty string for the
 		// default account. Only returned if the address belongs to the wallet.
 		Account string `json:"account,omitempty"`
-		// HDKeyPath is the HD keypath if the key is HD and available.
-		HDKeyPath string `json:"hdkeypath,omitempty"`
-		// HDMasterKeyID is the Hash160 of the HD master public key.
-		HDMasterKeyID string `json:"hdmasterkeyid,omitempty"`
 	} `json:"addresses,omitempty"`
 }
 
@@ -766,6 +792,10 @@ type MultiSigAddr struct {
 type WalletInfo struct {
 	// WalletVersion is the version number of the wallet.
 	WalletVersion int `json:"walletversion"`
+	// UnlockedUntil is only returned if the wallet was encrypted with the
+	// encryptwallet RPC. A Unix epoch date when the wallet will be locked, or
+	// 0 if the wallet is currently locked.
+	UnlockedUntil int `json:"unlocked_until,omitempty"`
 	// Balance is the balance of the wallet. The same as returned by the
 	// getbalance RPC with default parameters.
 	Balance float64 `json:"balance"`
@@ -786,10 +816,10 @@ type WalletInfo struct {
 	KeypoolOldest int `json:"keypoololdest"`
 	// KeypoolSize is the number of keys in the wallet keypool.
 	KeypoolSize int `json:"keypoolsize"`
-	// UnlockedUntil is only returned if the wallet was encrypted with the
-	// encryptwallet RPC. A Unix epoch date when the wallet will be locked, or
-	// 0 if the wallet is currently locked.
-	UnlockedUntil int `json:"unlocked_until"`
+	// KeypoolSizeHDInternal
+	KeypoolSizeHDInternal int `json:"keypoolsize_hd_internal"`
+	// HDMasterKeyID
+	HDMasterKeyID string `json:"hdmasterkeyid"`
 }
 
 // NodeInfo holds information about added nodes.
@@ -816,6 +846,22 @@ type NodeInfo struct {
 		// -- 'outbound' if we connected to the addnode
 		Connected string `json:"connected"`
 	} `json:"addresses"`
+}
+
+// BannedNode is an entry in the ban list.
+type BannedNode struct {
+	// Address is the IP/Subnet of the entry.
+	Address string `json:"address"`
+	// BannedUntil is the Unix epoch time when the entry was added to the ban
+	// list.
+	BannedUntil int `json:"banned_until"`
+	// BanCreated is the Unix epoch time until the IP/Subnet is banned.
+	BanCreated int `json:"ban_created"`
+	// BanReason is set to one of the following reasons:
+	// -- 'node misbehaving' if the node was banned by the client because of
+	//    DoS violations
+	// -- 'manually added' if the node was manually banned by the user
+	BanReason string `json:"ban_reason"`
 }
 
 // MemPoolInfo is an object containing information about the memory pool.
@@ -864,7 +910,7 @@ type MiningInfo struct {
 	// NetworkHashPS is an estimate of the number of hashes per second the
 	// network is generating to maintain the current difficulty. See the
 	// getnetworkhashps RPC for configurable access to this data.
-	NetworkHashPS int `json:"networkhashps"`
+	NetworkHashPS float64 `json:"networkhashps"`
 	// PooledTx is the number of transactions in the memory pool.
 	PooledTx int `json:"pooledtx"`
 	// Testnet is set to true if this node is running on testnet. Set to false
@@ -880,7 +926,7 @@ type MiningInfo struct {
 	// HashesPerSec is the approximate number of hashes per second this node
 	// is generating across all CPUs, if generation is enabled. Otherwise 0.
 	// Only returned if the node has wallet support enabled
-	HashesPerSec int `json:"hashespersec,omitempty"`
+	HashesPerSec float64 `json:"hashespersec,omitempty"`
 }
 
 // PeerInfo describes a particular connected node.

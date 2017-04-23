@@ -65,3 +65,25 @@ func TestPeerInfo(t *testing.T) {
 		dumpObj("PeerInfo: %s\n", pi)
 	}
 }
+
+func TestListBanned(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	bl, err := sess.ListBanned()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("BanList: %s\n", bl)
+	}
+}
+
+func TestPing(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if err := sess.Ping(); err != nil {
+		t.Fatal(err)
+	}
+}

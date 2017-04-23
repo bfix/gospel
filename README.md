@@ -81,7 +81,11 @@ want to run all implemented test paths.
    
 #### 3. Start the Bitcoin daemon for the test wallet
 
-    $ bitcoind -wallet=<your test wallet>
+The RPC calls implemented in the library are compliant with Bitcoin
+Core v.0.14.0 and probably result in errors if used with previous
+(or later) versions; tests only work in 'testnet' (enforced).
+
+    $ bitcoind -testnet
 
 #### 4. Export environment variables for the RPC tests
 

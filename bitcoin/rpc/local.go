@@ -9,10 +9,10 @@ func (s *Session) GetInfo() (*Info, error) {
 		return nil, err
 	}
 	info := new(Info)
-	if err = res.UnmarshalResult(info); err != nil {
+	if ok, err := res.UnmarshalResult(info); !ok {
 		return nil, err
 	}
-	return info, err
+	return info, nil
 }
 
 // GetDifficulty returns the proof-of-work difficulty as a multiple
@@ -45,7 +45,7 @@ func (s *Session) GetMemPoolAncestorObjs(addr string) ([]*MemPoolTransaction, er
 		return nil, err
 	}
 	var anc []*MemPoolTransaction
-	if err = res.UnmarshalResult(&anc); err != nil {
+	if ok, err := res.UnmarshalResult(&anc); !ok {
 		return nil, err
 	}
 	return anc, nil
@@ -71,7 +71,7 @@ func (s *Session) GetMemPoolDecendantObjs(addr string) ([]*MemPoolTransaction, e
 		return nil, err
 	}
 	var anc []*MemPoolTransaction
-	if err = res.UnmarshalResult(&anc); err != nil {
+	if ok, err := res.UnmarshalResult(&anc); !ok {
 		return nil, err
 	}
 	return anc, nil
@@ -85,7 +85,7 @@ func (s *Session) GetMemPoolEntry(addr string) (*MemPoolTransaction, error) {
 		return nil, err
 	}
 	e := new(MemPoolTransaction)
-	if err = res.UnmarshalResult(e); err != nil {
+	if ok, err := res.UnmarshalResult(e); !ok {
 		return nil, err
 	}
 	return e, nil
@@ -98,7 +98,7 @@ func (s *Session) GetMemPoolInfo() (*MemPoolInfo, error) {
 		return nil, err
 	}
 	mi := new(MemPoolInfo)
-	if err = res.UnmarshalResult(mi); err != nil {
+	if ok, err := res.UnmarshalResult(mi); !ok {
 		return nil, err
 	}
 	return mi, nil
@@ -112,7 +112,7 @@ func (s *Session) GetRawMemPoolList() ([]string, error) {
 		return nil, err
 	}
 	var txids []string
-	if err = res.UnmarshalResult(&txids); err != nil {
+	if ok, err := res.UnmarshalResult(&txids); !ok {
 		return nil, err
 	}
 	return txids, nil
@@ -127,8 +127,14 @@ func (s *Session) GetRawMemPool() (map[string]*MemPoolTransaction, error) {
 		return nil, err
 	}
 	var list map[string]*MemPoolTransaction
-	if err = res.UnmarshalResult(&list); err != nil {
+	if ok, err := res.UnmarshalResult(&list); !ok {
 		return nil, err
 	}
 	return list, nil
+}
+
+// Stop safely shuts down the Bitcoin Core server.
+func (s *Session) Stop() error {
+	_, err := s.call("stop", nil)
+	return err
 }

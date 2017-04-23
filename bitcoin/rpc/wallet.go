@@ -2,8 +2,6 @@ package rpc
 
 import (
 	"errors"
-	"github.com/bfix/gospel/bitcoin/ecc"
-	"github.com/bfix/gospel/bitcoin/util"
 )
 
 // AbandonTransaction marks an in-wallet transaction and all its in-wallet
@@ -62,19 +60,19 @@ func (s *Session) CreateMultiSig(m int, list []string) (*MultiSigAddr, error) {
 		return nil, err
 	}
 	saddr := new(MultiSigAddr)
-	if err = res.UnmarshalResult(saddr); err != nil {
+	if ok, err := res.UnmarshalResult(saddr); !ok {
 		return nil, err
 	}
 	return saddr, nil
 }
 
 // DumpPrivKey reveals the private key corresponding to <bitcoinaddress>
-func (s *Session) DumpPrivKey(address string, testnet bool) (*ecc.PrivateKey, error) {
+func (s *Session) DumpPrivKey(address string) (string, error) {
 	res, err := s.call("dumpprivkey", []Data{address})
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return util.ImportPrivateKey(res.Result.(string), testnet)
+	return res.Result.(string), nil
 }
 
 // DumpWallet creates or overwrites a file with all wallet keys in a human-
@@ -185,7 +183,7 @@ func (s *Session) GetWalletInfo() (*WalletInfo, error) {
 		return nil, err
 	}
 	wi := new(WalletInfo)
-	if err = res.UnmarshalResult(wi); err != nil {
+	if ok, err := res.UnmarshalResult(wi); !ok {
 		return nil, err
 	}
 	return wi, nil
@@ -261,7 +259,7 @@ func (s *Session) ListAddressGroupings() ([]*AddressGroup, error) {
 		return nil, err
 	}
 	var ag []*AddressGroup
-	if err = res.UnmarshalResult(&ag); err != nil {
+	if ok, err := res.UnmarshalResult(&ag); !ok {
 		return nil, err
 	}
 	return ag, nil
@@ -275,7 +273,7 @@ func (s *Session) ListReceivedByAccount(minConf int, includeEmpty, watchOnly boo
 		return nil, err
 	}
 	var rcv []*AccountInfo
-	if err = res.UnmarshalResult(&rcv); err != nil {
+	if ok, err := res.UnmarshalResult(&rcv); !ok {
 		return nil, err
 	}
 	return rcv, nil
@@ -289,7 +287,7 @@ func (s *Session) ListReceivedByAddress(minConf int, includeEmpty, watchOnly boo
 		return nil, err
 	}
 	var rcv []*AddressInfo
-	if err = res.UnmarshalResult(&rcv); err != nil {
+	if ok, err := res.UnmarshalResult(&rcv); !ok {
 		return nil, err
 	}
 	return rcv, nil
@@ -303,13 +301,13 @@ func (s *Session) ListReceivedByAddress(minConf int, includeEmpty, watchOnly boo
 // output of that transaction, scriptPubKey is the hexadecimal-encoded CScript
 // for that output, amount is the value of that output and confirmations is
 // the transaction's depth in the chain.
-func (s *Session) ListUnspent(minconf, maxconf int) ([]*Output, error) {
+func (s *Session) ListUnspent(minconf, maxconf int) ([]*Unspent, error) {
 	res, err := s.call("listunspent", []Data{minconf, maxconf})
 	if err != nil {
 		return nil, err
 	}
-	var unspent []*Output
-	if err = res.UnmarshalResult(&unspent); err != nil {
+	var unspent []*Unspent
+	if ok, err := res.UnmarshalResult(&unspent); !ok {
 		return nil, err
 	}
 	return unspent, nil
@@ -322,7 +320,7 @@ func (s *Session) ListLockUnspent() ([]*Output, error) {
 		return nil, err
 	}
 	var list []*Output
-	if err = res.UnmarshalResult(&list); err != nil {
+	if ok, err := res.UnmarshalResult(&list); !ok {
 		return nil, err
 	}
 	return list, nil
@@ -349,6 +347,14 @@ func (s *Session) Move(fromAccount, toAccount string, amount float64) (string, e
 		return "", err
 	}
 	return res.Result.(string), nil
+}
+
+// RemovePrunedFunds deletes the specified transaction from the wallet. Meant
+// for use with pruned wallets and as a companion to importprunedfunds. This
+// will effect wallet balances.
+func (s *Session) RemovePrunedFunds(txid string) error {
+	_, err := s.call("removeprunedfunds", []Data{txid})
+	return err
 }
 
 // SendFrom sends a given amount (real; rounded to 8 decimal places).
@@ -403,6 +409,24 @@ func (s *Session) SetTxFee(amount float64) error {
 	return err
 }
 
+// SignMessage signs a message with the private key of an address.
+func (s *Session) SignMessage(addr, msg string) (string, error) {
+	res, err := s.call("signmessage", []Data{addr, msg})
+	if err != nil {
+		return "", err
+	}
+	return res.Result.(string), nil
+}
+
+// SignMessageWithPrivKey signs a message with the private key.
+func (s *Session) SignMessageWithPrivKey(key, msg string) (string, error) {
+	res, err := s.call("signmessagewithprivkey", []Data{key, msg})
+	if err != nil {
+		return "", err
+	}
+	return res.Result.(string), nil
+}
+
 // ValidateAddress returns information about a Bitcoin address.
 // Remarks: Requires unlocked wallet
 func (s *Session) ValidateAddress(addr string) (*Validity, error) {
@@ -411,10 +435,19 @@ func (s *Session) ValidateAddress(addr string) (*Validity, error) {
 		return nil, err
 	}
 	v := new(Validity)
-	if err = res.UnmarshalResult(v); err != nil {
+	if ok, err := res.UnmarshalResult(v); !ok {
 		return nil, err
 	}
 	return v, nil
+}
+
+// VerifyMessage verifies a signed message.
+func (s *Session) VerifyMessage(addr, sig, msg string) (bool, error) {
+	res, err := s.call("verifymessage", []Data{addr, sig, msg})
+	if err != nil {
+		return false, err
+	}
+	return res.Result.(bool), nil
 }
 
 // WalletLock removes second password from memory.

@@ -21,13 +21,13 @@ func TestTransaction(t *testing.T) {
 	if len(txlist) > 0 {
 		_txid = txlist[0].TxID
 		tx, err := sess.GetTransaction(_txid, false)
-		_block = tx.BlockHash
 		if err != nil {
 			t.Fatal(err)
 		}
 		if verbose {
 			dumpObj("Transaction: %s\n", tx)
 		}
+		_block = tx.BlockHash
 	}
 }
 
@@ -133,6 +133,13 @@ func TestGetTxOutProof(t *testing.T) {
 	if verbose {
 		dumpObj("TxOutProof: %s\n", p)
 	}
+	a, err := sess.VerifyTxOutProof(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verbose {
+		dumpObj("VerifyTxOutProof result: %s\n", a)
+	}
 }
 
 func TestGetTxOutSetInfo(t *testing.T) {
@@ -148,4 +155,16 @@ func TestGetTxOutSetInfo(t *testing.T) {
 			dumpObj("TxOutSetInfo: %s\n", si)
 		}
 	*/
+}
+
+func TestPrioritiseTransaction(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	if len(_txid) == 0 {
+		t.Skip("skipping test: no transaction available")
+	}
+	if _, err := sess.PrioritiseTransaction(_txid, 23); err != nil {
+		t.Fatal(err)
+	}
 }
