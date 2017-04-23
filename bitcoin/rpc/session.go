@@ -175,11 +175,11 @@ func getType(v interface{}) string {
 	case bool:
 		return "bool"
 	default:
-		if t := reflect.TypeOf(v); t.Kind() == reflect.Ptr {
+		t := reflect.TypeOf(v)
+		if t.Kind() == reflect.Ptr {
 			return "[*" + t.Elem().Name() + "]"
-		} else {
-			return "[" + t.Name() + "]"
 		}
+		return "[" + t.Name() + "]"
 	}
 }
 

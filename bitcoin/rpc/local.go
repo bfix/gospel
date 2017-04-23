@@ -1,7 +1,5 @@
 package rpc
 
-import ()
-
 // GetInfo returns an object containing various state info.
 func (s *Session) GetInfo() (*Info, error) {
 	res, err := s.call("getinfo", nil)
@@ -51,7 +49,7 @@ func (s *Session) GetMemPoolAncestorObjs(addr string) ([]*MemPoolTransaction, er
 	return anc, nil
 }
 
-// GetMemPoolDecendants returns all in-mempool decendants for a transaction
+// GetMemPoolDecendants returns all in-mempool descendants for a transaction
 // in the mempool as an array of TXIDs belonging to transactions in the
 // memory pool. The array may be empty if there are no transactions in the
 // memory pool.
@@ -63,10 +61,10 @@ func (s *Session) GetMemPoolDecendants(addr string) ([]string, error) {
 	return res.Result.([]string), nil
 }
 
-// GetMemPoolDecendantObjs returns all in-mempool decendants for a transaction
+// GetMemPoolDescendantObjs returns all in-mempool decendants for a transaction
 // in the mempool as an array of MemPoolTransaction objects.
-func (s *Session) GetMemPoolDecendantObjs(addr string) ([]*MemPoolTransaction, error) {
-	res, err := s.call("getmempooldecendants", []Data{addr, true})
+func (s *Session) GetMemPoolDescendantObjs(addr string) ([]*MemPoolTransaction, error) {
+	res, err := s.call("getmempooldescendants", []Data{addr, true})
 	if err != nil {
 		return nil, err
 	}

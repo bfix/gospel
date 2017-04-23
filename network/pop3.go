@@ -57,7 +57,11 @@ func POP3Connect(service, proxy string) (*POP3Session, error) {
 	if proxy == "" {
 		sess.c0, err = net.Dial("tcp", uSrv.Host)
 	} else {
-		host, port, err := SplitHost(uSrv.Host)
+		var (
+			host string
+			port int
+		)
+		host, port, err = SplitHost(uSrv.Host)
 		if err != nil {
 			return nil, err
 		}

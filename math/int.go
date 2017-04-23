@@ -117,7 +117,7 @@ func (i *Int) Add(j *Int) *Int {
 	return &Int{v: new(big.Int).Add(i.v, j.v)}
 }
 
-// Sub substracts two Ints
+// Sub subtracts two Ints
 func (i *Int) Sub(j *Int) *Int {
 	return &Int{v: new(big.Int).Sub(i.v, j.v)}
 }
@@ -166,7 +166,7 @@ func (i *Int) ModInverse(j *Int) *Int {
 	return &Int{v: new(big.Int).ModInverse(i.v, j.v)}
 }
 
-// Cmp returns the comparision between two Ints.
+// Cmp returns the comparison between two Ints.
 func (i *Int) Cmp(j *Int) int {
 	return i.v.Cmp(j.v)
 }

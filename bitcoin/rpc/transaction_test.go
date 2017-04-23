@@ -84,9 +84,9 @@ func TestMemPoolDescendants(t *testing.T) {
 	if len(_txid) == 0 {
 		t.Skip("skipping test: no transaction available")
 	}
-	dec, err := sess.GetMemPoolDecendantObjs(_txid)
+	dec, err := sess.GetMemPoolDescendantObjs(_txid)
 	if err == nil && verbose {
-		dumpObj("MemPoolDecendants: %v\n", dec)
+		dumpObj("MemPoolDescendants: %v\n", dec)
 	}
 }
 
