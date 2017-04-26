@@ -769,19 +769,54 @@ var (
 			return RcInvalidTransfer
 		}},
 		{"OP_CHECKMULTISIG", OpCHECKMULTISIG, func(r *R) int {
-			return RcNotImplemented
+			valid, rc := r.CheckMultiSig()
+			if rc != RcOK {
+				return rc
+			}
+			return r.stack.Push(valid)
 		}},
 		{"OP_CHECKMULTISIGVERIFY", OpCHECKMULTISIGVERIFY, func(r *R) int {
-			return RcNotImplemented
+			valid, rc := r.CheckMultiSig()
+			if rc != RcOK {
+				return rc
+			}
+			if valid {
+				return RcOK
+			}
+			return RcInvalidTransfer
 		}},
 		{"OP_NOP1", OpNOP1, func(r *R) int {
 			return RcOK
 		}},
 		{"OP_CHECKLOCKTIMEVERIFY", OpCHECKLOCKTIMEVERIFY, func(r *R) int {
-			return RcNotImplemented
+			v, rc := r.stack.Peek()
+			if rc != RcOK || v.Sign() == -1 {
+				return RcTxInvalid
+			}
+			vt := uint64(v.Int64())
+			var bounds uint64 = 500000000
+			if (vt < bounds && r.tx.LockTime > bounds) ||
+				(vt > bounds && r.tx.LockTime < bounds) ||
+				r.tx.VinSeq[r.tx.VinSlot] == 0xffffffff {
+				return RcTxInvalid
+			}
+			return RcOK
 		}},
 		{"OP_CHECKSEQUENCEVERIFY", OpCHECKSEQUENCEVERIFY, func(r *R) int {
-			return RcNotImplemented
+			v, rc := r.stack.Peek()
+			if rc != RcOK || v.Sign() == -1 {
+				return RcTxInvalid
+			}
+			vt := uint64(v.Int64())
+			inSeq := r.tx.VinSeq[r.tx.VinSlot]
+			if vt&(1<<31) == 0 {
+				if r.tx.Version < 2 ||
+					inSeq&(1<<31) != 0 ||
+					vt > inSeq {
+					return RcTxInvalid
+				}
+			}
+			return RcOK
 		}},
 		{"OP_NOP4", OpNOP4, func(r *R) int {
 			return RcOK

@@ -6,6 +6,10 @@ import (
 	"testing"
 )
 
+const (
+	verbose = false
+)
+
 var (
 	s = []string{
 		"483045022074f35af390c41ef1f5395d11f6041cf55a6d7dab0acdac8ee746c1" +
@@ -45,21 +49,24 @@ func TestParse(t *testing.T) {
 		if rc := r.parse(scr); rc != RcOK {
 			t.Fatal(fmt.Sprintf("Parse failed: rc=%s", RcString[rc]))
 		}
-		fmt.Printf("Statements: %v\n", r.stmts)
+		if verbose {
+			fmt.Printf("Statements: %v\n", r.stmts)
+		}
 	}
 }
 
 func TestExec(t *testing.T) {
-	r.CbStep = func(stack *Stack, stmt *Statement, rc int) {
-		fmt.Println("==============================")
-		fmt.Println("Statement: " + stmt.String())
-		fmt.Printf("RC: %s\n", RcString[rc])
-		fmt.Println("Stack:")
-		for i, v := range stack.d {
-			fmt.Printf("   %d: %s\n", stack.Len()-i-1, hex.EncodeToString(v.Bytes()))
+	if verbose {
+		r.CbStep = func(stack *Stack, stmt *Statement, rc int) {
+			fmt.Println("==============================")
+			fmt.Println("Statement: " + stmt.String())
+			fmt.Printf("RC: %s\n", RcString[rc])
+			fmt.Println("Stack:")
+			for i, v := range stack.d {
+				fmt.Printf("   %d: %s\n", stack.Len()-i-1, hex.EncodeToString(v.Bytes()))
+			}
 		}
 	}
-
 	scr, err := hex.DecodeString(s[0])
 	if err != nil {
 		t.Fatal(err)
@@ -69,7 +76,15 @@ func TestExec(t *testing.T) {
 	}
 	ok, rc := r.exec()
 	if rc != RcOK {
+		if rc == RcNoTransaction {
+			if verbose {
+				fmt.Println("No transaction available")
+			}
+			return
+		}
 		t.Fatal(fmt.Sprintf("Exec failed: rc=%s", RcString[rc]))
 	}
-	fmt.Printf("Result: %v\n", ok)
+	if verbose {
+		fmt.Printf("Result: %v\n", ok)
+	}
 }

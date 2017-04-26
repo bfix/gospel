@@ -51,11 +51,11 @@ var (
 		"Not implemented yet",
 		"Invalid opcode",
 		"Reserved opcode",
-		"Tx invalid",
+		"Invalid transaction",
 		"Type mismatch",
 		"Invalid stack type",
 		"Operation exceeds stack",
-		"No transaction",
+		"No transaction available",
 		"Unclosed IF",
 		"Double ELSE",
 		"Invalid transaction",
@@ -84,11 +84,11 @@ func (s *Statement) String() string {
 
 // R is the Bitcoin script runtime environment
 type R struct {
-	stmts    []*Statement // list of parsed statements
-	pos      int          // index of current statement
-	stack    *Stack       // stack for script operations
-	altStack *Stack       // alternative stack
-	tx       []byte       // associated dissected transaction
+	stmts    []*Statement               // list of parsed statements
+	pos      int                        // index of current statement
+	stack    *Stack                     // stack for script operations
+	altStack *Stack                     // alternative stack
+	tx       *util.DissectedTransaction // associated dissected transaction
 	CbStep   func(stack *Stack, stmt *Statement, rc int)
 }
 
@@ -110,7 +110,7 @@ func NewRuntime() *R {
 // to be assembled (concatenated) and cleaned up from the prev.sigScript and
 // curr.pkScript (see https://en.bitcoin.it/wiki/OpCHECKSIG); 'tx' is the
 // current transaction already prepared for signature.
-func (r *R) ExecScript(script []byte, tx []byte) (bool, int) {
+func (r *R) ExecScript(script []byte, tx *util.DissectedTransaction) (bool, int) {
 	r.tx = tx
 	if rc := r.parse(script); rc != RcOK {
 		return false, rc
@@ -126,31 +126,75 @@ func (r *R) CheckSig() (bool, int) {
 	if rc != RcOK {
 		return false, rc
 	}
-	pk, err := ecc.PublicKeyFromBytes(pkInt.Bytes())
-	if err != nil {
-		return false, RcInvalidPubkey
-	}
 	// pop signature from stack
 	sigInt, rc := r.stack.Pop()
 	if rc != RcOK {
 		return false, rc
 	}
-	sigData := sigInt.Bytes()
-	hashType := sigData[len(sigData)-1]
-	sigData = sigData[:len(sigData)-1]
-	// compute hash of amended transaction
-	txSign := append(r.tx, []byte{hashType, 0, 0, 0}...)
-	txHash := util.Hash256(txSign)
-	// decode signature from DER data
-	var sig struct{ R, S *big.Int }
-	_, err = asn1.Unmarshal(sigData, &sig)
-	if err != nil {
-		return false, RcInvalidSignature
-	}
-	sigR := math.NewIntFromBig(sig.R)
-	sigS := math.NewIntFromBig(sig.S)
 	// perform signature verify
-	return ecc.Verify(pk, txHash, sigR, sigS), RcOK
+	return r.checkSig(pkInt, sigInt)
+}
+
+// CheckMultiSig performs a OpCHECKMULTISIG operation on the stack (without
+// pushing a result onto the stack).
+func (r *R) CheckMultiSig() (bool, int) {
+	// pop pubkeys from stack
+	nk, rc := r.stack.Pop()
+	if rc != RcOK {
+		return false, rc
+	}
+	var keys []*math.Int
+	for i := 0; i < int(nk.Int64()); i++ {
+		pkInt, rc := r.stack.Pop()
+		if rc != RcOK {
+			return false, rc
+		}
+		keys = append(keys, pkInt)
+	}
+	// pop signatures from stack
+	ns, rc := r.stack.Pop()
+	if rc != RcOK {
+		return false, rc
+	}
+	var sigs []*math.Int
+	for i := 0; i < int(ns.Int64()); i++ {
+		sigInt, rc := r.stack.Pop()
+		if rc != RcOK {
+			return false, rc
+		}
+		sigs = append(sigs, sigInt)
+	}
+	// pop extra (due to a bug in the initial implementation)
+	if _, rc := r.stack.Pop(); rc != RcOK {
+		return false, rc
+	}
+	// perform signature verifications
+	for _, sigInt := range sigs {
+		var (
+			j     int
+			pkInt *math.Int
+			valid = false
+			rc    int
+		)
+		for j, pkInt = range keys {
+			if pkInt == nil {
+				continue
+			}
+			valid, rc = r.checkSig(pkInt, sigInt)
+			if rc != RcOK {
+				return false, rc
+			}
+			if valid {
+				break
+			}
+		}
+		if valid {
+			keys[j] = nil
+		} else {
+			return false, RcOK
+		}
+	}
+	return true, RcOK
 }
 
 // exec executes a sequence of parsed statement of a script.
@@ -246,4 +290,33 @@ func (r *R) parse(code []byte) int {
 		r.stmts = append(r.stmts, s)
 	}
 	return RcOK
+}
+
+// checkSig checks the signature of a prepared transaction.
+func (r *R) checkSig(pkInt, sigInt *math.Int) (bool, int) {
+	if r.tx == nil {
+		return false, RcNoTransaction
+	}
+	// get public key
+	pk, err := ecc.PublicKeyFromBytes(pkInt.Bytes())
+	if err != nil {
+		return false, RcInvalidPubkey
+	}
+	// get signature and hash type
+	sigData := sigInt.Bytes()
+	hashType := sigData[len(sigData)-1]
+	sigData = sigData[:len(sigData)-1]
+	// compute hash of amended transaction
+	txSign := append(r.tx.Signable, []byte{hashType, 0, 0, 0}...)
+	txHash := util.Hash256(txSign)
+	// decode signature from DER data
+	var sig struct{ R, S *big.Int }
+	_, err = asn1.Unmarshal(sigData, &sig)
+	if err != nil {
+		return false, RcInvalidSignature
+	}
+	sigR := math.NewIntFromBig(sig.R)
+	sigS := math.NewIntFromBig(sig.S)
+	// perform signature verify
+	return ecc.Verify(pk, txHash, sigR, sigS), RcOK
 }

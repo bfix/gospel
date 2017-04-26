@@ -298,7 +298,7 @@ func VerifyTransfer(prev *RawTransaction, vout int, curr *RawTransaction, vin in
 	if prev.Hex == nil {
 		return false, fmt.Errorf("Missing hex encoding of raw transaction")
 	}
-	prevTx, err := util.DissectRawTransaction(*prev.Hex)
+	prevTx, err := util.NewDissectedTransaction(*prev.Hex)
 	if err != nil {
 		return false, err
 	}
@@ -306,45 +306,44 @@ func VerifyTransfer(prev *RawTransaction, vout int, curr *RawTransaction, vin in
 	if curr.Hex == nil {
 		return false, fmt.Errorf("Missing hex encoding of raw transaction")
 	}
-	currTx, err := util.DissectRawTransaction(*curr.Hex)
+	currTx, err := util.NewDissectedTransaction(*curr.Hex)
 	if err != nil {
 		return false, err
 	}
-	// get scriptSig from current transaction
-	nc, _, err := util.GetVarUint(currTx[1], 0)
+	// get scriptSig from current transaction for the vin slot
+	nc, _, err := util.GetVarUint(currTx.Content[1], 0)
 	if err != nil {
 		return false, err
 	}
 	if vin >= int(nc) {
 		return false, fmt.Errorf("Vin out of bounds")
 	}
-	vinScr := currTx[5*vin+5]
+	vinScr := currTx.Content[5*vin+5]
 	// get scriptPubkey from previous transaction
-	np, _, err := util.GetVarUint(prevTx[1], 0)
+	np, _, err := util.GetVarUint(prevTx.Content[1], 0)
 	if err != nil {
 		return false, err
 	}
 	m := 5*int(np) + 2
-	o, _, err := util.GetVarUint(prevTx[m], 0)
+	o, _, err := util.GetVarUint(prevTx.Content[m], 0)
 	if err != nil {
 		return false, err
 	}
 	if vout >= int(o) {
 		return false, fmt.Errorf("Vout out of bounds")
 	}
-	voutScr := prevTx[m+4*vout+4]
+	voutScr := prevTx.Content[m+4*vout+4]
 	// assemble script
 	var scr []byte
 	scr = append(scr, vinScr...)
 	scr = append(scr, voutScr...)
 	// prepare raw transaction for signing
-	txCopy, err := util.PrepareTxForSign(currTx, vin, voutScr)
-	if err != nil {
+	if err := currTx.PrepareForSign(vin, voutScr); err != nil {
 		return false, err
 	}
 	// run script
 	rt := script.NewRuntime()
-	ok, rc := rt.ExecScript(scr, txCopy)
+	ok, rc := rt.ExecScript(scr, currTx)
 	if rc != script.RcOK {
 		return ok, fmt.Errorf("ExecScript failed with '%s'", script.RcString[rc])
 	}
