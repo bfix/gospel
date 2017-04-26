@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	// Result codes
 	RcOK = iota
 	RcErr
 	RcExceeds
@@ -100,10 +99,10 @@ func NewRuntime() *R {
 }
 
 // Exec executes a script belonging to a transaction. If no transaction is
-// specified, some script opcodes like OP_CHECKSIG could not be executed.
-// N.B.: To successfully execute 'script' that involves OP_CHECKSIG it needs
+// specified, some script opcodes like OpCHECKSIG could not be executed.
+// N.B.: To successfully execute 'script' that involves OpCHECKSIG it needs
 // to be assembled (concatenated) and cleaned up from the prev.sigScript and
-// curr.pkScript (see https://en.bitcoin.it/wiki/OP_CHECKSIG); 'tx' is the
+// curr.pkScript (see https://en.bitcoin.it/wiki/OpCHECKSIG); 'tx' is the
 // current transaction already prepared for signature.
 func (r *R) ExecScript(script []byte, tx []byte) (bool, int) {
 	r.tx = tx
@@ -113,7 +112,7 @@ func (r *R) ExecScript(script []byte, tx []byte) (bool, int) {
 	return r.exec()
 }
 
-// CheckSig performs a OP_CHECKSIG operation on the stack (without pushing a
+// CheckSig performs a OpCHECKSIG operation on the stack (without pushing a
 // result onto the stack)
 func (r *R) CheckSig() (bool, int) {
 	// pop pubkey from stack
@@ -223,15 +222,15 @@ func (r *R) parse(code []byte) int {
 			size += n
 		} else {
 			switch op {
-			case Op_PUSHDATA1:
+			case OpPUSHDATA1:
 				if rc := getData(s, 1); rc != RcOK {
 					return rc
 				}
-			case Op_PUSHDATA2:
+			case OpPUSHDATA2:
 				if rc := getData(s, 2); rc != RcOK {
 					return rc
 				}
-			case Op_PUSHDATA4:
+			case OpPUSHDATA4:
 				if rc := getData(s, 4); rc != RcOK {
 					return rc
 				}

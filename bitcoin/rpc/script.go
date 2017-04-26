@@ -39,9 +39,9 @@ func (s *ScriptPubKey) GetAddresses() []string {
 	return res
 }
 
-// DataScript assembles a OP_RETURN script with data attached.
+// DataScript assembles a OpRETURN script with data attached.
 func DataScript(data []byte) (scr []byte) {
-	scr = append(scr, script.Op_RETURN)
+	scr = append(scr, script.OpRETURN)
 	scr = append(scr, PushData(data)...)
 	return
 }
@@ -53,15 +53,15 @@ func PushData(data []byte) (res []byte) {
 	case size < 76:
 		res = append(res, byte(size))
 	case size < 256:
-		res = append(res, script.Op_PUSHDATA1)
+		res = append(res, script.OpPUSHDATA1)
 		res = append(res, byte(size))
 	case size < 65536:
 		// size of script
-		res = append(res, script.Op_PUSHDATA2)
+		res = append(res, script.OpPUSHDATA2)
 		res = append(res, byte(size&0xFF))
 		res = append(res, byte((size>>8)&0xFF))
 	default:
-		res = append(res, script.Op_PUSHDATA4)
+		res = append(res, script.OpPUSHDATA4)
 		res = append(res, byte(size&0xFF))
 		res = append(res, byte((size>>8)&0xFF))
 		res = append(res, byte((size>>16)&0xFF))
