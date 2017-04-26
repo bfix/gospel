@@ -10,6 +10,7 @@ import (
 	"math/big"
 )
 
+// Result codes returned by script functions.
 const (
 	RcOK = iota
 	RcErr
@@ -33,8 +34,11 @@ const (
 	RcInvalidUint
 	RcInvalidSignature
 	RcInvalidTransfer
+	RcNotVerified
+	RcDisabledOpcode
 )
 
+// Human-readable result codes
 var (
 	RcString = []string{
 		"OK",
@@ -59,6 +63,8 @@ var (
 		"Invalid Uint",
 		"Invalid signature",
 		"Invalid transfer",
+		"Not verified",
+		"Disabled opcode",
 	}
 )
 

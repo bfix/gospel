@@ -6,24 +6,16 @@ import (
 	"math/big"
 )
 
+// Number constants
 var (
-	// ZERO as number "0"
-	ZERO = NewInt(0)
-	// ONE as number "1"
-	ONE = NewInt(1)
-	// TWO as number "2"
-	TWO = NewInt(2)
-	// THREE as number "3"
+	ZERO  = NewInt(0)
+	ONE   = NewInt(1)
+	TWO   = NewInt(2)
 	THREE = NewInt(3)
-	// FOUR as number "4"
-	FOUR = NewInt(4)
-	// FIVE as number "5"
-	FIVE = NewInt(5)
-	// SIX as number "6"
-	SIX = NewInt(6)
-	// SEVEN as number "7"
+	FOUR  = NewInt(4)
+	FIVE  = NewInt(5)
+	SIX   = NewInt(6)
 	SEVEN = NewInt(7)
-	// EIGHT as number "8"
 	EIGHT = NewInt(8)
 )
 

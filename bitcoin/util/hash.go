@@ -1,6 +1,7 @@
 package util
 
 import (
+	"crypto/sha1"
 	"crypto/sha256"
 	"golang.org/x/crypto/ripemd160"
 )
@@ -29,4 +30,18 @@ func Sha256(data []byte) []byte {
 	sha2 := sha256.New()
 	sha2.Write(data)
 	return sha2.Sum(nil)
+}
+
+// RipeMD160 computes RIPEMD160(data)
+func RipeMD160(data []byte) []byte {
+	ripemd := ripemd160.New()
+	ripemd.Write(data)
+	return ripemd.Sum(nil)
+}
+
+// Sha1 computes SHA1(data)
+func Sha1(data []byte) []byte {
+	sha1 := sha1.New()
+	sha1.Write(data)
+	return sha1.Sum(nil)
 }

@@ -29,11 +29,17 @@ func (s *Stack) Values() []*math.Int {
 }
 
 // Push an object onto the stack.
-// Objects can be of type int, []byte or *math.Int; other types return a
-// result code 'RcInvaidStackType'.
+// Objects can be of type int, []byte, *math.Int or bool; other types return
+// a result code 'RcInvalidStackType'.
 func (s *Stack) Push(v interface{}) int {
 	var i *math.Int
 	switch x := v.(type) {
+	case bool:
+		if x {
+			i = math.NewInt(1)
+		} else {
+			i = math.NewInt(0)
+		}
 	case int:
 		i = math.NewInt(int64(x))
 	case []byte:
@@ -101,4 +107,18 @@ func (s *Stack) Dup(n int) int {
 		}
 	}
 	return RcOK
+}
+
+// Compare compares the two top-level elements of the stack as integers.
+func (s *Stack) Compare() (a, b *math.Int, cmp int, rc int) {
+	b, rc = s.Pop()
+	if rc != RcOK {
+		return
+	}
+	a, rc = s.Pop()
+	if rc != RcOK {
+		return
+	}
+	cmp = a.Cmp(b)
+	return
 }
