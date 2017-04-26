@@ -352,7 +352,7 @@ type Transaction struct {
 	Address string `json:"address,omitempty"`
 	// Hex represents the transaction in serialized transaction format.
 	Hex *string `json:"hex,omitempty"`
-	// Details is an arry of detail information
+	// Details is an array of detail information
 	Details []*struct {
 		// InvolvesWatchOnly is set to true if the input or output involves
 		// a watch-only address. Otherwise not returned.
@@ -455,9 +455,20 @@ type RawTransaction struct {
 	Hex *string `json:"hex,omitempty"`
 	// TxID of the transaction encoded as hex in RPC byte order.
 	TxID string `json:"txid"`
+	// Confirmation is the number of confirmations the transaction has
+	// received. Will be 0 for unconfirmed and -1 for conflicted.
+	Confirmations int `json:"confirmations,omitempty"`
 	// Hash is the transaction hash. Differs from txid for witness
 	// transactions.
 	Hash string `json:"hash"`
+	// BlockHash is the hash of the block on the local best block chain which
+	// includes this transaction, encoded as hex in RPC byte order. Only
+	// returned for confirmed transactions.
+	BlockHash string `json:"blockhash,omitempty"`
+	// BlockTime is the block header time (Unix epoch time) of the block on
+	// the local best block chain which includes this transaction. Only
+	// returned for confirmed transactions.
+	BlockTime int `json:"blocktime,omitempty"`
 	// Size is the byte count of the serialized transaction.
 	Size int `json:"size"`
 	// VSize is the virtual transaction size. Differs from size for
@@ -465,6 +476,8 @@ type RawTransaction struct {
 	VSize int `json:"vsize"`
 	// Version is the transaction format version number.
 	Version int `json:"version"`
+	// Time
+	Time int `json:"time,omitempty"`
 	// LockTime is the transaction’s locktime: either a Unix epoch date or
 	// block height; see the Locktime parsing rules.
 	LockTime int `json:"locktime"`
@@ -553,7 +566,7 @@ type DecodedScript struct {
 	ReqSigs int `json:"reqsigs,omitempty"`
 	// Addresses is a P2PKH addresses used in this script, or the computed
 	// P2PKH addresses of any pubkeys in this script. This array will not be
-	// returned for nonstandard script types.
+	// returned for non-standard script types.
 	Addresses []string `json:"addresses,omitempty"`
 	// P2SH address of this redeem script.
 	P2SH string `json:"p2sh"`
@@ -593,7 +606,7 @@ type Unspent struct {
 	// P2PKH or P2SH output scripts.
 	Address string `json:"address"`
 	// Account is set if the address returned belongs to an account.
-	Account string `json:"account,omitempty"`
+	Account *string `json:"account,omitempty"`
 	// Amount is paid to the output in bitcoins.
 	Amount float64 `json:"amount"`
 	// Confirmations is the number of confirmations received for the
@@ -958,13 +971,13 @@ type PeerInfo struct {
 	TimeOffset int `json:"timeoffset"`
 	// PingTime is the number of seconds this node took to respond to our
 	// last P2P ping message.
-	PingTime float64 `json:"pingtime"`
+	PingTime float64 `json:"pingtime,omitempty"`
 	// MinPing is the minimum observed ping time (if any at all).
-	MinPing float64 `json:"minping"`
+	MinPing float64 `json:"minping,omitempty"`
 	// PingWait is the number of seconds we’ve been waiting for this node to
 	// respond to a P2P ping message. Only shown if there’s an outstanding
 	// ping message.
-	PingWait int `json:"pingwait,omitempty"`
+	PingWait float64 `json:"pingwait,omitempty"`
 	// Version is the protocol version number used by this node. See the
 	// protocol versions section for more information.
 	Version int `json:"version"`

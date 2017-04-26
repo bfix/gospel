@@ -61,7 +61,7 @@ func (s *Session) GetMemPoolDecendants(addr string) ([]string, error) {
 	return res.Result.([]string), nil
 }
 
-// GetMemPoolDescendantObjs returns all in-mempool decendants for a transaction
+// GetMemPoolDescendantObjs returns all in-mempool descendants for a transaction
 // in the mempool as an array of MemPoolTransaction objects.
 func (s *Session) GetMemPoolDescendantObjs(addr string) ([]*MemPoolTransaction, error) {
 	res, err := s.call("getmempooldescendants", []Data{addr, true})

@@ -30,11 +30,10 @@ Packages
     * TOR
     * SOCKS5 connection handler
     * SMTP/POP3 mail handling
-- gospel/bitcoin/ecc: Elliptic curve crypto
-    * Secp256k1, as used by bitcoin
-    * JSON-RPC to Bitcoin server
-    * Utility methods (addresses, key exchange, raw
-      transactions, hasing, Base58,...)
+- gospel/bitcoin/ecc: Elliptic curve crypto (Secp256k1)
+- gospel/bitcoin/rpc: JSON-RPC to Bitcoin server
+- gospel/bitcoin/script: Bitcoin script parser/interpreter
+- gospel/bitcoin/util: Utility methods (addresses, key exchange, raw transactions, hasing, Base58,...)
 - gospel/math: Mathematical helpers
     * Fast Fourier Transformation
     * Arbitrary precision integers with chainable methods
@@ -76,8 +75,8 @@ Use an ASCII editor to set the RPC variables to appropriate values:
    
 #### 2. Prepare an encrypted test wallet
 
-Make sure that the test wallet has some transactions in it, if you
-want to run all implemented test paths.
+Make sure that the encrypted test wallet has some transactions for the
+default account in it, if you want to run all implemented test paths.
    
 #### 3. Start the Bitcoin daemon for the test wallet
 
@@ -102,10 +101,10 @@ The following environment variables are optional and listed with
 their default value; you can replace them with other valid data:
 
     $ export BTC_PRIVKEY=""
-    $ export BTC_BLOCK_HASH="00000000000003fab35380c07f6773ae27727b21016a8821c88e47e241c86458"
+    $ export BTC_BLOCK_HASH="000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"
     
 N.B.: The variable BTC_PRIVKEY is a string representing a private Bitcoin key
-(like "L3W5UAHUmxYHF3iE7Biaky7JXA94o1NWrCFT3BMpq1FrzorfbPeM"). If defined,
+(like "93DaDjT5M5cBE6ApLhniKL1ct6N55tboJ8BdZYjfu5ZkWENS8VK"). If defined,
 it will be imported into the wallet and triggers a rescanning to evaluate
 its balance -- this could take a long time (see next step).
 

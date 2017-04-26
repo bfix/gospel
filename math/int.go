@@ -57,6 +57,11 @@ func NewIntFromBytes(buf []byte) *Int {
 	return &Int{v: new(big.Int).SetBytes(buf)}
 }
 
+// NewIntFromBig creates a new Int from a *big.Int.
+func NewIntFromBig(i *big.Int) *Int {
+	return &Int{v: i}
+}
+
 // NewIntRnd creates a new random value between [0,j[
 func NewIntRnd(j *Int) *Int {
 	r, err := rand.Int(rand.Reader, j.v)

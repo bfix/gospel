@@ -26,6 +26,7 @@ func TestTransaction(t *testing.T) {
 		}
 		if verbose {
 			dumpObj("Transaction: %s\n", tx)
+			dumpObj("Transaction HEX: %s\n", tx.Hex)
 		}
 		_block = tx.BlockHash
 	}
@@ -166,5 +167,65 @@ func TestPrioritiseTransaction(t *testing.T) {
 	}
 	if _, err := sess.PrioritiseTransaction(_txid, 23); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCheckTransaction(t *testing.T) {
+	if sess == nil {
+		t.Skip("skipping test: session not available")
+	}
+	// get all transactions for the default account
+	var txList []*Transaction
+	skip := 0
+	for {
+		txs, err := sess.ListTransactions("", 25, skip)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(txs) == 0 {
+			break
+		}
+		skip += len(txs)
+		txList = append(txList, txs...)
+	}
+	num := len(txList)
+	fmt.Printf("CheckTransaction: found %d transactions.\n", num)
+	if num < 2 {
+		t.Skip("No enough transactions to run test")
+	}
+	// convert transactions to their raw format
+	var err error
+	rtxList := make(map[string]*RawTransaction)
+	for _, tx := range txList {
+		rtxList[tx.TxID], err = sess.GetRawTransactionObj(tx.TxID)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if verbose {
+		for _, tx := range rtxList {
+			dumpObj("%v\n", tx)
+		}
+	}
+	// find all matching in/out pairs and validate them (run associated scripts)
+	for _, tx := range rtxList {
+		for j, vin := range tx.Vin {
+			if len(vin.TxID) > 0 {
+				vinTx, ok := rtxList[vin.TxID]
+				if !ok {
+					if vinTx, err = sess.GetRawTransactionObj(vin.TxID); err != nil {
+						t.Fatal(err)
+					}
+				}
+				fmt.Printf("Checking: %s[%d] --> %s[%d]\n", vin.TxID, vin.Vout, tx.TxID, j)
+				if valid, err := VerifyTransfer(vinTx, vin.Vout, tx, j); err != nil {
+					t.Fatal(err)
+				} else if !valid {
+					fmt.Println("==> FAILED")
+				} else {
+					fmt.Println("==> SUCCESS")
+				}
+			}
+		}
 	}
 }

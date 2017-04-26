@@ -38,7 +38,7 @@ func init() {
 }
 
 func dumpObj(fmtStr string, v interface{}) {
-	data, err := json.Marshal(v)
+	data, err := json.MarshalIndent(v, "", "    ")
 	if err == nil {
 		fmt.Printf(fmtStr, string(data))
 	} else {

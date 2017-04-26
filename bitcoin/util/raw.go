@@ -1,147 +1,186 @@
 package util
 
-/*
- * Raw transaction manipulation methods.
- * Implement "non-default" scriptSig/scriptPubkey combinations
- * (contracts).
- *
- * (c) 2013 Bernd Fix   >Y<
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at
- * your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- *#####################################################################
- *
- * The binary encoded raw transaction looks like this:
- *
- *  ------+-------------+---------+---------------------------------
- *  Level | Field       | length  | Value/Comment
- *  ------+-------------+---------+---------------------------------
- *      0 | VERSION     |    4    | 01000000 = version 1
- *      0 | N_VOUT      |    1    | Number of VOUT defs to follow =1
- *  ------+-------------+---------+---------------------------------
- *      1 | VOUT:TXID   |   32    | Transaction ID
- *      1 | VOUT:N      |    4    | VOUT number in transaction
- *      1 | VOUT:SCRIPT |         | scriptSig (hex-encoded)
- *  ------+-------------+---------+---------------------------------
- *      2 | SCRIPT:LEN  |    1    | Length of script
- *      2 | SCRIPT:DATA |   <n>   | Script data
- *  ------+-------------+---------+---------------------------------
- *      1 | VOUT:SEQ    |         | FFFFFFFF = sequence number (-1)
- *  ------+-------------+---------+---------------------------------
- *      0 | N_VIN       |    1    | Number of VIN defs to follow =1
- *  ------+-------------+---------+---------------------------------
- *      1 | VIN:VALUE   |    4    | Number of Satoshis (1e-8 btc)
- *      1 | VIN:???     |    4    | 00000000 = ????
- *      1 | VIN:SCRIPT  |         | scriptPubkey
- *  ------+-------------+---------+---------------------------------
- *      2 | SCRIPT:LEN  |    1    | Length of script
- *      2 | SCRIPT:DATA |   <n>   | Script data
- *  ------+-------------+---------+---------------------------------
- *      0 | LOCKTIME    |    4    | 00000000 = locktime
- *  ------+-------------+---------+---------------------------------
- *
- *#####################################################################
- */
-
-///////////////////////////////////////////////////////////////////////
-// Import external declarations
-
 import (
 	"encoding/hex"
 	"errors"
 )
 
-///////////////////////////////////////////////////////////////////////
+/*
+ * A binary encoded raw transaction looks like this:
+ *
+ *  ------+-------------+---------+---------------------------------
+ *  Level | Field       | length  | Value/Comment
+ *  ------+-------------+---------+---------------------------------
+ *      0 | VERSION     |    4    | version
+ *      0 | N_VIN       |  var    | Number of Vin defs to follow
+ *  ------+-------------+---------+---------------------------------
+ *      1 | VIN:TXID    |   32    | Transaction ID
+ *      1 | VIN:N       |    4    | VOUT number in transaction
+ *      1 | VIN:SCRIPT  |         | scriptSig (hex-encoded)
+ *  ------+-------------+---------+---------------------------------
+ *      2 | SCRIPT:LEN  |   var   | Length of script
+ *      2 | SCRIPT:DATA |   <n>   | Script data
+ *  ------+-------------+---------+---------------------------------
+ *      1 | VIN:SEQ     |         | sequence number
+ *  ------+-------------+---------+---------------------------------
+ *      0 | N_VOUT      |  var    | Number of Vout defs to follow
+ *  ------+-------------+---------+---------------------------------
+ *      1 | VOUT:AMOUNT |    4    | Number of Satoshis (1e-8 btc)
+ *      1 | VOUT:INDEX  |    4    | Output index
+ *      1 | VOUT:SCRIPT |         | scriptPubkey
+ *  ------+-------------+---------+---------------------------------
+ *      2 | SCRIPT:LEN  |   var   | Length of script
+ *      2 | SCRIPT:DATA |   <n>   | Script data
+ *  ------+-------------+---------+---------------------------------
+ *      0 | LOCKTIME    |    4    | locktime
+ *  ------+-------------+---------+---------------------------------
+ */
 
-// NullDataScript assembles a TX_NULL_DATA script.
-func NullDataScript(data []byte) ([]byte, error) {
-	size := len(data)
-	if size > 75 {
-		return nil, errors.New("attached data to big")
+// GetUint converts 'n' bytes in a buffer 'buf' starting at position 'p' into
+// an unsigned integer.
+func GetUint(buf []byte, p, n int) (v uint, err error) {
+	if p+n > len(buf) {
+		err = errors.New("GetUint: buffer too small")
+	} else {
+		v = 0
+		for i := n; i > 0; i-- {
+			v = uint(buf[p+i-1]) + 256*v
+		}
 	}
-
-	var script []byte
-	script = append(script, 0x6a) // OP_RETURN
-	script = append(script, LengthPrefix(size)...)
-	script = append(script, data...)
-	return script, nil
+	return
 }
 
-///////////////////////////////////////////////////////////////////////
-
-// ReplaceScriptPubKey changes "scriptPubKey" to a new script.
-// This only works if there is only one input/output slot defined in
-// the transaction. The old "scriptPubKey" is completely dropped.
-func ReplaceScriptPubKey(raw string, script []byte) (string, error) {
-
-	// decode raw string from hex
-	inRaw, err := hex.DecodeString(raw)
-	if err != nil {
-		return "", err
-	}
-
-	// dissect raw transaction and change VOUT
-	pos := 4
-	nVout := int(inRaw[pos])
-	if nVout != 1 {
-		return "", errors.New("invalid number of vout (!= 1)")
-	}
-	pos += 37
-	scrlen := int(inRaw[pos])
-	if scrlen != 0 {
-		return "", errors.New("invalid scriptSig size (!= 0)")
-	}
-	pos += scrlen + 5
-	nVin := int(inRaw[pos])
-	if nVin != 1 {
-		return "", errors.New("invalid number of vin (!= 1)")
-	}
-	pos += 9
-	scrlen = int(inRaw[pos])
-
-	var outRaw []byte
-	outRaw = append(outRaw, inRaw[:pos]...)
-	outRaw = append(outRaw, LengthPrefix(len(script))...)
-	outRaw = append(outRaw, script...)
-	outRaw = append(outRaw, inRaw[pos+scrlen+1:]...)
-
-	// return new raw transaction
-	return hex.EncodeToString(outRaw), nil
-}
-
-///////////////////////////////////////////////////////////////////////
-
-// LengthPrefix assembles the length prefix for data.
-func LengthPrefix(size int) []byte {
-	var prefix []byte
-	switch {
-	case size < 76:
-		prefix = append(prefix, byte(size))
-	case size < 256:
-		prefix = append(prefix, 0x4c)
-		prefix = append(prefix, byte(size))
-	case size < 65536:
-		// size of script
-		prefix = append(prefix, 0x4d)
-		prefix = append(prefix, byte(size&0xFF))
-		prefix = append(prefix, byte((size>>8)&0xFF))
+// GetVarUint gets a variable length unsigned integer from a buffer.
+func GetVarUint(buf []byte, p int) (uint, int, error) {
+	switch buf[p] {
+	case 0xfd:
+		v, err := GetUint(buf, p+1, 2)
+		return v, 3, err
+	case 0xfe:
+		v, err := GetUint(buf, p+1, 4)
+		return v, 5, err
+	case 0xff:
+		return 0, 1, errors.New("Invalid VarUint")
 	default:
-		prefix = append(prefix, 0x4d)
-		prefix = append(prefix, byte(size&0xFF))
-		prefix = append(prefix, byte((size>>8)&0xFF))
-		prefix = append(prefix, byte((size>>16)&0xFF))
-		prefix = append(prefix, byte((size>>24)&0xFF))
+		return uint(buf[p]), 1, nil
 	}
-	return prefix
+}
+
+// PutUint encodes an uint into a byte array of given length (1,2 or 4).
+func PutUint(n uint, j int) []byte {
+	b := make([]byte, j)
+	switch j {
+	case 4:
+		b[3] = byte((n >> 24) & 0xFF)
+		b[2] = byte((n >> 16) & 0xFF)
+		fallthrough
+	case 2:
+		b[1] = byte((n >> 8) & 0xFF)
+		fallthrough
+	case 1:
+		b[0] = byte(n & 0xFF)
+	}
+	return b
+}
+
+// PutVarUint encodes a var_uint into a byte array.
+func PutVarUint(n uint) []byte {
+	switch {
+	case n < 253:
+		return PutUint(n, 1)
+	case n < 65536:
+		return PutUint(n, 2)
+	default:
+		return PutUint(n, 4)
+	}
+}
+
+// DissectRawTransaction dissects a raw transaction into its defining segments.
+func DissectRawTransaction(rawHex string) (res [][]byte, err error) {
+	var buf []byte
+	if buf, err = hex.DecodeString(rawHex); err != nil {
+		return nil, err
+	}
+	pos := 0
+	add := func(n int) int {
+		c := make([]byte, n)
+		for i := 0; i < n; i++ {
+			c[i] = buf[pos+i]
+		}
+		pos += n
+		res = append(res, c)
+		if n > 4 {
+			return 0
+		}
+		v, _ := GetUint(c, 0, n)
+		return int(v)
+	}
+	add(4)                            // version
+	n, j, err := GetVarUint(buf, pos) // number of inputs
+	if err != nil {
+		return nil, err
+	}
+	res = append(res, buf[pos:pos+j])
+	pos += j
+	for i := 0; i < int(n); i++ {
+		add(32)                           // input address hash
+		add(4)                            // input index
+		s, j, err := GetVarUint(buf, pos) // size of script
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, buf[pos:pos+j])
+		pos += j
+		if s == 0 {
+			res = append(res, []byte{})
+		} else {
+			add(int(s)) // script code
+		}
+		add(4) // sequence
+	}
+	n, j, err = GetVarUint(buf, pos) // number of outputs
+	if err != nil {
+		return nil, err
+	}
+	res = append(res, buf[pos:pos+j])
+	pos += j
+	for i := 0; i < int(n); i++ {
+		add(4)                            // amount
+		add(4)                            // output index
+		s, j, err := GetVarUint(buf, pos) // size of script
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, buf[pos:pos+j])
+		pos += j
+		if s == 0 {
+			res = append(res, []byte{})
+		} else {
+			add(int(s)) // script code
+		}
+	}
+	add(4) // locktime
+	return
+}
+
+// PrepareTxForSign prepares a dissected raw transaction for a given
+// vin script for signature.
+func PrepareTxForSign(tx [][]byte, vin int, scr []byte) ([]byte, error) {
+	n, _, err := GetVarUint(tx[1], 0)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < int(n); i++ {
+		tx[5*i+4] = []byte{0}
+		tx[5*i+5] = []byte{}
+	}
+	tx[5*vin+4] = PutVarUint(uint(len(scr)))
+	tx[5*vin+5] = scr
+	var buf []byte
+	for _, v := range tx {
+		if len(v) > 0 {
+			buf = append(buf, v...)
+		}
+	}
+	return buf, nil
 }

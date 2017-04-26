@@ -167,14 +167,23 @@ func TestReceived(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l1 := len(rcv1)
-	l2 := len(rcv2)
-	if l1 != l2 {
-		if verbose {
-			dumpObj("[1] %s\n", rcv1)
-			dumpObj("[2] %s\n", rcv2)
+	for _, rAc := range rcv1 {
+		amount := 0.0
+		confirmations := -1
+		for _, rAd := range rcv2 {
+			if rAd.Account == rAc.Account {
+				amount += rAd.Amount
+				if confirmations < 0 || rAd.Confirmations < confirmations {
+					confirmations = rAd.Confirmations
+				}
+			}
 		}
-		t.Fatal(fmt.Sprintf("receivers mismatch: %d != %d", l1, l2))
+		if amount != rAc.Amount {
+			t.Fatal(fmt.Sprintf("Amount mismatch: %f != %f\n", rAc.Amount, amount))
+		}
+		if confirmations != rAc.Confirmations {
+			t.Fatal(fmt.Sprintf("Confirmations mismatch: %d != %d\n", rAc.Confirmations, confirmations))
+		}
 	}
 }
 
