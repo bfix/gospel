@@ -88,3 +88,17 @@ func TestExec(t *testing.T) {
 		fmt.Printf("Result: %v\n", ok)
 	}
 }
+
+func TestTemplate(t *testing.T) {
+	scr, err := hex.DecodeString(s[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	tpl, rc := r.GetTemplate(scr)
+	if rc != RcOK {
+		t.Fatal(fmt.Sprintf("GetTemplate failed: rc=%s", RcString[rc]))
+	}
+	if true {
+		fmt.Printf("Template: %s\n", hex.EncodeToString(tpl))
+	}
+}

@@ -55,6 +55,7 @@ func NewDissectedTransaction(rawHex string) (dt *DissectedTransaction, err error
 		VinSeq:   make([]uint64, 0),
 		LockTime: 0,
 		Content:  make([][]byte, 0),
+		VinSlot:  -1,
 		Signable: nil,
 	}
 	pos := 0

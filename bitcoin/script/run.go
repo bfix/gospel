@@ -36,6 +36,7 @@ const (
 	RcInvalidTransfer
 	RcNotVerified
 	RcDisabledOpcode
+	RcTxNotSignable
 )
 
 // Human-readable result codes
@@ -65,6 +66,7 @@ var (
 		"Invalid transfer",
 		"Not verified",
 		"Disabled opcode",
+		"Transaction not signable",
 	}
 )
 
@@ -104,18 +106,34 @@ func NewRuntime() *R {
 	}
 }
 
-// Exec executes a script belonging to a transaction. If no transaction is
+// ExecScript executes a script belonging to a transaction. If no transaction is
 // specified, some script opcodes like OpCHECKSIG could not be executed.
 // N.B.: To successfully execute 'script' that involves OpCHECKSIG it needs
 // to be assembled (concatenated) and cleaned up from the prev.sigScript and
 // curr.pkScript (see https://en.bitcoin.it/wiki/OpCHECKSIG); 'tx' is the
-// current transaction already prepared for signature.
+// current transaction in dissected format already prepared for signature.
 func (r *R) ExecScript(script []byte, tx *util.DissectedTransaction) (bool, int) {
+	if tx.Signable == nil || tx.VinSlot < 0 {
+		return false, RcTxNotSignable
+	}
 	r.tx = tx
 	if rc := r.parse(script); rc != RcOK {
 		return false, rc
 	}
 	return r.exec()
+}
+
+// GetTemplate returns a template derived from a script. A template only
+// contains a sequence of opcodes; it is used to find structural equivalent
+// scripts (but with varying data).
+func (r *R) GetTemplate(script []byte) (tpl []byte, rc int) {
+	if rc = r.parse(script); rc != RcOK {
+		return
+	}
+	for _, s := range r.stmts {
+		tpl = append(tpl, s.Opcode)
+	}
+	return
 }
 
 // CheckSig performs a OpCHECKSIG operation on the stack (without pushing a

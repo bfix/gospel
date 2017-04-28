@@ -851,7 +851,7 @@ var (
 	}
 )
 
-// GetOpCode returns a opcode for a given byte value.
+// GetOpcode returns a opcode for a given byte value.
 func GetOpcode(v byte) *OpCode {
 	if v > 0 && v < 76 {
 		return &OpCode{
