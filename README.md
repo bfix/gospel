@@ -33,7 +33,12 @@ Packages
 - gospel/bitcoin/ecc: Elliptic curve crypto (Secp256k1)
 - gospel/bitcoin/rpc: JSON-RPC to Bitcoin server
 - gospel/bitcoin/script: Bitcoin script parser/interpreter
-- gospel/bitcoin/util: Utility methods (addresses, key exchange, raw transactions, hasing, Base58,...)
+- gospel/bitcoin/util: Utility methods
+    * Bitcoin addresses
+    * key exchange
+    * raw transactions
+    * hash functions (Hash160, Hash256)
+    * base58 encoding
 - gospel/math: Mathematical helpers
     * Fast Fourier Transformation
     * Arbitrary precision integers with chainable methods
