@@ -27,18 +27,6 @@ func (s *Session) DecodeScript(script string) (*DecodedScript, error) {
 	return ds, nil
 }
 
-// GetAddresses returns an array of addresses attached to the script.
-func (s *ScriptPubKey) GetAddresses() []string {
-	var res []string
-	switch s.Addresses.(type) {
-	case string:
-		res = append(res, s.Addresses.(string))
-	case []string:
-		res = s.Addresses.([]string)
-	}
-	return res
-}
-
 // DataScript assembles a OpRETURN script with data attached.
 func DataScript(data []byte) (scr []byte) {
 	scr = append(scr, script.OpRETURN)
