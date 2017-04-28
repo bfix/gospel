@@ -545,7 +545,7 @@ type ScriptPubKey struct {
 	// -- 'nonstandard' for unknown scripts
 	Type string `json:"type"`
 	// Addresses
-	Addresses interface{} `json:"addresses"`
+	Addresses []string `json:"addresses"`
 }
 
 // DecodedScript is an object describing a decoded script.
