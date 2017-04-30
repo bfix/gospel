@@ -2,8 +2,58 @@ package ecc
 
 import (
 	"errors"
+	"fmt"
 	"github.com/bfix/gospel/math"
 )
+
+// Curve is the elliptic curve used for Bitcoin (Secp256k1)
+type Curve struct {
+	// P is the generator of the underlying field "F_p"
+	// = 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
+	P *math.Int
+	// Gx is the x-coord of the base point
+	Gx *math.Int
+	// Gy is the y-coord of the base point
+	Gy *math.Int
+	// N is the order of G
+	N *math.Int
+	// curve parameter (=7)
+	B *math.Int
+}
+
+var (
+	// Curve is the reference to a curve instance (meant as singleton)
+	c = &Curve{
+		P:  math.NewIntFromHex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F"),
+		Gx: math.NewIntFromHex("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798"),
+		Gy: math.NewIntFromHex("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8"),
+		N:  math.NewIntFromHex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"),
+		B:  math.SEVEN,
+	}
+)
+
+// GetCurve returns the singleton curve instance
+func GetCurve() *Curve {
+	return c
+}
+
+// GetBasePoint returns the base Point of the curve
+func GetBasePoint() *Point {
+	return NewPoint(c.Gx, c.Gy)
+}
+
+// GetBasePointNeg returns the negative base point of the curve
+func GetBasePointNeg() *Point {
+	return NewPoint(c.Gx, c.Gy.Neg())
+}
+
+// MultBase multiplies the base Point of the curve with a scalar value k
+func MultBase(k *math.Int) *Point {
+	return GetBasePoint().Mult(k)
+}
+
+// Inf is the point at "infinity"
+var Inf = NewPoint(math.ZERO, math.ZERO)
 
 // Point (x,y) on the curve
 type Point struct { // exported Point type
@@ -15,48 +65,8 @@ func NewPoint(a, b *math.Int) *Point {
 	return &Point{x: a, y: b}
 }
 
-// Point at infinity
-var inf = NewPoint(math.ZERO, math.ZERO)
-
-// GetBasePoint returns the base Point of the curve
-func GetBasePoint() *Point {
-	return NewPoint(curveGx, curveGy)
-}
-
-// get byte representation of Point (compressed or uncompressed).
-func pointAsBytes(p *Point, compressed bool) []byte {
-	if IsEqual(p, inf) {
-		return []byte{0}
-	}
-	var res []byte
-	if compressed {
-		rc := byte(2)
-		if p.y.Bit(0) == 1 {
-			rc = 3
-		}
-		res = append(res, rc)
-		res = append(res, coordAsBytes(p.x)...)
-	} else {
-		res = append(res, 4)
-		res = append(res, coordAsBytes(p.x)...)
-		res = append(res, coordAsBytes(p.y)...)
-	}
-	return res
-}
-
-// helper: convert coordinate to byte array of correct length
-func coordAsBytes(v *math.Int) []byte {
-	bv := v.Bytes()
-	plen := 32 - len(bv)
-	if plen == 0 {
-		return bv
-	}
-	b := make([]byte, plen)
-	return append(b, bv...)
-}
-
-// reconstruct Point from binary representation
-func pointFromBytes(b []byte) (p *Point, compr bool, err error) {
+// NewPointFromBytes reconstructs a Point from binary representation.
+func NewPointFromBytes(b []byte) (p *Point, compr bool, err error) {
 	p = NewPoint(math.ZERO, math.ZERO)
 	err = nil
 	compr = true
@@ -84,71 +94,77 @@ func pointFromBytes(b []byte) (p *Point, compr bool, err error) {
 	return
 }
 
-// helper: reconstruct y-coordinate of Point
-func computeY(x *math.Int, m uint) (y *math.Int, err error) {
-	y = math.ZERO
-	err = nil
-	y2 := pAddJac(pCub(x), curveB)
-	y, err = math.SqrtModP(y2, curveP)
-	if err == nil {
-		if y.Bit(0) != m {
-			y = curveP.Sub(y)
-		}
-	}
-	return
+func (p *Point) String() string {
+	return fmt.Sprintf("(%v,%v)", p.x, p.y)
 }
 
-// IsEqual checks if two Points are equal
-func IsEqual(p1, p2 *Point) bool {
-	return p1.x.Cmp(p2.x) == 0 && p1.y.Cmp(p2.y) == 0
+// Equals checks if two Points are equal
+func (p *Point) Equals(q *Point) bool {
+	return p.x.Cmp(q.x) == 0 && p.y.Cmp(q.y) == 0
 }
 
-// isInf checks if a Point is at infinity
-func isInf(p *Point) bool {
+// IsInf checks if a Point is at infinity
+func (p *Point) IsInf() bool {
 	return p.x.Cmp(math.ZERO) == 0 && p.y.Cmp(math.ZERO) == 0
 }
 
 // IsOnCurve checks if a Point (x,y) is on the curve
-func IsOnCurve(p *Point) bool {
+func (p *Point) IsOnCurve() bool {
 	// y² = x³ + 7
 	y2 := pSqr(p.y)
 	x3 := pCub(p.x)
-	return y2.Cmp(pAddJac(x3, curveB)) == 0
+	return y2.Cmp(pAdd(x3, c.B)) == 0
 }
 
 // Add two Points on the curve
-func add(p1, p2 *Point) *Point {
-	if IsEqual(p1, p2) {
-		return double(p1)
+func (p *Point) Add(q *Point) *Point {
+	if p.Equals(q) {
+		return p.Double()
 	}
-	if IsEqual(p1, inf) {
-		return p2
+	if p.Equals(Inf) {
+		return q
 	}
-	if IsEqual(p2, inf) {
-		return p1
+	if q.Equals(Inf) {
+		return p
 	}
-	_p1 := newJacPoint(p1.x, p1.y, math.ONE)
-	_p2 := newJacPoint(p2.x, p2.y, math.ONE)
-	return conv(addJac(_p1, _p2))
+	_p1 := newJacPoint(p.x, p.y, math.ONE)
+	_p2 := newJacPoint(q.x, q.y, math.ONE)
+	return _p1.add(_p2).conv()
 }
 
 // Double a Point on the curve
-func double(p *Point) *Point {
-	if IsEqual(p, inf) {
-		return inf
+func (p *Point) Double() *Point {
+	if p.Equals(Inf) {
+		return Inf
 	}
-	return conv(doubleJac(newJacPoint(p.x, p.y, math.ONE)))
+	return newJacPoint(p.x, p.y, math.ONE).double().conv()
 }
 
-// Multiply a Point on the curve with a scalar value k using
+// Mult multiplies a Point on the curve with a scalar value k using
 // a Montgomery multiplication approach
-func scalarMult(p *Point, k *math.Int) *Point {
-	return conv(scalarMultJac(newJacPoint(p.x, p.y, math.ONE), k))
+func (p *Point) Mult(k *math.Int) *Point {
+	return newJacPoint(p.x, p.y, math.ONE).mult(k).conv()
 }
 
-// ScalarMultBase multiplies the base Point of the curve with a scalar value k
-func ScalarMultBase(k *math.Int) *Point {
-	return scalarMult(GetBasePoint(), k)
+// Bytes returns a byte representation of Point (compressed or uncompressed).
+func (p *Point) Bytes(compressed bool) []byte {
+	if p.Equals(Inf) {
+		return []byte{0}
+	}
+	var res []byte
+	if compressed {
+		rc := byte(2)
+		if p.y.Bit(0) == 1 {
+			rc = 3
+		}
+		res = append(res, rc)
+		res = append(res, coordAsBytes(p.x)...)
+	} else {
+		res = append(res, 4)
+		res = append(res, coordAsBytes(p.x)...)
+		res = append(res, coordAsBytes(p.y)...)
+	}
+	return res
 }
 
 // JacPoint is a point on the curve that is represented internally in
@@ -164,42 +180,42 @@ func newJacPoint(a, b, c *math.Int) *jacPoint {
 }
 
 // Point at infinity
-var jacInf = newJacPoint(inf.x, inf.y, math.ONE)
+var jacInf = newJacPoint(Inf.x, Inf.y, math.ONE)
 
 // check if a Point is at infinity
-func isInfJac(p *jacPoint) bool {
+func (p *jacPoint) isInf() bool {
 	return p.x.Equals(math.ZERO) && p.y.Equals(math.ZERO)
 }
 
 // convert internal Point to external representation
-func conv(p *jacPoint) *Point {
+func (p *jacPoint) conv() *Point {
 	zi := pInv(p.z)
 	x := pMul(p.x, pSqr(zi))
 	y := pMul(p.y, pCub(zi))
 	return NewPoint(x, y)
 }
 
-// addJac two Points on the curve
+// add two jacPoints on the curve
 // [http://www.hyperelliptic.org/EFD/g1p/data/shortw/jacobian-0/addJacition/addJac-2007-bl]
-func addJac(p1, p2 *jacPoint) *jacPoint {
-	if isInfJac(p1) {
-		return p2
+func (p *jacPoint) add(q *jacPoint) *jacPoint {
+	if p.isInf() {
+		return q
 	}
-	if isInfJac(p2) {
-		return p1
+	if q.isInf() {
+		return p
 	}
-	z1z1 := pSqr(p1.z)
-	z2z2 := pSqr(p2.z)
-	u1 := pMul(p1.x, z2z2)
-	u2 := pMul(p2.x, z1z1)
-	s1 := pMul(pMul(p1.y, p2.z), z2z2)
-	s2 := pMul(pMul(p2.y, p1.z), z1z1)
+	z1z1 := pSqr(p.z)
+	z2z2 := pSqr(q.z)
+	u1 := pMul(p.x, z2z2)
+	u2 := pMul(q.x, z1z1)
+	s1 := pMul(pMul(p.y, q.z), z2z2)
+	s2 := pMul(pMul(q.y, p.z), z1z1)
 	h := pSub(u2, u1)
 	i := pSqr(pMul(math.TWO, h))
 	j := pMul(h, i)
 	r := pMul(math.TWO, pSub(s2, s1))
 	v := pMul(u1, i)
-	w := pAddJac(p1.z, p2.z)
+	w := pAdd(p.z, q.z)
 	x := pSub(pSub(pSqr(r), j), pMul(math.TWO, v))
 	y := pSub(pMul(r, pSub(v, x)), pMul(math.TWO, pMul(s1, j)))
 	z := pMul(pSub(pSub(pSqr(w), z1z1), z2z2), h)
@@ -208,8 +224,8 @@ func addJac(p1, p2 *jacPoint) *jacPoint {
 
 // double a Point on the curve
 // [http://www.hyperelliptic.org/EFD/g1p/data/shortw/jacobian-0/doubling/dbl-2009-alnr]
-func doubleJac(p *jacPoint) *jacPoint {
-	if isInfJac(p) {
+func (p *jacPoint) double() *jacPoint {
+	if p.isInf() {
 		return p
 	}
 	a := pSqr(p.x)
@@ -221,14 +237,14 @@ func doubleJac(p *jacPoint) *jacPoint {
 	f := pSqr(e)
 	x := pSub(f, pMul(math.TWO, d))
 	y := pSub(pMul(e, pSub(d, x)), pMul(math.EIGHT, c))
-	z := pSub(pSub(pSqr(pAddJac(p.y, p.z)), b), zz)
+	z := pSub(pSub(pSqr(pAdd(p.y, p.z)), b), zz)
 	return newJacPoint(x, y, z)
 }
 
 // Multiply a Point on the curve with a scalar value k using
 // a Montgomery multiplication algorithm
-func scalarMultJac(p *jacPoint, k *math.Int) *jacPoint {
-	if isInfJac(p) {
+func (p *jacPoint) mult(k *math.Int) *jacPoint {
+	if p.isInf() {
 		return p
 	}
 	if k.Cmp(math.ZERO) == 0 {
@@ -237,9 +253,9 @@ func scalarMultJac(p *jacPoint, k *math.Int) *jacPoint {
 	r := jacInf
 	for _, val := range k.Bytes() {
 		for pos := 0; pos < 8; pos++ {
-			r = doubleJac(r)
+			r = r.double()
 			if val&0x80 == 0x80 {
-				r = addJac(p, r)
+				r = p.add(r)
 			}
 			val <<= 1
 		}
@@ -247,30 +263,44 @@ func scalarMultJac(p *jacPoint, k *math.Int) *jacPoint {
 	return r
 }
 
+// helper: convert coordinate to byte array of correct length
+func coordAsBytes(v *math.Int) []byte {
+	bv := v.Bytes()
+	plen := 32 - len(bv)
+	if plen == 0 {
+		return bv
+	}
+	b := make([]byte, plen)
+	return append(b, bv...)
+}
+
+// helper: reconstruct y-coordinate of Point
+func computeY(x *math.Int, m uint) (y *math.Int, err error) {
+	y = math.ZERO
+	err = nil
+	y2 := pAdd(pCub(x), c.B)
+	y, err = math.SqrtModP(y2, c.P)
+	if err == nil {
+		if y.Bit(0) != m {
+			y = c.P.Sub(y)
+		}
+	}
+	return
+}
+
 // modulus
 func nMod(a *math.Int) *math.Int {
-	return a.Mod(curveN)
+	return a.Mod(c.N)
 }
 
-// modular inverse
 func pInv(a *math.Int) *math.Int {
-	return a.ModInverse(curveP)
+	return a.ModInverse(c.P)
 }
 
-func nInv(a *math.Int) *math.Int {
-	return a.ModInverse(curveN)
-}
-
-// multiplication
 func pMul(a, b *math.Int) *math.Int {
-	return a.Mul(b).Mod(curveP)
+	return a.Mul(b).Mod(c.P)
 }
 
-func nMul(a, b *math.Int) *math.Int {
-	return a.Mul(b).Mod(curveN)
-}
-
-// squares and cubes
 func pSqr(a *math.Int) *math.Int {
 	return pMul(a, a)
 }
@@ -279,24 +309,26 @@ func pCub(a *math.Int) *math.Int {
 	return pMul(pSqr(a), a)
 }
 
-//	addJacition and subtraction
 func pSub(a, b *math.Int) *math.Int {
 	x := a.Sub(b)
 	if x.Sign() == -1 {
-		x = x.Add(curveP)
+		x = x.Add(c.P)
 	}
 	return x
 }
 
-func xaddIntJac(a, b *math.Int) *math.Int {
-	return a.Add(b)
+func pAdd(a, b *math.Int) *math.Int {
+	return a.Add(b).Mod(c.P)
 }
 
-func pAddJac(a, b *math.Int) *math.Int {
-	return a.Add(b).Mod(curveP)
+func nInv(a *math.Int) *math.Int {
+	return a.ModInverse(c.N)
 }
 
-// generate random integer value in given range
+func nMul(a, b *math.Int) *math.Int {
+	return a.Mul(b).Mod(c.N)
+}
+
 func nRnd(a *math.Int) *math.Int {
-	return math.NewIntRndRange(a, curveN)
+	return math.NewIntRndRange(a, c.N)
 }

@@ -15,12 +15,12 @@ type PublicKey struct {
 
 // Bytes returns the byte representation of public key.
 func (k *PublicKey) Bytes() []byte {
-	return pointAsBytes(k.Q, k.IsCompressed)
+	return k.Q.Bytes(k.IsCompressed)
 }
 
 // PublicKeyFromBytes returns a public key from a byte representation.
 func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
-	pnt, compr, err := pointFromBytes(b)
+	pnt, compr, err := NewPointFromBytes(b)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 	key.D = math.NewIntFromBytes(kd)
 	// compute public key
 	g := GetBasePoint()
-	key.Q = scalarMult(g, key.D)
+	key.Q = g.Mult(key.D)
 	key.IsCompressed = compr
 	return key, nil
 }
@@ -84,11 +84,11 @@ func GenerateKeys(compr bool) *PrivateKey {
 		// generate factor in range [3..n-1]
 		prv.D = nRnd(math.THREE)
 		// generate Point p = d*G
-		prv.Q = ScalarMultBase(prv.D)
+		prv.Q = MultBase(prv.D)
 		prv.IsCompressed = compr
 
 		// check for valid key
-		if !isInf(prv.PublicKey.Q) {
+		if !prv.PublicKey.Q.IsInf() {
 			break
 		}
 	}

@@ -17,8 +17,8 @@ func TestKeys(t *testing.T) {
 			t.Fatal("PublicKeyFromBytes failed")
 		}
 		pnt := prv.Q
-		tst := ScalarMultBase(prv.D)
-		if !(IsOnCurve(pnt) && IsEqual(pnt, tst)) {
+		tst := MultBase(prv.D)
+		if !(pnt.IsOnCurve() && pnt.Equals(tst)) {
 			t.Fatal("public point failed")
 		}
 	}

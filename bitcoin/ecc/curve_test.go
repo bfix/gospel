@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	g  = &Point{curveGx, curveGy}
-	gm = &Point{curveGx, curveGy.Neg()}
+	g  = &Point{c.Gx, c.Gy}
+	gm = &Point{c.Gx, c.Gy.Neg()}
 
 	tests = [][]string{
 		{"AA5E28D6A97A2479A65527F7290311A3624D4CC0FA1578598EE3C2613BF99522",
@@ -33,52 +33,52 @@ var (
 )
 
 func TestBase(t *testing.T) {
-	if !IsOnCurve(g) {
+	if !g.IsOnCurve() {
 		t.Fatal("base point not on curve")
 	}
 	if !testInOut(g) {
 		t.Fatal("base point serialization failed")
 	}
 	gT := GetBasePoint()
-	if !IsEqual(g, gT) {
+	if !g.Equals(gT) {
 		t.Fatal("GetBasePoint failed")
 	}
 	p := NewPoint(g.x, g.y)
-	if !IsEqual(g, p) {
+	if !g.Equals(p) {
 		t.Fatal("NewPoint failed")
 	}
 }
 
 func TestInfinity(t *testing.T) {
-	p1 := scalarMult(g, curveN)
-	if !IsEqual(p1, inf) {
+	p1 := g.Mult(c.N)
+	if !p1.Equals(Inf) {
 		t.Fatal("n*G is not infinity")
 	}
-	if !isInf(p1) {
-		t.Fatal("isInf failed")
+	if !p1.IsInf() {
+		t.Fatal("IsInf failed")
 	}
 	if !testInOut(p1) {
 		t.Fatal("infinity serialization failed")
 	}
-	p1 = add(g, gm)
-	if !IsEqual(p1, inf) {
+	p1 = g.Add(gm)
+	if !p1.Equals(Inf) {
 		t.Fatal("g-g is not infinity")
 	}
-	p1 = add(g, inf)
-	if !IsEqual(p1, g) {
+	p1 = g.Add(Inf)
+	if !p1.Equals(g) {
 		t.Fatal("g+0 != g")
 	}
-	p1 = scalarMult(inf, math.EIGHT)
-	if !IsEqual(p1, inf) {
+	p1 = Inf.Mult(math.EIGHT)
+	if !p1.Equals(Inf) {
 		t.Fatal("8*0 != 0")
 	}
 }
 
 func TestMult(t *testing.T) {
-	p1 := double(g)
+	p1 := g.Double()
 	mult := func(n *math.Int) *Point {
-		p := ScalarMultBase(n)
-		if !IsOnCurve(p) {
+		p := MultBase(n)
+		if !p.IsOnCurve() {
 			t.Fatal("point not on curve")
 		}
 		if !testInOut(p) {
@@ -87,28 +87,27 @@ func TestMult(t *testing.T) {
 		return p
 	}
 	p2 := mult(math.TWO)
-	if !IsEqual(p1, p2) {
+	if !p1.Equals(p2) {
 		t.Fatal("mult failed")
 	}
-
 	mult(math.THREE)
 	mult(math.SEVEN)
 	mult(math.EIGHT)
 }
 
 func TestAdd(t *testing.T) {
-	p1 := double(g)
-	p2 := add(g, p1)
-	p3 := add(p1, g)
-	if !IsEqual(p2, p3) {
+	p1 := g.Double()
+	p2 := g.Add(p1)
+	p3 := p1.Add(g)
+	if !p2.Equals(p3) {
 		t.Fatal("p+g != g+p")
 	}
 	if !testInOut(p3) {
 		t.Fatal("point serialization failed")
 	}
-	p1 = add(double(g), g)
-	p2 = scalarMult(g, math.THREE)
-	if !IsEqual(p1, p2) {
+	p1 = g.Double().Add(g)
+	p2 = g.Mult(math.THREE)
+	if !p1.Equals(p2) {
 		t.Fatal("G+G+G != 3*G")
 	}
 	if !testInOut(p3) {
@@ -119,20 +118,20 @@ func TestAdd(t *testing.T) {
 		a := nRnd(math.ZERO)
 		b := nRnd(math.ZERO)
 		c := a.Add(b)
-		p := scalarMult(g, a)
-		q := scalarMult(g, b)
-		r := scalarMult(g, c)
-		p1 = add(p, q)
-		p2 = add(q, p)
-		if !IsEqual(p1, p2) || !IsEqual(p1, r) {
+		p := g.Mult(a)
+		q := g.Mult(b)
+		r := g.Mult(c)
+		p1 = p.Add(q)
+		p2 = q.Add(p)
+		if !p1.Equals(p2) || !p1.Equals(r) {
 			t.Fatal("a*G + b*G != (a+b)*G")
 		}
 	}
 }
 
 func TestDouble(t *testing.T) {
-	pnt := double(g)
-	if !IsOnCurve(pnt) {
+	pnt := g.Double()
+	if !pnt.IsOnCurve() {
 		t.Fatal("doubled point not on curve")
 	}
 	if !testInOut(pnt) {
@@ -146,8 +145,8 @@ func TestNIST(t *testing.T) {
 		x := math.NewIntFromHex(set[1])
 		y := math.NewIntFromHex(set[2])
 		p1 := &Point{x, y}
-		p2 := scalarMult(g, m)
-		if !IsEqual(p1, p2) {
+		p2 := g.Mult(m)
+		if !p1.Equals(p2) {
 			t.Fatal("failed nist case")
 		}
 		if !testInOut(p1) {
@@ -156,9 +155,38 @@ func TestNIST(t *testing.T) {
 	}
 }
 
+func TestCommute(t *testing.T) {
+	dp := math.NewIntRndRange(math.THREE, c.N)
+	dq := math.NewIntRndRange(math.THREE, c.N)
+	p := MultBase(dp)
+	q := MultBase(dq)
+	p1 := p.Mult(dq)
+	p2 := q.Mult(dp)
+	if !p1.Equals(p2) {
+		t.Fatal("failed commute")
+	}
+}
+
+func TestInverse(t *testing.T) {
+	for i := 0; i < 20; i++ {
+		d := math.NewIntRndRange(math.THREE, c.N)
+		di := d.ModInverse(c.N)
+		x := nMul(d, di)
+		if !x.Equals(math.ONE) {
+			t.Fatal("failed inverse (1)")
+		}
+		d2 := d.Rsh(1)
+		q := MultBase(d)
+		q2 := MultBase(d2)
+		if q2.Double().Equals(q) != (d.Bit(0) == 0) {
+			t.Fatal("failed inverse (2)")
+		}
+	}
+}
+
 func testInOut(p *Point) bool {
 	comprIn := p.x.Bit(0) == 0
-	b := pointAsBytes(p, comprIn)
-	pp, comprOut, err := pointFromBytes(b)
-	return (err == nil && IsEqual(pp, p) && comprIn == comprOut)
+	b := p.Bytes(comprIn)
+	pp, comprOut, err := NewPointFromBytes(b)
+	return (err == nil && pp.Equals(p) && comprIn == comprOut)
 }

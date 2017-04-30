@@ -81,7 +81,7 @@ func TestAddress(t *testing.T) {
 		if err != nil {
 			t.Fatal("test data failure")
 		}
-		if !ecc.IsOnCurve(pubkey.Q) {
+		if !pubkey.Q.IsOnCurve() {
 			t.Fatal("public point not on curve")
 		}
 
@@ -124,8 +124,8 @@ func TestAddress(t *testing.T) {
 		if err != nil {
 			t.Fatal("privatekeyfrombytes failed")
 		}
-		q := ecc.ScalarMultBase(prvkey.D)
-		if !ecc.IsEqual(q, pubkey.Q) {
+		q := ecc.MultBase(prvkey.D)
+		if !q.Equals(pubkey.Q) {
 			t.Fatal("pub/private mismatch")
 		}
 		if d.Chain != d.SerPubHex[26:90] {
