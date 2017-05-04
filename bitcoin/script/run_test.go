@@ -42,6 +42,7 @@ var (
 			"5e4ff47ceb3a51cdf7ddd80afc4acc5a692dac2d " +
 			"OP_EQUALVERIFY " +
 			"OP_CHECKSIG",
+		"#12 OP_DUP OP_ADD #24 OP_EQUALVERIFY",
 	}
 )
 
@@ -118,7 +119,6 @@ func TestCompile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		fmt.Println("bin: " + hex.EncodeToString(bin))
 		src2, err := Decompile(bin)
 		if err != nil {
 			t.Fatal(err)

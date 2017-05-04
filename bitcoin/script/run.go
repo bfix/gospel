@@ -109,6 +109,21 @@ func NewRuntime() *R {
 
 // Compile compiles a Bitcoin script source into its binary representation.
 func Compile(src string) (bin []byte, err error) {
+	add := func(b []byte) {
+		lb := uint(len(b))
+		if lb < 76 {
+			bin = append(bin, util.PutUint(lb, 1)...)
+		} else if lb < 65536 {
+			bin = append(bin, 0xfd)
+			bin = append(bin, util.PutUint(lb, 2)...)
+		} else {
+			bin = append(bin, 0xfe)
+			bin = append(bin, util.PutUint(lb, 4)...)
+		}
+		if lb > 0 {
+			bin = append(bin, b...)
+		}
+	}
 	for _, op := range strings.Split(src, " ") {
 		if len(op) == 0 {
 			continue
@@ -125,24 +140,15 @@ func Compile(src string) (bin []byte, err error) {
 			if !found {
 				return bin, fmt.Errorf("Unknown opcode '%s'", op)
 			}
+		} else if strings.HasPrefix(op, "#") {
+			v := math.NewIntFromString(op[1:])
+			add(v.Bytes())
 		} else {
 			b, err := hex.DecodeString(op)
 			if err != nil {
 				return nil, err
 			}
-			lb := uint(len(b))
-			if lb < 76 {
-				bin = append(bin, util.PutUint(lb, 1)...)
-			} else if lb < 65536 {
-				bin = append(bin, 0xfd)
-				bin = append(bin, util.PutUint(lb, 2)...)
-			} else {
-				bin = append(bin, 0xfe)
-				bin = append(bin, util.PutUint(lb, 4)...)
-			}
-			if lb > 0 {
-				bin = append(bin, b...)
-			}
+			add(b)
 		}
 	}
 	return
@@ -151,6 +157,14 @@ func Compile(src string) (bin []byte, err error) {
 // Decompile returns a human-readable Bitcoin script source from a
 // binary script representation.
 func Decompile(bin []byte) (src string, err error) {
+	convert := func(i, s int) {
+		if s < 5 {
+			v := math.NewIntFromBytes(bin[i : i+s])
+			src += "#" + v.String()
+		} else {
+			src += hex.EncodeToString(bin[i : i+s])
+		}
+	}
 	lb := len(bin)
 	for i := 0; i < lb; {
 		op := bin[i]
@@ -159,8 +173,9 @@ func Decompile(bin []byte) (src string, err error) {
 		}
 		if op > 0 && op < 76 {
 			i++
-			src += hex.EncodeToString(bin[i : i+int(op)])
-			i += int(op)
+			s := int(op)
+			convert(i, s)
+			i += s
 		} else if op == 76 {
 			i++
 			s, err := util.GetUint(bin, i, 1)
@@ -168,7 +183,7 @@ func Decompile(bin []byte) (src string, err error) {
 				return src, err
 			}
 			i++
-			src += hex.EncodeToString(bin[i : i+int(s)])
+			convert(i, int(s))
 			i += int(s)
 		} else if op == 77 {
 			i++
@@ -177,7 +192,7 @@ func Decompile(bin []byte) (src string, err error) {
 				return src, err
 			}
 			i += 2
-			src += hex.EncodeToString(bin[i : i+int(s)])
+			convert(i, int(s))
 			i += int(s)
 		} else if op == 78 {
 			i++
@@ -186,7 +201,7 @@ func Decompile(bin []byte) (src string, err error) {
 				return src, err
 			}
 			i += 4
-			src += hex.EncodeToString(bin[i : i+int(s)])
+			convert(i, int(s))
 			i += int(s)
 		} else {
 			found := false
