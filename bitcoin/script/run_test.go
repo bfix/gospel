@@ -34,6 +34,15 @@ var (
 		"00001976a914b5ea502cb15f248ed0e0cb7fa45a73cee0e061f388ac08d1cb05" +
 		"000000001976a91423f583c822b89c65e37f18fa7e2f101ee1105c2a88ac4f15" +
 		"1100"
+	scr = []string{
+		"3045022074f35af390c41ef1f5395d11f6041cf55a6d7dab0acdac8ee746c1f2de7a43b3022100b3dc3d916b557d378268a856b8f9a98b9afaf45442f5c9d726fce343de835a5801 " +
+			"02c34538fc933799d972f55752d318c0328ca2bacccd5c7482119ea9da2df70a2f " +
+			"OP_DUP " +
+			"OP_HASH160 " +
+			"5e4ff47ceb3a51cdf7ddd80afc4acc5a692dac2d " +
+			"OP_EQUALVERIFY " +
+			"OP_CHECKSIG",
+	}
 )
 
 var (
@@ -100,5 +109,22 @@ func TestTemplate(t *testing.T) {
 	}
 	if true {
 		fmt.Printf("Template: %s\n", hex.EncodeToString(tpl))
+	}
+}
+
+func TestCompile(t *testing.T) {
+	for _, src := range scr {
+		bin, err := Compile(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Println("bin: " + hex.EncodeToString(bin))
+		src2, err := Decompile(bin)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if src != src2 {
+			t.Fatal("Script compile/decompile mismatch")
+		}
 	}
 }

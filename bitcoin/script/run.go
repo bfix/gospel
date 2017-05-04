@@ -8,6 +8,7 @@ import (
 	"github.com/bfix/gospel/bitcoin/util"
 	"github.com/bfix/gospel/math"
 	"math/big"
+	"strings"
 )
 
 // Result codes returned by script functions.
@@ -104,6 +105,105 @@ func NewRuntime() *R {
 		tx:       nil,
 		CbStep:   nil,
 	}
+}
+
+// Compile compiles a Bitcoin script source into its binary representation.
+func Compile(src string) (bin []byte, err error) {
+	for _, op := range strings.Split(src, " ") {
+		if len(op) == 0 {
+			continue
+		}
+		if strings.HasPrefix(op, "OP_") {
+			found := false
+			for _, opcode := range OpCodes {
+				if opcode.Name == op {
+					bin = append(bin, opcode.Value)
+					found = true
+					break
+				}
+			}
+			if !found {
+				return bin, fmt.Errorf("Unknown opcode '%s'", op)
+			}
+		} else {
+			b, err := hex.DecodeString(op)
+			if err != nil {
+				return nil, err
+			}
+			lb := uint(len(b))
+			if lb < 76 {
+				bin = append(bin, util.PutUint(lb, 1)...)
+			} else if lb < 65536 {
+				bin = append(bin, 0xfd)
+				bin = append(bin, util.PutUint(lb, 2)...)
+			} else {
+				bin = append(bin, 0xfe)
+				bin = append(bin, util.PutUint(lb, 4)...)
+			}
+			if lb > 0 {
+				bin = append(bin, b...)
+			}
+		}
+	}
+	return
+}
+
+// Decompile returns a human-readable Bitcoin script source from a
+// binary script representation.
+func Decompile(bin []byte) (src string, err error) {
+	lb := len(bin)
+	for i := 0; i < lb; {
+		op := bin[i]
+		if len(src) > 0 {
+			src += " "
+		}
+		if op > 0 && op < 76 {
+			i++
+			src += hex.EncodeToString(bin[i : i+int(op)])
+			i += int(op)
+		} else if op == 76 {
+			i++
+			s, err := util.GetUint(bin, i, 1)
+			if err != nil {
+				return src, err
+			}
+			i++
+			src += hex.EncodeToString(bin[i : i+int(s)])
+			i += int(s)
+		} else if op == 77 {
+			i++
+			s, err := util.GetUint(bin, i, 2)
+			if err != nil {
+				return src, err
+			}
+			i += 2
+			src += hex.EncodeToString(bin[i : i+int(s)])
+			i += int(s)
+		} else if op == 78 {
+			i++
+			s, err := util.GetUint(bin, i, 4)
+			if err != nil {
+				return src, err
+			}
+			i += 4
+			src += hex.EncodeToString(bin[i : i+int(s)])
+			i += int(s)
+		} else {
+			found := false
+			for _, opcode := range OpCodes {
+				if opcode.Value == op {
+					src += opcode.Name
+					found = true
+					break
+				}
+			}
+			if !found {
+				return src, fmt.Errorf("Unknown opcode '%v' at pos %d", op, i)
+			}
+			i++
+		}
+	}
+	return
 }
 
 // ExecScript executes a script belonging to a transaction. If no transaction is
