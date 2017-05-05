@@ -26,45 +26,11 @@ var (
 			"509a0ae897f58e746c9316b63b8a9b355a95339fd5fb51efdb852103035670a7" +
 			"49d943639eb7bfc65e99167df83f0f98a0e251ac1387d5a5c015a3bb53ae",
 	}
-	t0 = "0200000001b762afdbca7d9cad9083a3a161eb550ed4553ec22c3e9d3902e43e" +
-		"c4eeea3369010000006b483045022100fffea10aa251c1a46c01e980ac0f429c" +
-		"866537e67adbdaa90304f528464bcf7e0220168b6fdf61fdb91b2b013dcaae3f" +
-		"45467c7906004ee7336ad3dfd021d978d04b01210240de126ab3a20dfad69fa5" +
-		"41bde2cc73eaaa6bcc07de96cf914b22c81cf598a6feffffff02d68580010000" +
-		"00001976a914b5ea502cb15f248ed0e0cb7fa45a73cee0e061f388ac08d1cb05" +
-		"000000001976a91423f583c822b89c65e37f18fa7e2f101ee1105c2a88ac4f15" +
-		"1100"
-	scr = []string{
-		"3045022074f35af390c41ef1f5395d11f6041cf55a6d7dab0acdac8ee746c1f2de7a43b3022100b3dc3d916b557d378268a856b8f9a98b9afaf45442f5c9d726fce343de835a5801 " +
-			"02c34538fc933799d972f55752d318c0328ca2bacccd5c7482119ea9da2df70a2f " +
-			"OP_DUP " +
-			"OP_HASH160 " +
-			"5e4ff47ceb3a51cdf7ddd80afc4acc5a692dac2d " +
-			"OP_EQUALVERIFY " +
-			"OP_CHECKSIG",
-		"#12 OP_DUP OP_ADD #24 OP_EQUALVERIFY",
-		"5af390c41ef1f539 28ca2bacccd5c748 OP_2DUP #4 OP_DUP #8 OP_DUP #16 OP_DUP #32 OP_DUP #64 OP_DUP #128 OP_DUP #256 OP_DUP #512 OP_DUP #1024 OP_DUP #1953 OP_DUP #23 38fc933799d972f5",
-	}
 )
 
 var (
 	r = NewRuntime()
 )
-
-func TestParse(t *testing.T) {
-	for _, sx := range s {
-		scr, err := hex.DecodeString(sx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if rc := r.parse(scr); rc != RcOK {
-			t.Fatal(fmt.Sprintf("Parse failed: rc=%s", RcString[rc]))
-		}
-		if verbose {
-			fmt.Printf("Statements: %v\n", r.stmts)
-		}
-	}
-}
 
 func TestExec(t *testing.T) {
 	if verbose {
@@ -78,14 +44,11 @@ func TestExec(t *testing.T) {
 			}
 		}
 	}
-	scr, err := hex.DecodeString(s[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rc := r.parse(scr); rc != RcOK {
+	scr, rc := Parse(s[0])
+	if rc != RcOK {
 		t.Fatal(fmt.Sprintf("Parse failed: rc=%s", RcString[rc]))
 	}
-	ok, rc := r.exec()
+	ok, rc := r.exec(scr)
 	if rc != RcOK {
 		if rc == RcNoTransaction {
 			if verbose {
@@ -101,11 +64,11 @@ func TestExec(t *testing.T) {
 }
 
 func TestTemplate(t *testing.T) {
-	scr, err := hex.DecodeString(s[0])
-	if err != nil {
-		t.Fatal(err)
+	scr, rc := Parse(s[0])
+	if rc != RcOK {
+		t.Fatal(fmt.Sprintf("Parse failed: rc=%s", RcString[rc]))
 	}
-	tpl, rc := r.GetTemplate(scr)
+	tpl, rc := scr.GetTemplate()
 	if rc != RcOK {
 		t.Fatal(fmt.Sprintf("GetTemplate failed: rc=%s", RcString[rc]))
 	}

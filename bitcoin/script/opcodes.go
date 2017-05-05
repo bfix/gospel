@@ -141,13 +141,13 @@ var (
 			return r.stack.Push(0)
 		}},
 		{"OP_PUSHDATA1", OpPUSHDATA1, func(r *R) int {
-			return r.stack.Push(r.stmts[r.pos].Data)
+			return r.stack.Push(r.script.Stmts[r.pos].Data)
 		}},
 		{"OP_PUSHDATA2", OpPUSHDATA2, func(r *R) int {
-			return r.stack.Push(r.stmts[r.pos].Data)
+			return r.stack.Push(r.script.Stmts[r.pos].Data)
 		}},
 		{"OP_PUSHDATA4", OpPUSHDATA4, func(r *R) int {
-			return r.stack.Push(r.stmts[r.pos].Data)
+			return r.stack.Push(r.script.Stmts[r.pos].Data)
 		}},
 		{"OP_1NEGATE", Op1NEGATE, func(r *R) int {
 			return r.stack.Push(-1)
@@ -215,10 +215,10 @@ var (
 				return rc
 			}
 			if !v.Equals(math.ONE) {
-				s := len(r.stmts)
+				s := len(r.script.Stmts)
 				depth := 0
 				for r.pos++; r.pos < s; r.pos++ {
-					switch r.stmts[r.pos].Opcode {
+					switch r.script.Stmts[r.pos].Opcode {
 					case OpIF:
 						depth++
 					case OpNOTIF:
@@ -244,10 +244,10 @@ var (
 				return rc
 			}
 			if v.Equals(math.ONE) {
-				s := len(r.stmts)
+				s := len(r.script.Stmts)
 				depth := 0
 				for r.pos++; r.pos < s; r.pos++ {
-					switch r.stmts[r.pos].Opcode {
+					switch r.script.Stmts[r.pos].Opcode {
 					case OpIF:
 						depth++
 					case OpNOTIF:
@@ -274,10 +274,10 @@ var (
 			return RcTxInvalid
 		}},
 		{"OP_ELSE", OpELSE, func(r *R) int {
-			s := len(r.stmts)
+			s := len(r.script.Stmts)
 			depth := 0
 			for r.pos++; r.pos < s; r.pos++ {
-				switch r.stmts[r.pos].Opcode {
+				switch r.script.Stmts[r.pos].Opcode {
 				case OpIF:
 					depth++
 				case OpNOTIF:
@@ -858,7 +858,7 @@ func GetOpcode(v byte) *OpCode {
 			Name:  fmt.Sprintf("DATA_%d", int(v)),
 			Value: v,
 			Exec: func(r *R) int {
-				return r.stack.Push(r.stmts[r.pos].Data)
+				return r.stack.Push(r.script.Stmts[r.pos].Data)
 			},
 		}
 	}

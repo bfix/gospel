@@ -1,7 +1,6 @@
 package script
 
 import (
-	"encoding/hex"
 	"fmt"
 	"github.com/bfix/gospel/bitcoin/ecc"
 	"github.com/bfix/gospel/bitcoin/util"
@@ -14,6 +13,7 @@ const (
 	RcErr
 	RcExceeds
 	RcParseError
+	RcScriptError
 	RcLengthMismatch
 	RcEmptyStack
 	RcInvalidFinalStack
@@ -35,6 +35,7 @@ const (
 	RcNotVerified
 	RcDisabledOpcode
 	RcTxNotSignable
+	RcEmptyScript
 )
 
 // Human-readable result codes
@@ -44,6 +45,7 @@ var (
 		"Generic error",
 		"Operation exceeds available data",
 		"Parse error",
+		"Script error",
 		"Length mismatch",
 		"Empty stack",
 		"Invalid final stack",
@@ -65,26 +67,13 @@ var (
 		"Not verified",
 		"Disabled opcode",
 		"Transaction not signable",
+		"Empty script",
 	}
 )
 
-// Statement is a single script statement.
-type Statement struct {
-	Opcode byte
-	Data   []byte
-}
-
-// String returns the string representation of a statement.
-func (s *Statement) String() string {
-	if s.Data != nil {
-		return hex.EncodeToString(s.Data)
-	}
-	return GetOpcode(s.Opcode).Name
-}
-
 // R is the Bitcoin script runtime environment
 type R struct {
-	stmts    []*Statement               // list of parsed statements
+	script   *Script                    // list of parsed statements
 	pos      int                        // index of current statement
 	stack    *Stack                     // stack for script operations
 	altStack *Stack                     // alternative stack
@@ -95,7 +84,7 @@ type R struct {
 // NewRuntime creates a new script parser and execution runtime.
 func NewRuntime() *R {
 	return &R{
-		stmts:    nil,
+		script:   nil,
 		pos:      -1,
 		stack:    NewStack(),
 		altStack: NewStack(),
@@ -110,28 +99,12 @@ func NewRuntime() *R {
 // to be assembled (concatenated) and cleaned up from the prev.sigScript and
 // curr.pkScript (see https://en.bitcoin.it/wiki/OpCHECKSIG); 'tx' is the
 // current transaction in dissected format already prepared for signature.
-func (r *R) ExecScript(script []byte, tx *util.DissectedTransaction) (bool, int) {
+func (r *R) ExecScript(script *Script, tx *util.DissectedTransaction) (bool, int) {
 	if tx.Signable == nil || tx.VinSlot < 0 {
 		return false, RcTxNotSignable
 	}
 	r.tx = tx
-	if rc := r.parse(script); rc != RcOK {
-		return false, rc
-	}
-	return r.exec()
-}
-
-// GetTemplate returns a template derived from a script. A template only
-// contains a sequence of opcodes; it is used to find structural equivalent
-// scripts (but with varying data).
-func (r *R) GetTemplate(script []byte) (tpl []byte, rc int) {
-	if rc = r.parse(script); rc != RcOK {
-		return
-	}
-	for _, s := range r.stmts {
-		tpl = append(tpl, s.Opcode)
-	}
-	return
+	return r.exec(script)
 }
 
 // CheckSig performs a OpCHECKSIG operation on the stack (without pushing a
@@ -214,14 +187,15 @@ func (r *R) CheckMultiSig() (bool, int) {
 }
 
 // exec executes a sequence of parsed statement of a script.
-func (r *R) exec() (bool, int) {
-	if r.stmts == nil || len(r.stmts) == 0 {
-		return false, RcEmptyStack
+func (r *R) exec(script *Script) (bool, int) {
+	r.script = script
+	if r.script.Stmts == nil || len(r.script.Stmts) == 0 {
+		return false, RcEmptyScript
 	}
 	r.pos = 0
-	size := len(r.stmts)
+	size := len(r.script.Stmts)
 	for r.pos < size {
-		s := r.stmts[r.pos]
+		s := r.script.Stmts[r.pos]
 		opc := GetOpcode(s.Opcode)
 		if opc == nil {
 			fmt.Printf("Opcode: %v\n", s.Opcode)
@@ -247,65 +221,6 @@ func (r *R) exec() (bool, int) {
 		return false, RcOK
 	}
 	return false, RcInvalidFinalStack
-}
-
-// parse dissects binary scripts into a sequence of tokens.
-func (r *R) parse(code []byte) int {
-	var (
-		pos    int
-		size   int
-		length int
-	)
-	getData := func(s *Statement, i int) int {
-		b := make([]byte, i)
-		copy(b, code[pos+1:pos+i+1])
-		j, err := util.GetUint(b, 0, i)
-		if err != nil {
-			return RcLengthMismatch
-		}
-		n := int(j)
-		size += n + i
-		if pos+size > length {
-			return RcExceeds
-		}
-		s.Data = make([]byte, n)
-		copy(s.Data, code[pos+i+1:pos+i+n+1])
-		return RcOK
-	}
-	r.stmts = make([]*Statement, 0)
-	length = len(code)
-	for pos < length {
-		size = 1
-		op := code[pos]
-		s := &Statement{Opcode: op}
-		if op > 0 && op < 76 {
-			n := int(op)
-			if pos+n+1 > length {
-				return RcExceeds
-			}
-			s.Data = make([]byte, n)
-			copy(s.Data, code[pos+1:pos+n+1])
-			size += n
-		} else {
-			switch op {
-			case OpPUSHDATA1:
-				if rc := getData(s, 1); rc != RcOK {
-					return rc
-				}
-			case OpPUSHDATA2:
-				if rc := getData(s, 2); rc != RcOK {
-					return rc
-				}
-			case OpPUSHDATA4:
-				if rc := getData(s, 4); rc != RcOK {
-					return rc
-				}
-			}
-		}
-		pos += size
-		r.stmts = append(r.stmts, s)
-	}
-	return RcOK
 }
 
 // checkSig checks the signature of a prepared transaction.

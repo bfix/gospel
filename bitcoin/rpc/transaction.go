@@ -342,8 +342,12 @@ func VerifyTransfer(prev *RawTransaction, vout int, curr *RawTransaction, vin in
 		return false, err
 	}
 	// run script
+	s, rc := script.ParseBin(scr)
+	if rc != script.RcOK {
+		return false, fmt.Errorf("ParseBin failed with '%s'", script.RcString[rc])
+	}
 	rt := script.NewRuntime()
-	ok, rc := rt.ExecScript(scr, currTx)
+	ok, rc := rt.ExecScript(s, currTx)
 	if rc != script.RcOK {
 		return ok, fmt.Errorf("ExecScript failed with '%s'", script.RcString[rc])
 	}
