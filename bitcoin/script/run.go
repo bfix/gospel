@@ -1,13 +1,11 @@
 package script
 
 import (
-	"encoding/asn1"
 	"encoding/hex"
 	"fmt"
 	"github.com/bfix/gospel/bitcoin/ecc"
 	"github.com/bfix/gospel/bitcoin/util"
 	"github.com/bfix/gospel/math"
-	"math/big"
 	"strings"
 )
 
@@ -258,11 +256,7 @@ func (r *R) Sign(prv *ecc.PrivateKey, hashType byte) ([]byte, error) {
 	txHash := util.Hash256(txSign)
 	// sign the hash
 	sig := ecc.Sign(prv, txHash)
-	// generate signature object
-	var sigX struct{ R, S *big.Int }
-	sigX.R = new(big.Int).SetBytes(sig.R.Bytes())
-	sigX.S = new(big.Int).SetBytes(sig.S.Bytes())
-	sigData, err := asn1.Marshal(sigX)
+	sigData, err := sig.Bytes()
 	if err != nil {
 		return nil, err
 	}
@@ -462,14 +456,10 @@ func (r *R) checkSig(pkInt, sigInt *math.Int) (bool, int) {
 	txSign := append(r.tx.Signable, []byte{hashType, 0, 0, 0}...)
 	txHash := util.Hash256(txSign)
 	// decode signature from DER data
-	var sig struct{ R, S *big.Int }
-	_, err = asn1.Unmarshal(sigData, &sig)
+	sig, err := ecc.NewSignatureFromASN1(sigData)
 	if err != nil {
 		return false, RcInvalidSignature
 	}
-	sigX := new(ecc.Signature)
-	sigX.R = math.NewIntFromBig(sig.R)
-	sigX.S = math.NewIntFromBig(sig.S)
 	// perform signature verify
-	return ecc.Verify(pk, txHash, sigX), RcOK
+	return ecc.Verify(pk, txHash, sig), RcOK
 }

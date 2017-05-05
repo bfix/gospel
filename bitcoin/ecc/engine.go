@@ -1,12 +1,35 @@
 package ecc
 
 import (
+	"encoding/asn1"
 	"github.com/bfix/gospel/math"
+	"math/big"
 )
 
 // Signature is a Bitcoin signature in scripts.
 type Signature struct {
 	R, S *math.Int
+}
+
+// NewSignatureFromASN1 returns a signature from an ASN.1-encoded sequence.
+func NewSignatureFromASN1(b []byte) (*Signature, error) {
+	var tSig struct{ R, S *big.Int }
+	_, err := asn1.Unmarshal(b, &tSig)
+	if err != nil {
+		return nil, err
+	}
+	sig := new(Signature)
+	sig.R = math.NewIntFromBig(tSig.R)
+	sig.S = math.NewIntFromBig(tSig.S)
+	return sig, nil
+}
+
+// Bytes returns an ASN.1-encoded sequence of the signature.
+func (s *Signature) Bytes() ([]byte, error) {
+	var tSig struct{ R, S *big.Int }
+	tSig.R = new(big.Int).SetBytes(s.R.Bytes())
+	tSig.S = new(big.Int).SetBytes(s.S.Bytes())
+	return asn1.Marshal(tSig)
 }
 
 // Sign a hash value with private key.
