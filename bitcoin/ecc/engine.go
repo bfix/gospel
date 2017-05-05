@@ -4,10 +4,15 @@ import (
 	"github.com/bfix/gospel/math"
 )
 
+// Signature is a Bitcoin signature in scripts.
+type Signature struct {
+	R, S *math.Int
+}
+
 // Sign a hash value with private key.
 // [http://www.nsa.gov/ia/_files/ecdsa.pdf, page 13f]
-func Sign(key *PrivateKey, hash []byte) (r, s *math.Int) {
-
+func Sign(key *PrivateKey, hash []byte) *Signature {
+	sig := new(Signature)
 	var k, invK *math.Int
 	for {
 		// compute value of 'r' as x-coordinate of k*G with random k
@@ -19,38 +24,38 @@ func Sign(key *PrivateKey, hash []byte) (r, s *math.Int) {
 
 			// compute k*G
 			pnt := MultBase(k)
-			r = nMod(pnt.x)
-			if r.Sign() != 0 {
+			sig.R = nMod(pnt.x)
+			if sig.R.Sign() != 0 {
 				break
 			}
 		}
 		// compute value of 's := (rd + e)/k'
 		e := convertHash(hash)
-		s = nMul(nMul(key.D, r).Add(e), invK)
-		if s.Sign() != 0 {
+		sig.S = nMul(nMul(key.D, sig.R).Add(e), invK)
+		if sig.S.Sign() != 0 {
 			break
 		}
 	}
-	return
+	return sig
 }
 
 // Verify a hash value with public key.
 // [http://www.nsa.gov/ia/_files/ecdsa.pdf, page 15f]
-func Verify(key *PublicKey, hash []byte, r, s *math.Int) bool {
+func Verify(key *PublicKey, hash []byte, sig *Signature) bool {
 
 	// sanity checks for arguments
-	if r.Sign() == 0 || s.Sign() == 0 {
+	if sig.R.Sign() == 0 || sig.S.Sign() == 0 {
 		return false
 	}
-	if r.Cmp(c.N) >= 0 || s.Cmp(c.N) >= 0 {
+	if sig.R.Cmp(c.N) >= 0 || sig.S.Cmp(c.N) >= 0 {
 		return false
 	}
 	// check signature
 	e := convertHash(hash)
-	w := nInv(s)
+	w := nInv(sig.S)
 
 	u1 := e.Mul(w)
-	u2 := w.Mul(r)
+	u2 := w.Mul(sig.R)
 
 	p1 := MultBase(u1)
 	p2 := key.Q.Mult(u2)
@@ -59,7 +64,7 @@ func Verify(key *PublicKey, hash []byte, r, s *math.Int) bool {
 	}
 	p3 := p1.Add(p2)
 	rr := nMod(p3.x)
-	return rr.Cmp(r) == 0
+	return rr.Cmp(sig.R) == 0
 }
 
 // convert hash value to integer

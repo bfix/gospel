@@ -251,6 +251,25 @@ func (r *R) GetTemplate(script []byte) (tpl []byte, rc int) {
 	return
 }
 
+// Sign signs a prepared transaction with a private key
+func (r *R) Sign(prv *ecc.PrivateKey, hashType byte) ([]byte, error) {
+	// compute hash of amended transaction
+	txSign := append(r.tx.Signable, []byte{hashType, 0, 0, 0}...)
+	txHash := util.Hash256(txSign)
+	// sign the hash
+	sig := ecc.Sign(prv, txHash)
+	// generate signature object
+	var sigX struct{ R, S *big.Int }
+	sigX.R = new(big.Int).SetBytes(sig.R.Bytes())
+	sigX.S = new(big.Int).SetBytes(sig.S.Bytes())
+	sigData, err := asn1.Marshal(sigX)
+	if err != nil {
+		return nil, err
+	}
+	sigData = append(sigData, hashType)
+	return sigData, nil
+}
+
 // CheckSig performs a OpCHECKSIG operation on the stack (without pushing a
 // result onto the stack)
 func (r *R) CheckSig() (bool, int) {
@@ -448,8 +467,9 @@ func (r *R) checkSig(pkInt, sigInt *math.Int) (bool, int) {
 	if err != nil {
 		return false, RcInvalidSignature
 	}
-	sigR := math.NewIntFromBig(sig.R)
-	sigS := math.NewIntFromBig(sig.S)
+	sigX := new(ecc.Signature)
+	sigX.R = math.NewIntFromBig(sig.R)
+	sigX.S = math.NewIntFromBig(sig.S)
 	// perform signature verify
-	return ecc.Verify(pk, txHash, sigR, sigS), RcOK
+	return ecc.Verify(pk, txHash, sigX), RcOK
 }

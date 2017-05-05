@@ -6,12 +6,11 @@ import (
 )
 
 func TestEngine(t *testing.T) {
-
 	for i := 0; i < 32; i++ {
 		prv := GenerateKeys(i&1 == 1)
 		hash := nRnd(math.ONE).Bytes()
-		r, s := Sign(prv, hash)
-		if !Verify(&prv.PublicKey, hash, r, s) {
+		sig := Sign(prv, hash)
+		if !Verify(&prv.PublicKey, hash, sig) {
 			t.Fatal("sign/verify failed")
 		}
 	}

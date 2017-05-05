@@ -3,6 +3,9 @@ package script
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/bfix/gospel/bitcoin/ecc"
+	"github.com/bfix/gospel/bitcoin/util"
+	"github.com/bfix/gospel/math"
 	"testing"
 )
 
@@ -43,6 +46,7 @@ var (
 			"OP_EQUALVERIFY " +
 			"OP_CHECKSIG",
 		"#12 OP_DUP OP_ADD #24 OP_EQUALVERIFY",
+		"5af390c41ef1f539 28ca2bacccd5c748 OP_2DUP #4 OP_DUP #8 OP_DUP #16 OP_DUP #32 OP_DUP #64 OP_DUP #128 OP_DUP #256 OP_DUP #512 OP_DUP #1024 OP_DUP #1953 OP_DUP #23 38fc933799d972f5",
 	}
 )
 
@@ -108,7 +112,7 @@ func TestTemplate(t *testing.T) {
 	if rc != RcOK {
 		t.Fatal(fmt.Sprintf("GetTemplate failed: rc=%s", RcString[rc]))
 	}
-	if true {
+	if verbose {
 		fmt.Printf("Template: %s\n", hex.EncodeToString(tpl))
 	}
 }
@@ -124,7 +128,53 @@ func TestCompile(t *testing.T) {
 			t.Fatal(err)
 		}
 		if src != src2 {
+			if verbose {
+				fmt.Println(">>> " + src)
+				fmt.Println("    " + hex.EncodeToString(bin))
+				fmt.Println("<<< " + src2)
+			}
 			t.Fatal("Script compile/decompile mismatch")
 		}
+	}
+}
+
+func TestSign(t *testing.T) {
+	// generate private key
+	prv := ecc.GenerateKeys(true)
+	pub := prv.PublicKey.Bytes()
+	pubHash := util.Hash160(pub)
+
+	// generate sig script
+	s := hex.EncodeToString(pubHash)
+	sigScr, err := Compile("OP_DUP OP_HASH160 " + s + " OP_EQUALVERIFY OP_CHECKSIG")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// prepare raw transaction
+	tx, err := util.NewDissectedTransaction(t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.PrepareForSign(0, sigScr); err != nil {
+		t.Fatal(err)
+	}
+	r.tx = tx
+
+	// sign transaction
+	sig, err := r.Sign(prv, 0x01)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// verify signature
+	pkInt := math.NewIntFromBytes(pub)
+	sigInt := math.NewIntFromBytes(sig)
+	ok, rc := r.checkSig(pkInt, sigInt)
+	if rc != RcOK {
+		t.Fatal(fmt.Sprintf("checkSig failed: rc=%s", RcString[rc]))
+	}
+	if !ok {
+		t.Fatal("Signature mismatch")
 	}
 }
