@@ -11,6 +11,7 @@ type DissectedTransaction struct {
 	Version  uint64   // version number of the transaction
 	LockTime uint64   // locktime of the transaction
 	Content  [][]byte // list of transaction segments
+		VinSeq   []uint64 // list of sequence numbers of vin slots
 	VinSlot  int      // active vin slot index
 	Signable []byte   // signable transaction
 }
@@ -53,6 +54,7 @@ func NewDissectedTransaction(rawHex string) (dt *DissectedTransaction, err error
 		Version:  0,
 		LockTime: 0,
 		Content:  make([][]byte, 0),
+				VinSeq:   make([]uint64, 0),
 		VinSlot:  -1,
 		Signable: nil,
 	}
@@ -91,7 +93,8 @@ func NewDissectedTransaction(rawHex string) (dt *DissectedTransaction, err error
 		} else {
 			add(int(s)) // script code
 		}
-		add(4) // sequence
+		seq := add(4) // sequence
+		dt.VinSeq = append(dt.VinSeq, seq)
 	}
 	n, j, err = GetVarUint(buf, pos) // number of outputs
 	if err != nil {
