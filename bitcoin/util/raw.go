@@ -9,10 +9,9 @@ import (
 // DissectedTransaction is dissected raw transaction for easier manipulation.
 type DissectedTransaction struct {
 	Version  uint64   // version number of the transaction
-	VinSlot  int      // active vin slot index
-	VinSeq   []uint64 // list of sequence numbers of vin slots
 	LockTime uint64   // locktime of the transaction
 	Content  [][]byte // list of transaction segments
+	VinSlot  int      // active vin slot index
 	Signable []byte   // signable transaction
 }
 
@@ -36,8 +35,7 @@ type DissectedTransaction struct {
 //  ------+-------------+---------+---------------------------------
 //      0 | N_VOUT      |  var    | Number of Vout defs to follow
 //  ------+-------------+---------+---------------------------------
-//      1 | VOUT:AMOUNT |    4    | Number of Satoshis (1e-8 btc)
-//      1 | VOUT:INDEX  |    4    | Output index
+//      1 | VOUT:AMOUNT |    8    | Number of Satoshis (1e-8 btc)
 //      1 | VOUT:SCRIPT |         | scriptPubkey
 //  ------+-------------+---------+---------------------------------
 //      2 | SCRIPT:LEN  |   var   | Length of script
@@ -53,7 +51,6 @@ func NewDissectedTransaction(rawHex string) (dt *DissectedTransaction, err error
 	}
 	dt = &DissectedTransaction{
 		Version:  0,
-		VinSeq:   make([]uint64, 0),
 		LockTime: 0,
 		Content:  make([][]byte, 0),
 		VinSlot:  -1,
@@ -94,8 +91,7 @@ func NewDissectedTransaction(rawHex string) (dt *DissectedTransaction, err error
 		} else {
 			add(int(s)) // script code
 		}
-		seq := add(4) // sequence
-		dt.VinSeq = append(dt.VinSeq, seq)
+		add(4) // sequence
 	}
 	n, j, err = GetVarUint(buf, pos) // number of outputs
 	if err != nil {
@@ -104,8 +100,7 @@ func NewDissectedTransaction(rawHex string) (dt *DissectedTransaction, err error
 	dt.Content = append(dt.Content, buf[pos:pos+j])
 	pos += j
 	for i := 0; i < int(n); i++ {
-		add(4)                            // amount
-		add(4)                            // output index
+		add(8)                            // amount
 		s, j, err := GetVarUint(buf, pos) // size of script
 		if err != nil {
 			return nil, err
