@@ -89,6 +89,16 @@ func NewPointFromBytes(b []byte) (p *Point, compr bool, err error) {
 	return
 }
 
+// X returns the x-coordinate of a point.
+func (p *Point) X() *math.Int {
+	return p.x
+}
+
+// Y returns the y-coordinate of a point.
+func (p *Point) Y() *math.Int {
+	return p.y
+}
+
 // Neg returns -P for the point P.
 func (p *Point) Neg() *Point {
 	return NewPoint(p.x, p.y.Neg())
