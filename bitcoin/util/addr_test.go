@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"github.com/bfix/gospel/bitcoin/ecc"
 	"testing"
 )
@@ -143,6 +144,27 @@ func TestAddress(t *testing.T) {
 		if prvser != d.SerPrvB58 {
 			t.Fatal("test data failure")
 		}
+	}
+}
+
+var (
+	privKey = "L35JWBbB2nXH6pEzmTGjTnQkRS4fWT7tRKyQhfH9oW9JqffVMgVL"
+)
+
+func TestPrivKeyAddress(t *testing.T) {
+	b, err := Base58Decode(privKey)
+	if err != nil {
+		t.Fatal("Base58 decoder failed.: " + err.Error())
+	}
+	fmt.Printf("*** %s [%d]\n", hex.EncodeToString(b), len(b))
+	for i := 1; i < 5; i++ {
+		b = b[i : 33+i]
+		prv, err := ecc.PrivateKeyFromBytes(b)
+		if err != nil {
+			t.Fatal("PrivateKeyFromBytes failed: " + err.Error())
+		}
+		addr := MakeAddress(&prv.PublicKey)
+		fmt.Printf("*** %d: %s\n", i, addr)
 	}
 }
 
