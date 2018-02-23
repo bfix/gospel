@@ -42,11 +42,6 @@ func GetBasePoint() *Point {
 	return NewPoint(c.Gx, c.Gy)
 }
 
-// GetBasePointNeg returns the negative base point of the curve
-func GetBasePointNeg() *Point {
-	return NewPoint(c.Gx, c.Gy.Neg())
-}
-
 // MultBase multiplies the base Point of the curve with a scalar value k
 func MultBase(k *math.Int) *Point {
 	return GetBasePoint().Mult(k)
@@ -94,6 +89,12 @@ func NewPointFromBytes(b []byte) (p *Point, compr bool, err error) {
 	return
 }
 
+// Neg returns -P for the point P.
+func (p *Point) Neg() *Point {
+	return NewPoint(p.x, p.y.Neg())
+}
+
+// String returns a human-readable representation of a point.
 func (p *Point) String() string {
 	return fmt.Sprintf("(%v,%v)", p.x, p.y)
 }
