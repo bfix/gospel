@@ -199,6 +199,11 @@ func (i *Int) Bit(n int) uint {
 	return i.v.Bit(n)
 }
 
+// SetBit sets the bit value of an Int at a given position.
+func (i *Int) SetBit(n int, v uint) *Int {
+	return &Int{v: new(big.Int).SetBit(i.v, n, v)}
+}
+
 // Rsh returns the right shifted value of an Int.
 func (i *Int) Rsh(n uint) *Int {
 	return &Int{v: new(big.Int).Rsh(i.v, n)}
