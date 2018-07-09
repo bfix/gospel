@@ -8,7 +8,8 @@ import (
 	"reflect"
 )
 
-//======================================================================
+//######################################################################
+//
 // Serialization of Golang objects of type 'struct{}':
 // Field types can be any of these:
 //
@@ -18,14 +19,30 @@ import (
 //    string                -- variable length string
 //    *struct{}, struct{}   -- nested structure
 //    []*struct{}, []struct -- list of structures with allowed fields
+//
+// Integer fields (of size > 1) can be tagged for Big-Endian representation
+// by using the tag "order" with a value of "big":
+//
+//    field1 int64 `order:"big"`
+//
+// Variable-length slices can be tagged with a "size" tag to help the
+// Unmarshal function to figure out the number of slice elements to
+// process. The values can be "*" for greedy (as many elements as
+// possible before running out of data), "<num>" a decimal number specifying
+// the fixed size or "<name>" referring to a previous integer field in the
+// struct object:
+//
+//     ListSize int16
+//     List     []*Entry `size:"ListSize"`
+//
+//######################################################################
 
 //======================================================================
 // Marshal/unmarshal Golang objects to/from byte arrays.
 //======================================================================
 
-// Marshal creates a byte array from a reference (pointer) to a message
-// object ('*XxxMsg').
-func Marshal(msg interface{}) ([]byte, error) {
+// Marshal creates a byte array from a (reference to an) object.
+func Marshal(obj interface{}) ([]byte, error) {
 	var marshal func(x reflect.Value) ([]byte, error)
 	marshal = func(x reflect.Value) ([]byte, error) {
 		data := new(bytes.Buffer)
@@ -109,8 +126,8 @@ func Marshal(msg interface{}) ([]byte, error) {
 		}
 		return data.Bytes(), nil
 	}
-	// process if message is a '*struct{}' or a 'struct{}'
-	a := reflect.ValueOf(msg)
+	// process if object is a '*struct{}' or a 'struct{}'
+	a := reflect.ValueOf(obj)
 	switch a.Kind() {
 	case reflect.Ptr:
 		return marshal(a.Elem())
@@ -120,8 +137,8 @@ func Marshal(msg interface{}) ([]byte, error) {
 	return nil, errors.New("Marshal: message is not a 'struct{}'")
 }
 
-// Unmarshal reads a byte array to fill a message object pointed to by 'msg'.
-func Unmarshal(msg interface{}, data []byte) error {
+// Unmarshal reads a byte array to fill an object pointed to by 'obj'.
+func Unmarshal(obj interface{}, data []byte) error {
 	buf := bytes.NewBuffer(data)
 	var unmarshal func(x reflect.Value) error
 	unmarshal = func(x reflect.Value) error {
@@ -303,7 +320,7 @@ func Unmarshal(msg interface{}, data []byte) error {
 		return nil
 	}
 	// check if message is a '*struct{}'
-	a := reflect.ValueOf(msg)
+	a := reflect.ValueOf(obj)
 	switch a.Kind() {
 	case reflect.Ptr:
 		return unmarshal(a.Elem())
