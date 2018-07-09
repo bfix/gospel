@@ -57,7 +57,7 @@ Packages
 Install
 -------
 
-This version is designed for the Go1.8 release.
+This version is designed for the Go1.10 release.
 
 Make sure that your Go environment - especially ${GOPATH} - is set up and
 enter the following command:
