@@ -5,7 +5,7 @@
 Gospel: GO SPEcial Library
 ==========================
 
-(c) 2010-2017 Bernd Fix <brf@hoi-polloi.org>   >Y<
+(c) 2010-2018 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -52,6 +52,7 @@ Packages
 - gospel/data: useful data structures like
     * stacks
     * vectors
+    * Marshal/Unmarshal Golang objects
 
 Install
 -------
