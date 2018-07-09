@@ -1,6 +1,7 @@
 
 [![Build Status](https://travis-ci.org/bfix/gospel.svg?branch=master)](https://travis-ci.org/bfix/gospel)
 [![Go Report Card](https://goreportcard.com/badge/github.com/bfix/gospel)](https://goreportcard.com/report/github.com/bfix/gospel)
+[![GoDoc](https://godoc.org/github.com/bfix/gospel?status.svg)](https://godoc.org/github.com/bfix/gospel)
 
 Gospel: GO SPEcial Library
 ==========================
