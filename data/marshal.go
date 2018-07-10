@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 )
 
 //######################################################################
@@ -48,6 +49,10 @@ func Marshal(obj interface{}) ([]byte, error) {
 		data := new(bytes.Buffer)
 		for i := 0; i < x.NumField(); i++ {
 			f := x.Field(i)
+			// do not serialize unexported fields
+			if !f.CanSet() {
+				continue
+			}
 			ft := x.Type().Field(i)
 			switch v := f.Interface().(type) {
 			//----------------------------------------------------------
@@ -76,12 +81,14 @@ func Marshal(obj interface{}) ([]byte, error) {
 				// Pointers
 				//------------------------------------------------------
 				case reflect.Ptr:
-					sub, err := marshal(f.Elem())
-					if err != nil {
-						return nil, err
+					e := f.Elem()
+					if e.IsValid() {
+						sub, err := marshal(f.Elem())
+						if err != nil {
+							return nil, err
+						}
+						data.Write(sub)
 					}
-					data.Write(sub)
-
 				//------------------------------------------------------
 				// Structs
 				//------------------------------------------------------
@@ -91,7 +98,6 @@ func Marshal(obj interface{}) ([]byte, error) {
 						return nil, err
 					}
 					data.Write(sub)
-
 				//------------------------------------------------------
 				// Slices
 				//------------------------------------------------------
@@ -130,11 +136,16 @@ func Marshal(obj interface{}) ([]byte, error) {
 	a := reflect.ValueOf(obj)
 	switch a.Kind() {
 	case reflect.Ptr:
-		return marshal(a.Elem())
+		e := a.Elem()
+		if e.IsValid() {
+			return marshal(e)
+		} else {
+			return nil, errors.New("Marshal: object is nil")
+		}
 	case reflect.Struct:
 		return marshal(a)
 	}
-	return nil, errors.New("Marshal: message is not a 'struct{}'")
+	return nil, errors.New("Marshal: object is not a 'struct{}'")
 }
 
 // Unmarshal reads a byte array to fill an object pointed to by 'obj'.
@@ -144,8 +155,9 @@ func Unmarshal(obj interface{}, data []byte) error {
 	unmarshal = func(x reflect.Value) error {
 		for i := 0; i < x.NumField(); i++ {
 			f := x.Field(i)
+			// skip unexported fields
 			if !f.CanSet() {
-				return errors.New(fmt.Sprintf("Unmarshal: can't set field '%v'", f))
+				continue
 			}
 			ft := x.Type().Field(i)
 			readInt := func(a interface{}) {
@@ -170,7 +182,6 @@ func Unmarshal(obj interface{}, data []byte) error {
 					s += string(b)
 				}
 				f.SetString(s)
-
 			//----------------------------------------------------------
 			// Integers
 			//----------------------------------------------------------
@@ -202,7 +213,6 @@ func Unmarshal(obj interface{}, data []byte) error {
 				var a int64
 				readInt(&a)
 				f.SetInt(a)
-
 			//----------------------------------------------------------
 			// Byte arrays
 			//----------------------------------------------------------
@@ -210,12 +220,21 @@ func Unmarshal(obj interface{}, data []byte) error {
 				size := f.Len()
 				if size == 0 {
 					sizeTag := ft.Tag.Get("size")
-					if sizeTag == "*" {
+					stl := len(sizeTag)
+					if stl == 0 {
+						return errors.New("Missing size tag on field")
+					}
+					if sizeTag[0] == '*' {
 						size = buf.Len()
+						if stl > 1 {
+							off, err := strconv.ParseInt(sizeTag[1:], 10, 16)
+							if err != nil {
+								return err
+							}
+							size += int(off)
+						}
 					} else if len(sizeTag) > 0 {
 						size = int(x.FieldByName(sizeTag).Uint())
-					} else {
-						return errors.New("Missing size tag on field")
 					}
 				}
 				a := make([]byte, size)
@@ -224,17 +243,18 @@ func Unmarshal(obj interface{}, data []byte) error {
 					return errors.New(fmt.Sprintf("Unmarshal: size mismatch - have %d, got %d", size, n))
 				}
 				f.SetBytes(a)
-
 			default:
 				switch f.Kind() {
 				//------------------------------------------------------
 				// Pointers
 				//------------------------------------------------------
 				case reflect.Ptr:
-					if err := unmarshal(f.Elem()); err != nil {
-						return err
+					e := f.Elem()
+					if e.IsValid() {
+						if err := unmarshal(e); err != nil {
+							return err
+						}
 					}
-
 				//------------------------------------------------------
 				// Structs
 				//------------------------------------------------------
@@ -242,7 +262,6 @@ func Unmarshal(obj interface{}, data []byte) error {
 					if err := unmarshal(f); err != nil {
 						return err
 					}
-
 				//------------------------------------------------------
 				// Slices
 				//------------------------------------------------------
@@ -302,7 +321,6 @@ func Unmarshal(obj interface{}, data []byte) error {
 							if err := unmarshal(e.Elem()); err != nil {
 								return err
 							}
-
 						//----------------------------------------------
 						// Struct elements
 						//----------------------------------------------
@@ -319,13 +337,13 @@ func Unmarshal(obj interface{}, data []byte) error {
 		}
 		return nil
 	}
-	// check if message is a '*struct{}'
+	// check if object is a '*struct{}'
 	a := reflect.ValueOf(obj)
-	switch a.Kind() {
-	case reflect.Ptr:
-		return unmarshal(a.Elem())
-	case reflect.Struct:
-		return unmarshal(a)
+	if a.Kind() == reflect.Ptr {
+		if e := a.Elem(); e.Kind() == reflect.Struct {
+			return unmarshal(e)
+		}
 	}
 	return errors.New(fmt.Sprintf("Unmarshal: Unknown (field) type: %v", a.Type()))
 }
+
