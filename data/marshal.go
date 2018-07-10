@@ -346,4 +346,3 @@ func Unmarshal(obj interface{}, data []byte) error {
 	}
 	return errors.New(fmt.Sprintf("Unmarshal: Unknown (field) type: %v", a.Type()))
 }
-
