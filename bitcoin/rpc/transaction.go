@@ -2,8 +2,9 @@ package rpc
 
 import (
 	"fmt"
+
+	"github.com/bfix/gospel/bitcoin"
 	"github.com/bfix/gospel/bitcoin/script"
-	"github.com/bfix/gospel/bitcoin/util"
 )
 
 // CreateRawTransaction [{"txid":txid,"vout":n},...] {address:amount,...}
@@ -298,7 +299,7 @@ func VerifyTransfer(prev *RawTransaction, vout int, curr *RawTransaction, vin in
 	if prev.Hex == nil {
 		return false, fmt.Errorf("Missing hex encoding of raw transaction")
 	}
-	prevTx, err := util.NewDissectedTransaction(*prev.Hex)
+	prevTx, err := bitcoin.NewDissectedTransaction(*prev.Hex)
 	if err != nil {
 		return false, err
 	}
@@ -306,12 +307,12 @@ func VerifyTransfer(prev *RawTransaction, vout int, curr *RawTransaction, vin in
 	if curr.Hex == nil {
 		return false, fmt.Errorf("Missing hex encoding of raw transaction")
 	}
-	currTx, err := util.NewDissectedTransaction(*curr.Hex)
+	currTx, err := bitcoin.NewDissectedTransaction(*curr.Hex)
 	if err != nil {
 		return false, err
 	}
 	// get scriptSig from current transaction for the vin slot
-	nc, _, err := util.GetVarUint(currTx.Content[1], 0)
+	nc, _, err := bitcoin.GetVarUint(currTx.Content[1], 0)
 	if err != nil {
 		return false, err
 	}
@@ -320,12 +321,12 @@ func VerifyTransfer(prev *RawTransaction, vout int, curr *RawTransaction, vin in
 	}
 	vinScr := currTx.Content[5*vin+5]
 	// get scriptPubkey from previous transaction
-	np, _, err := util.GetVarUint(prevTx.Content[1], 0)
+	np, _, err := bitcoin.GetVarUint(prevTx.Content[1], 0)
 	if err != nil {
 		return false, err
 	}
 	m := 5*int(np) + 2
-	o, _, err := util.GetVarUint(prevTx.Content[m], 0)
+	o, _, err := bitcoin.GetVarUint(prevTx.Content[m], 0)
 	if err != nil {
 		return false, err
 	}

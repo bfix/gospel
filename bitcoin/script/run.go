@@ -2,8 +2,8 @@ package script
 
 import (
 	"fmt"
-	"github.com/bfix/gospel/bitcoin/ecc"
-	"github.com/bfix/gospel/bitcoin/util"
+
+	"github.com/bfix/gospel/bitcoin"
 	"github.com/bfix/gospel/math"
 )
 
@@ -73,11 +73,11 @@ var (
 
 // R is the Bitcoin script runtime environment
 type R struct {
-	script   *Script                    // list of parsed statements
-	pos      int                        // index of current statement
-	stack    *Stack                     // stack for script operations
-	altStack *Stack                     // alternative stack
-	tx       *util.DissectedTransaction // associated dissected transaction
+	script   *Script                       // list of parsed statements
+	pos      int                           // index of current statement
+	stack    *Stack                        // stack for script operations
+	altStack *Stack                        // alternative stack
+	tx       *bitcoin.DissectedTransaction // associated dissected transaction
 	CbStep   func(stack *Stack, stmt *Statement, rc int)
 }
 
@@ -99,7 +99,7 @@ func NewRuntime() *R {
 // to be assembled (concatenated) and cleaned up from the prev.sigScript and
 // curr.pkScript (see https://en.bitcoin.it/wiki/OpCHECKSIG); 'tx' is the
 // current transaction in dissected format already prepared for signature.
-func (r *R) ExecScript(script *Script, tx *util.DissectedTransaction) (bool, int) {
+func (r *R) ExecScript(script *Script, tx *bitcoin.DissectedTransaction) (bool, int) {
 	if tx.Signable == nil || tx.VinSlot < 0 {
 		return false, RcTxNotSignable
 	}
@@ -229,7 +229,7 @@ func (r *R) checkSig(pkInt, sigInt *math.Int) (bool, int) {
 		return false, RcNoTransaction
 	}
 	// get public key
-	pk, err := ecc.PublicKeyFromBytes(pkInt.Bytes())
+	pk, err := bitcoin.PublicKeyFromBytes(pkInt.Bytes())
 	if err != nil {
 		return false, RcInvalidPubkey
 	}
@@ -239,12 +239,12 @@ func (r *R) checkSig(pkInt, sigInt *math.Int) (bool, int) {
 	sigData = sigData[:len(sigData)-1]
 	// compute hash of amended transaction
 	txSign := append(r.tx.Signable, []byte{hashType, 0, 0, 0}...)
-	txHash := util.Hash256(txSign)
+	txHash := bitcoin.Hash256(txSign)
 	// decode signature from DER data
-	sig, err := ecc.NewSignatureFromASN1(sigData)
+	sig, err := bitcoin.NewSignatureFromASN1(sigData)
 	if err != nil {
 		return false, RcInvalidSignature
 	}
 	// perform signature verify
-	return ecc.Verify(pk, txHash, sig), RcOK
+	return bitcoin.Verify(pk, txHash, sig), RcOK
 }

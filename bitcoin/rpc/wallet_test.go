@@ -2,11 +2,11 @@ package rpc
 
 import (
 	"fmt"
-	"github.com/bfix/gospel/bitcoin/ecc"
-	"github.com/bfix/gospel/bitcoin/util"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/bfix/gospel/bitcoin"
 )
 
 var (
@@ -249,8 +249,8 @@ func TestImportAddress(t *testing.T) {
 	if sess == nil {
 		t.Skip("skipping test: session not available")
 	}
-	k := ecc.GenerateKeys(true)
-	a := util.MakeTestAddress(&k.PublicKey)
+	k := bitcoin.GenerateKeys(true)
+	a := bitcoin.MakeTestAddress(&k.PublicKey)
 	if err := sess.ImportAddress(a, "", false); err != nil {
 		t.Fatal(err)
 	}
