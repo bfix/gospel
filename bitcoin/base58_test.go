@@ -1,9 +1,10 @@
-package util
+package bitcoin
 
 import (
 	"bytes"
-	"github.com/bfix/gospel/math"
 	"testing"
+
+	"github.com/bfix/gospel/math"
 )
 
 func TestBase58(t *testing.T) {

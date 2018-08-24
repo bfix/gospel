@@ -1,9 +1,10 @@
-package ecc
+package bitcoin
 
 import (
 	"encoding/asn1"
-	"github.com/bfix/gospel/math"
 	"math/big"
+
+	"github.com/bfix/gospel/math"
 )
 
 // Signature is a Bitcoin signature in scripts.

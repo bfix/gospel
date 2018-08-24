@@ -1,9 +1,8 @@
-package util
+package bitcoin
 
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/bfix/gospel/bitcoin/ecc"
 )
 
 // DissectedTransaction is dissected raw transaction for easier manipulation.
@@ -165,12 +164,12 @@ func (d *DissectedTransaction) PrepareForSign(vin int, scr []byte) error {
 }
 
 // Sign signs a prepared transaction with a private key
-func (d *DissectedTransaction) Sign(prv *ecc.PrivateKey, hashType byte) ([]byte, error) {
+func (d *DissectedTransaction) Sign(prv *PrivateKey, hashType byte) ([]byte, error) {
 	// compute hash of amended transaction
 	txSign := append(d.Signable, []byte{hashType, 0, 0, 0}...)
 	txHash := Hash256(txSign)
 	// sign the hash
-	sig := ecc.Sign(prv, txHash)
+	sig := Sign(prv, txHash)
 	sigData, err := sig.Bytes()
 	if err != nil {
 		return nil, err
@@ -180,11 +179,11 @@ func (d *DissectedTransaction) Sign(prv *ecc.PrivateKey, hashType byte) ([]byte,
 }
 
 // Verify checks the signature on a prepared transaction with a public key.
-func (d *DissectedTransaction) Verify(pub *ecc.PublicKey, sig []byte) (bool, error) {
+func (d *DissectedTransaction) Verify(pub *PublicKey, sig []byte) (bool, error) {
 	// extract ASN.1 signature object and hashtype
 	lsig := len(sig)
 	hashType := sig[lsig-1]
-	tSig, err := ecc.NewSignatureFromASN1(sig[:lsig-1])
+	tSig, err := NewSignatureFromASN1(sig[:lsig-1])
 	if err != nil {
 		return false, err
 	}
@@ -192,7 +191,7 @@ func (d *DissectedTransaction) Verify(pub *ecc.PublicKey, sig []byte) (bool, err
 	txSign := append(d.Signable, []byte{hashType, 0, 0, 0}...)
 	txHash := Hash256(txSign)
 	// perform signature verify
-	return ecc.Verify(pub, txHash, tSig), nil
+	return Verify(pub, txHash, tSig), nil
 }
 
 // GetUint converts 'n' bytes in a buffer 'buf' starting at position 'p' into

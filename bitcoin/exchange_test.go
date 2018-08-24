@@ -1,7 +1,6 @@
-package util
+package bitcoin
 
 import (
-	"github.com/bfix/gospel/bitcoin/ecc"
 	"testing"
 )
 
@@ -15,7 +14,7 @@ func TestExchange(t *testing.T) {
 	for n := 0; n < 100; n++ {
 		testnet := (n&1 == 1)
 		compr := (n%3 == 0)
-		key := ecc.GenerateKeys(compr)
+		key := GenerateKeys(compr)
 		s := ExportPrivateKey(key, testnet)
 		x, _ := Base58Decode(s)
 		if len(x) != 37 && len(x) != 38 {

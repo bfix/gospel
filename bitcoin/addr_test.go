@@ -1,10 +1,9 @@
-package util
+package bitcoin
 
 import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/bfix/gospel/bitcoin/ecc"
 	"testing"
 )
 
@@ -31,7 +30,7 @@ type TestData struct {
 }
 
 var (
-	data = []TestData{
+	testData = []TestData{
 		{
 			"3442193e1bb70916e914552172cd4e2dbc9df811",
 			"15mKKb2eos1hWa6tisdPwwDC1a5J1y9nma",
@@ -61,7 +60,7 @@ var (
 )
 
 func TestAddress(t *testing.T) {
-	for _, d := range data {
+	for _, d := range testData {
 		idhex, err := hex.DecodeString(d.IDhex)
 		if err != nil {
 			t.Fatal("test data failure")
@@ -77,7 +76,7 @@ func TestAddress(t *testing.T) {
 		if err != nil {
 			t.Fatal("test data failure")
 		}
-		pubkey, err := ecc.PublicKeyFromBytes(pub)
+		pubkey, err := PublicKeyFromBytes(pub)
 		if err != nil {
 			t.Fatal("test data failure")
 		}
@@ -120,11 +119,11 @@ func TestAddress(t *testing.T) {
 			}
 			prv = prv[1:]
 		}
-		prvkey, err := ecc.PrivateKeyFromBytes(prv)
+		prvkey, err := PrivateKeyFromBytes(prv)
 		if err != nil {
 			t.Fatal("privatekeyfrombytes failed")
 		}
-		q := ecc.MultBase(prvkey.D)
+		q := MultBase(prvkey.D)
 		if !q.Equals(pubkey.Q) {
 			t.Fatal("pub/private mismatch")
 		}
@@ -156,7 +155,7 @@ func TestPrivKeyAddress(t *testing.T) {
 	if err != nil {
 		t.Fatal("Base58 decoder failed.: " + err.Error())
 	}
-	prv, err := ecc.PrivateKeyFromBytes(b[1:34])
+	prv, err := PrivateKeyFromBytes(b[1:34])
 	if err != nil {
 		t.Fatal("PrivateKeyFromBytes failed: " + err.Error())
 	}

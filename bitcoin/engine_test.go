@@ -1,8 +1,9 @@
-package ecc
+package bitcoin
 
 import (
-	"github.com/bfix/gospel/math"
 	"testing"
+
+	"github.com/bfix/gospel/math"
 )
 
 func TestEngine(t *testing.T) {

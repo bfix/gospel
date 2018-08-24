@@ -1,8 +1,9 @@
-package ecc
+package bitcoin
 
 import (
 	"errors"
 	"fmt"
+
 	"github.com/bfix/gospel/math"
 )
 

@@ -1,14 +1,13 @@
-package util
+package bitcoin
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/bfix/gospel/bitcoin/ecc"
 )
 
 // ExportPrivateKey returns a private key in SIPA format
-func ExportPrivateKey(k *ecc.PrivateKey, testnet bool) string {
+func ExportPrivateKey(k *PrivateKey, testnet bool) string {
 	var exp []byte
 	if testnet {
 		exp = append(exp, 0xEF)
@@ -24,7 +23,7 @@ func ExportPrivateKey(k *ecc.PrivateKey, testnet bool) string {
 }
 
 // ImportPrivateKey imports a private key in SIPA format
-func ImportPrivateKey(keydata string, testnet bool) (*ecc.PrivateKey, error) {
+func ImportPrivateKey(keydata string, testnet bool) (*PrivateKey, error) {
 	// decode and check data
 	data, err := Base58Decode(keydata)
 	if err != nil {
@@ -67,5 +66,5 @@ func ImportPrivateKey(keydata string, testnet bool) (*ecc.PrivateKey, error) {
 		return nil, errors.New("Invalid key data")
 	}
 	// return key
-	return ecc.PrivateKeyFromBytes(k)
+	return PrivateKeyFromBytes(k)
 }

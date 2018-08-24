@@ -1,8 +1,7 @@
-package util
+package bitcoin
 
 import (
 	"encoding/hex"
-	"github.com/bfix/gospel/bitcoin/ecc"
 	"testing"
 )
 
@@ -19,7 +18,7 @@ var (
 
 func TestSign(t *testing.T) {
 	// generate private key
-	prv := ecc.GenerateKeys(true)
+	prv := GenerateKeys(true)
 	pub := &prv.PublicKey
 	pubHash := Hash160(pub.Bytes())
 

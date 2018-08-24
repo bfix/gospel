@@ -1,8 +1,9 @@
-package util
+package bitcoin
 
 import (
 	"bytes"
 	"errors"
+
 	"github.com/bfix/gospel/math"
 )
 

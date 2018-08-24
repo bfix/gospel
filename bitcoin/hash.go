@@ -1,4 +1,4 @@
-package util
+package bitcoin
 
 import (
 	"crypto/sha1"
