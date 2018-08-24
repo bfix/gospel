@@ -98,6 +98,19 @@ func (i *Int) Bytes() []byte {
 	return i.v.Bytes()
 }
 
+// FixedBytes returns a byte array representation of the integer
+// of a given size.
+func (i *Int) FixedBytes(n int) []byte {
+	r := make([]byte, n)
+	b := i.v.Bytes()
+	off := n - len(b)
+	if off < 0 {
+		off = 0
+	}
+	copy(r[off:], b)
+	return r
+}
+
 // String converts an Int to a string representation.
 func (i *Int) String() string {
 	return i.v.String()
