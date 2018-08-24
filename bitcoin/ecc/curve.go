@@ -47,6 +47,31 @@ func MultBase(k *math.Int) *Point {
 	return GetBasePoint().Mult(k)
 }
 
+// Solve the curve equation for given x-ccordinate (returns positive y)
+func Solve(x *math.Int) (*math.Int, bool) {
+	// compute 'y = +√(x³ + 7)'
+	y2 := pAdd(pCub(x), math.SEVEN)
+	y, err := math.SqrtModP(y2, c.P)
+	return y, err == nil
+}
+
+// SignY of a point (y-coordinate) on the Bitcoin curve:
+// +1 if above x-axis, -1 if below.
+func SignY(p *Point) (int, error) {
+	y, ok := Solve(p.X())
+	if ok {
+		// positive solution?
+		if y.Equals(p.Y()) {
+			return 1, nil
+		}
+		// negative solution?
+		if y.Equals(c.P.Sub(p.Y())) {
+			return -1, nil
+		}
+	}
+	return 0, errors.New("Point not on curve")
+}
+
 // Inf is the point at "infinity"
 var Inf = NewPoint(math.ZERO, math.ZERO)
 
