@@ -1,4 +1,4 @@
-package bitcoin
+package wallet
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bfix/gospel/bitcoin"
 	"github.com/bfix/gospel/data"
 	"github.com/bfix/gospel/math"
 )
@@ -51,7 +52,7 @@ func NewExtendedData() *ExtendedData {
 
 // ParseExtended returns a new data object for a given extended key string
 func ParseExtended(s string) (*ExtendedData, error) {
-	v, err := Base58Decode(s)
+	v, err := bitcoin.Base58Decode(s)
 	if err != nil {
 		return nil, err
 	}
@@ -69,9 +70,9 @@ func (d *ExtendedData) Convert() string {
 	}
 	var r []byte
 	r = append(r, b...)
-	cs := Hash256(b)
+	cs := bitcoin.Hash256(b)
 	r = append(r, cs[:4]...)
-	return string(Base58Encode(r))
+	return string(bitcoin.Base58Encode(r))
 }
 
 //----------------------------------------------------------------------
@@ -81,7 +82,7 @@ func (d *ExtendedData) Convert() string {
 // ExtendedPublicKey represents a public key in a HD tree
 type ExtendedPublicKey struct {
 	data *ExtendedData
-	key  *Point
+	key  *bitcoin.Point
 }
 
 // ParseExtendedPublicKey converts a xpub string to a public key
@@ -94,7 +95,7 @@ func ParseExtendedPublicKey(s string) (k *ExtendedPublicKey, err error) {
 	if k.data.Version != xpubVersion {
 		return nil, ErrHDVersion
 	}
-	k.key, _, err = NewPointFromBytes(k.data.Keydata)
+	k.key, _, err = bitcoin.NewPointFromBytes(k.data.Keydata)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func (e *ExtendedPublicKey) String() string {
 
 // Fingerprint returns the fingerprint of an ExtendedPublicKey
 func (e *ExtendedPublicKey) Fingerprint() (i uint32) {
-	fp := Hash160(e.key.Bytes(true))
+	fp := bitcoin.Hash160(e.key.Bytes(true))
 	rdr := bytes.NewBuffer(fp)
 	binary.Read(rdr, binary.BigEndian, &i)
 	return
@@ -137,7 +138,7 @@ func ParseExtendedPrivateKey(s string) (k *ExtendedPrivateKey, err error) {
 // Public returns the associated public key
 func (k *ExtendedPrivateKey) Public() *ExtendedPublicKey {
 	r := new(ExtendedPublicKey)
-	r.key = MultBase(k.key)
+	r.key = bitcoin.MultBase(k.key)
 	r.data = NewExtendedData()
 	r.data.Version = xpubVersion
 	r.data.Child = k.data.Child
@@ -157,19 +158,23 @@ func (e *ExtendedPrivateKey) String() string {
 // Hierarchically deterministic key space
 //----------------------------------------------------------------------
 
+var (
+	c = bitcoin.GetCurve()
+)
+
 // HD represents a hierarchically deterministic key space.
 type HD struct {
 	m *ExtendedPrivateKey
 }
 
 // NewHD initializes a new HD from a seed value.
-func NewHD(s []byte) *HD {
-	n := len(s)
+func NewHD(seed []byte) *HD {
+	n := len(seed)
 	if n < 16 || n > 64 {
 		return nil
 	}
 	mac := hmac.New(sha512.New, []byte("Bitcoin seed"))
-	mac.Write(s)
+	mac.Write(seed)
 	i := mac.Sum(nil)
 
 	mKey := math.NewIntFromBytes(i[:32])
@@ -235,7 +240,7 @@ func (hd *HD) CKDprv(k *ExtendedPrivateKey, i uint32) (ki *ExtendedPrivateKey) {
 		mac.Write([]byte{0})
 		mac.Write(k.key.FixedBytes(32))
 	} else {
-		p := MultBase(k.key)
+		p := bitcoin.MultBase(k.key)
 		mac.Write(p.Bytes(true))
 	}
 
@@ -273,7 +278,7 @@ func (hd *HD) CKDpub(k *ExtendedPublicKey, i uint32) (ki *ExtendedPublicKey) {
 		return nil
 	}
 	ki = new(ExtendedPublicKey)
-	ki.key = MultBase(j).Add(k.key)
+	ki.key = bitcoin.MultBase(j).Add(k.key)
 	ki.data = NewExtendedData()
 	ki.data.Version = k.data.Version
 	ki.data.Depth = k.data.Depth + 1
