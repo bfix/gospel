@@ -31,15 +31,16 @@ Packages
     * TOR
     * SOCKS5 connection handler
     * SMTP/POP3 mail handling
-- gospel/bitcoin/ecc: Elliptic curve crypto (Secp256k1)
-- gospel/bitcoin/rpc: JSON-RPC to Bitcoin server
-- gospel/bitcoin/script: Bitcoin script parser/interpreter
-- gospel/bitcoin/util: Utility methods
+- gospel/bitcoin:
+    * Elliptic curve crypto (Secp256k1)
     * Bitcoin addresses
     * key exchange
     * raw transactions
     * hash functions (Hash160, Hash256)
     * base58 encoding
+    * HD key space
+- gospel/bitcoin/rpc: JSON-RPC to Bitcoin server
+- gospel/bitcoin/script: Bitcoin script parser/interpreter
 - gospel/math: Mathematical helpers
     * Fast Fourier Transformation
     * Arbitrary precision integers with chainable methods
