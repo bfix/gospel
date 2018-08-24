@@ -2,7 +2,8 @@ package script
 
 import (
 	"fmt"
-	"github.com/bfix/gospel/bitcoin/util"
+
+	"github.com/bfix/gospel/bitcoin"
 	"github.com/bfix/gospel/math"
 )
 
@@ -718,35 +719,35 @@ var (
 			if rc != RcOK {
 				return rc
 			}
-			return r.stack.Push(util.RipeMD160(v.Bytes()))
+			return r.stack.Push(bitcoin.RipeMD160(v.Bytes()))
 		}},
 		{"OP_SHA1", OpSHA1, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
-			return r.stack.Push(util.Sha1(v.Bytes()))
+			return r.stack.Push(bitcoin.Sha1(v.Bytes()))
 		}},
 		{"OP_SHA256", OpSHA256, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
-			return r.stack.Push(util.Sha256(v.Bytes()))
+			return r.stack.Push(bitcoin.Sha256(v.Bytes()))
 		}},
 		{"OP_HASH160", OpHASH160, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
-			return r.stack.Push(util.Hash160(v.Bytes()))
+			return r.stack.Push(bitcoin.Hash160(v.Bytes()))
 		}},
 		{"OP_HASH256", OpHASH256, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
-			return r.stack.Push(util.Hash256(v.Bytes()))
+			return r.stack.Push(bitcoin.Hash256(v.Bytes()))
 		}},
 		{"OP_CODESEPARATOR", OpCODESEPARATOR, func(r *R) int {
 			return RcOK

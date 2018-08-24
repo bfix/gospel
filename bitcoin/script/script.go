@@ -3,9 +3,10 @@ package script
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/bfix/gospel/bitcoin/util"
-	"github.com/bfix/gospel/math"
 	"strings"
+
+	"github.com/bfix/gospel/bitcoin"
+	"github.com/bfix/gospel/math"
 )
 
 // Statement is a single script statement.
@@ -66,11 +67,11 @@ func (s *Script) Bytes() []byte {
 			ld := uint(len(s.Data))
 			switch s.Opcode {
 			case 76:
-				bin = append(bin, util.PutUint(ld, 1)...)
+				bin = append(bin, bitcoin.PutUint(ld, 1)...)
 			case 77:
-				bin = append(bin, util.PutUint(ld, 2)...)
+				bin = append(bin, bitcoin.PutUint(ld, 2)...)
 			case 78:
-				bin = append(bin, util.PutUint(ld, 4)...)
+				bin = append(bin, bitcoin.PutUint(ld, 4)...)
 			}
 			bin = append(bin, s.Data...)
 		}
@@ -137,7 +138,7 @@ func ParseBin(code []byte) (scr *Script, rc int) {
 	getData := func(s *Statement, i int) int {
 		b := make([]byte, i)
 		copy(b, code[pos+1:pos+i+1])
-		j, err := util.GetUint(b, 0, i)
+		j, err := bitcoin.GetUint(b, 0, i)
 		if err != nil {
 			return RcLengthMismatch
 		}
