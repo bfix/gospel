@@ -38,7 +38,9 @@ Packages
     * raw transactions
     * hash functions (Hash160, Hash256)
     * base58 encoding
+- gospel/bitcoin/wallet:
     * HD key space
+    * BIP39 seed words
 - gospel/bitcoin/rpc: JSON-RPC to Bitcoin server
 - gospel/bitcoin/script: Bitcoin script parser/interpreter
 - gospel/math: Mathematical helpers
