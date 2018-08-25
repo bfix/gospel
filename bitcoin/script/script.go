@@ -128,7 +128,7 @@ func NewScript() *Script {
 	}
 }
 
-// Parse dissects binary scripts into a sequence of statements that
+// ParseBin dissects binary scripts into a sequence of statements that
 // constitutes a script.
 func ParseBin(code []byte) (scr *Script, rc int) {
 	var pos, size, length int

@@ -108,10 +108,7 @@ func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) error {
 	}
 	wrt.Write(body)
 	wrt.Close()
-	if err = cli.Quit(); err != nil {
-		return err
-	}
-	return nil
+	return cli.Quit()
 }
 
 // MailAttachment is a data structure for data attached to a mail.
