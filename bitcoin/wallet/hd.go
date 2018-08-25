@@ -115,6 +115,20 @@ func (e *ExtendedPublicKey) Fingerprint() (i uint32) {
 	return
 }
 
+// Clone returns a deep copy of a public key
+func (e *ExtendedPublicKey) Clone() *ExtendedPublicKey {
+	r := new(ExtendedPublicKey)
+	r.key = bitcoin.NewPoint(e.key.X(), e.key.Y())
+	r.data = NewExtendedData()
+	r.data.Version = e.data.Version
+	r.data.Depth = e.data.Depth
+	r.data.Child = e.data.Child
+	r.data.ParentFP = e.data.ParentFP
+	copy(r.data.Chaincode, e.data.Chaincode)
+	copy(r.data.Keydata, e.data.Keydata)
+	return r
+}
+
 // ExtendedPrivateKey represents a private key in a HD tree
 type ExtendedPrivateKey struct {
 	data *ExtendedData
@@ -155,7 +169,7 @@ func (e *ExtendedPrivateKey) String() string {
 }
 
 //----------------------------------------------------------------------
-// Hierarchically deterministic key space
+// Hierarchically deterministic key space (with private keys available)
 //----------------------------------------------------------------------
 
 var (
@@ -216,7 +230,7 @@ func (hd *HD) Private(path string) (prv *ExtendedPrivateKey, err error) {
 		if err != nil {
 			return
 		}
-		prv = hd.CKDprv(prv, i)
+		prv = CKDprv(prv, i)
 		if prv == nil {
 			return nil, ErrHDKey
 		}
@@ -224,7 +238,7 @@ func (hd *HD) Private(path string) (prv *ExtendedPrivateKey, err error) {
 	return prv, nil
 }
 
-// Prublic returns an extended public key for a given path (BIP32,BIP44)
+// Public returns an extended public key for a given path (BIP32,BIP44)
 func (hd *HD) Public(path string) (pub *ExtendedPublicKey, err error) {
 	prv, err := hd.Private(path)
 	if err != nil {
@@ -233,8 +247,62 @@ func (hd *HD) Public(path string) (pub *ExtendedPublicKey, err error) {
 	return prv.Public(), nil
 }
 
+//----------------------------------------------------------------------
+// Hierarchically deterministic key space (public keys only)
+//----------------------------------------------------------------------
+
+// HDPublic represents a public branch in a hierarchically deterministic
+// key space.
+type HDPublic struct {
+	m    *ExtendedPublicKey
+	path string
+}
+
+// NewHDPublic initializes a new HDPublic from an extended public key
+// with a given path.
+func NewHDPublic(key *ExtendedPublicKey, path string) *HDPublic {
+	return &HDPublic{
+		m:    key.Clone(),
+		path: path,
+	}
+}
+
+// Public returns an extended public key for a given path. The path MUST
+// NOT contain hardened elements and must start with the path of the
+// public key in HDPublic!
+func (hd *HDPublic) Public(path string) (pub *ExtendedPublicKey, err error) {
+	// check for matching relative path
+	if !strings.HasPrefix(path, hd.path) {
+		return nil, ErrHDPath
+	}
+	// trim to relative path
+	path = path[len(hd.path)+1:]
+	// check for hardened levels
+	if strings.Index(path, "'") != -1 {
+		return nil, ErrHDPath
+	}
+	// follow the path...
+	pub = hd.m
+	for _, id := range strings.Split(path, "/") {
+		var j int64
+		j, err = strconv.ParseInt(id, 10, 32)
+		if err != nil {
+			return
+		}
+		pub = CKDpub(pub, uint32(j))
+		if pub == nil {
+			return nil, ErrHDKey
+		}
+	}
+	return
+}
+
+//----------------------------------------------------------------------
+// Key derivation methods
+//----------------------------------------------------------------------
+
 // CKDprv is a key derivation function for private keys
-func (hd *HD) CKDprv(k *ExtendedPrivateKey, i uint32) (ki *ExtendedPrivateKey) {
+func CKDprv(k *ExtendedPrivateKey, i uint32) (ki *ExtendedPrivateKey) {
 	mac := hmac.New(sha512.New, k.data.Chaincode)
 	if i >= 1<<31 {
 		mac.Write([]byte{0})
@@ -264,7 +332,7 @@ func (hd *HD) CKDprv(k *ExtendedPrivateKey, i uint32) (ki *ExtendedPrivateKey) {
 }
 
 // CKDpub is a key derivation function for public keys
-func (hd *HD) CKDpub(k *ExtendedPublicKey, i uint32) (ki *ExtendedPublicKey) {
+func CKDpub(k *ExtendedPublicKey, i uint32) (ki *ExtendedPublicKey) {
 	if i >= 1<<31 {
 		return nil
 	}

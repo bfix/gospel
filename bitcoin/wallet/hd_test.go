@@ -39,6 +39,31 @@ var (
 	hd *HD
 )
 
+func init() {
+	seed, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
+	hd = NewHD(seed)
+}
+
+func TestHDPublic(t *testing.T) {
+	path := pathData[2][0]
+	pub, err := hd.Public(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hdp := NewHDPublic(pub, path)
+
+	path2 := pathData[4][0]
+	pub2, err := hdp.Public(path2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pubS := pub2.String()
+	s := pathData[4][1]
+	if pubS != s {
+		t.Fatalf("%s != %s", pubS, s)
+	}
+}
+
 func TestParseExtended(t *testing.T) {
 	for _, s := range xserData {
 		d, err := ParseExtended(s)
@@ -53,10 +78,8 @@ func TestParseExtended(t *testing.T) {
 }
 
 func TestM(t *testing.T) {
-	seed, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
 	xprv := "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
 	xpub := "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
-	hd = NewHD(seed)
 	prv := hd.m
 	prvS := prv.String()
 	if prvS != xprv {
