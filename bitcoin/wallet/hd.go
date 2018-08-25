@@ -63,7 +63,9 @@ func ParseExtended(s string) (*ExtendedData, error) {
 	return d, nil
 }
 
-func (d *ExtendedData) Convert() string {
+// String converts an extended data object into a
+// human-readable representation.
+func (d *ExtendedData) String() string {
 	b, err := data.Marshal(d)
 	if err != nil {
 		return ""
@@ -104,7 +106,7 @@ func ParseExtendedPublicKey(s string) (k *ExtendedPublicKey, err error) {
 
 // String returns the string representation of an ExtendedPublicKey
 func (e *ExtendedPublicKey) String() string {
-	return e.data.Convert()
+	return e.data.String()
 }
 
 // Fingerprint returns the fingerprint of an ExtendedPublicKey
@@ -164,8 +166,8 @@ func (k *ExtendedPrivateKey) Public() *ExtendedPublicKey {
 }
 
 // String returns the string representation of an ExtendedPrivateKey
-func (e *ExtendedPrivateKey) String() string {
-	return e.data.Convert()
+func (k *ExtendedPrivateKey) String() string {
+	return k.data.String()
 }
 
 //----------------------------------------------------------------------

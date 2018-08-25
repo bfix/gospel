@@ -70,7 +70,7 @@ func TestParseExtended(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		u := d.Convert()
+		u := d.String()
 		if u != s {
 			t.Fatalf("Mismatch: %s != %s", s, u)
 		}

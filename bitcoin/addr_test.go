@@ -84,9 +84,7 @@ func TestAddress(t *testing.T) {
 			t.Fatal("public point not on curve")
 		}
 
-		addr := MakeTestAddress(pubkey)
-
-		addr = MakeAddress(pubkey)
+		addr := MakeAddress(pubkey)
 		if string(addr) != d.IDaddr {
 			t.Fatal("makeaddress failed")
 		}
@@ -146,12 +144,12 @@ func TestAddress(t *testing.T) {
 }
 
 var (
-	t_privKey = "L35JWBbB2nXH6pEzmTGjTnQkRS4fWT7tRKyQhfH9oW9JqffVMgVL"
-	t_addr    = "14Wf6fPLEawQq5zSaCkAJ1Upgaekvy1Hiy"
+	tPrivKey = "L35JWBbB2nXH6pEzmTGjTnQkRS4fWT7tRKyQhfH9oW9JqffVMgVL"
+	tAddr    = "14Wf6fPLEawQq5zSaCkAJ1Upgaekvy1Hiy"
 )
 
 func TestPrivKeyAddress(t *testing.T) {
-	b, err := Base58Decode(t_privKey)
+	b, err := Base58Decode(tPrivKey)
 	if err != nil {
 		t.Fatal("Base58 decoder failed.: " + err.Error())
 	}
@@ -160,7 +158,7 @@ func TestPrivKeyAddress(t *testing.T) {
 		t.Fatal("PrivateKeyFromBytes failed: " + err.Error())
 	}
 	addr := MakeAddress(&prv.PublicKey)
-	if addr != t_addr {
+	if addr != tAddr {
 		t.Fatal("address mismatch")
 	}
 }

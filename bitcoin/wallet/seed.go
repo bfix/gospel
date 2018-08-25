@@ -55,7 +55,7 @@ func EntropyToWords(ent []byte) (s string, err error) {
 	m := math.NewInt(2048)
 	for j := 0; j < n; j++ {
 		p := int(i.Mod(m).Int64())
-		w[n-1-j] = words_en[p]
+		w[n-1-j] = wordList[p]
 		i = i.Rsh(11)
 	}
 	// return words as a string
@@ -74,8 +74,9 @@ func WordsToEntropy(s string) ([]byte, string) {
 	words := strings.Split(s, " ")
 	wl := len(words)
 	i := math.ZERO
-	for j, w := range words {
-		if j = lookup(w); j < 0 {
+	for _, w := range words {
+		j := lookup(w)
+		if j < 0 {
 			return nil, w
 		}
 		i = i.Lsh(11).Add(math.NewInt(int64(j)))
@@ -122,11 +123,11 @@ func checkWords(s string) string {
 // Lookup returns the index of a word in the list
 // (using binary search).
 func lookup(w string) int {
-	n := len(words_en)
+	n := len(wordList)
 	s, e, i := 0, n-1, 0
 	for {
 		i = (s + e) / 2
-		cmp := strings.Compare(w, words_en[i])
+		cmp := strings.Compare(w, wordList[i])
 		if cmp < 0 {
 			if e > i {
 				e = i
@@ -141,10 +142,10 @@ func lookup(w string) int {
 			}
 		}
 		if cmp == 0 {
-			if w == words_en[i] {
+			if w == wordList[i] {
 				return i
 			}
-			if w == words_en[i+1] {
+			if w == wordList[i+1] {
 				return i + 1
 			}
 			break
@@ -155,7 +156,7 @@ func lookup(w string) int {
 
 // word list
 var (
-	words_en = []string{
+	wordList = []string{
 		"abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract",
 		"absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid",
 		"acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual",

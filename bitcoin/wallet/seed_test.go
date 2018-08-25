@@ -28,7 +28,7 @@ func TestEntropy(t *testing.T) {
 func TestLookup(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		j := rand.Int() % 2048
-		if j != lookup(words_en[j]) {
+		if j != lookup(wordList[j]) {
 			t.Fatalf("Missed lookup for %d:%d", i, j)
 		}
 	}

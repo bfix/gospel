@@ -126,7 +126,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 						}
 					}
 				default:
-					return nil, errors.New(fmt.Sprintf("Marshal: Unknown field type: %v", f.Type()))
+					return nil, fmt.Errorf("Marshal: Unknown field type: %v", f.Type())
 				}
 			}
 		}
@@ -246,7 +246,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 				a := make([]byte, size)
 				n, _ := buf.Read(a)
 				if n != size {
-					return errors.New(fmt.Sprintf("Unmarshal: size mismatch - have %d, got %d", size, n))
+					return fmt.Errorf("Unmarshal: size mismatch - have %d, got %d", size, n)
 				}
 				f.SetBytes(a)
 			default:
@@ -337,7 +337,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 						}
 					}
 				default:
-					return errors.New(fmt.Sprintf("Unmarshal: Unknown field type: %v", f.Kind()))
+					return fmt.Errorf("Unmarshal: Unknown field type: %v", f.Kind())
 				}
 			}
 		}
@@ -350,5 +350,5 @@ func Unmarshal(obj interface{}, data []byte) error {
 			return unmarshal(e)
 		}
 	}
-	return errors.New(fmt.Sprintf("Unmarshal: Unknown (field) type: %v", a.Type()))
+	return fmt.Errorf("Unmarshal: Unknown (field) type: %v", a.Type())
 }
