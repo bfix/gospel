@@ -139,9 +139,8 @@ func Marshal(obj interface{}) ([]byte, error) {
 		e := a.Elem()
 		if e.IsValid() {
 			return marshal(e)
-		} else {
-			return nil, errors.New("Marshal: object is nil")
 		}
+		return nil, errors.New("Marshal: object is nil")
 	case reflect.Struct:
 		return marshal(a)
 	}
