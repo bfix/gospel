@@ -2,82 +2,128 @@ package wallet
 
 import (
 	"crypto/sha256"
+	"crypto/sha512"
 	"fmt"
 	"strings"
 
 	"github.com/bfix/gospel/math"
+	"golang.org/x/crypto/pbkdf2"
+	"golang.org/x/text/unicode/norm"
 )
 
 // Error codes
 var (
-	ErrSeedData = fmt.Errorf("Invalid seed data")
+	ErrInvalidEntropy = fmt.Errorf("Invalid entropy data")
 )
 
-// ToSeedWords converts a binary seed into a sequence of words
-func ToSeedWords(data []byte) (s string, err error) {
-	k := len(data)
-	if k < 16 || k > 32 || k%4 != 0 {
-		return "", ErrSeedData
+// WordsToSeed computes a seed value for a given word list
+func WordsToSeed(words, password string) ([]byte, string) {
+	// check word list
+	if check := checkWords(words); len(check) > 0 {
+		return nil, check
 	}
-	i := math.NewIntFromBytes(data)
+	// assemble input for key derivation function
+	pw := toNFKD(words)
+	salt := toNFKD("mnemonic" + password)
+	// compute and return seed value
+	return pbkdf2.Key(pw, salt, 2048, 64, sha512.New), ""
+}
+
+// ToNFKD normalizes a string into UTF-8 NFKD
+func toNFKD(s string) []byte {
+	return norm.NFKD.Bytes([]byte(s))
+}
+
+// EntropyToWords converts an entropy into a sequence of words
+func EntropyToWords(ent []byte) (s string, err error) {
+	// check for valid entropy (128-256 bits in 32 bit steps)
+	k := len(ent)
+	if k < 16 || k > 32 || k%4 != 0 {
+		return "", ErrInvalidEntropy
+	}
+	// compute checksum bits
 	cs := uint(k / 4)
 	md := sha256.New()
-	md.Write(data)
-	v := math.NewIntFromBytes(md.Sum(nil))
-	i = i.Lsh(cs).Add(v.Rsh(256 - cs))
+	md.Write(ent)
+	v := math.NewIntFromBytes(md.Sum(nil)).Rsh(256 - cs)
+	// assemble bit array for conversion
+	i := math.NewIntFromBytes(ent).Lsh(cs).Add(v)
+	// allocate resulting word list
 	n := (8*k + int(cs)) / 11
-
-	w := make([]string, 0)
+	w := make([]string, n)
+	// convert 11 bit chunks to words
 	m := math.NewInt(2048)
 	for j := 0; j < n; j++ {
 		p := int(i.Mod(m).Int64())
-		w = append(w, words_en[p])
+		w[n-1-j] = words_en[p]
 		i = i.Rsh(11)
 	}
-
-	s = ""
-	for _, v := range w {
-		if len(s) > 0 {
-			s = " " + s
-		}
-		s = v + s
-	}
-	return
+	// return words as a string
+	return strings.Join(w, " "), nil
 }
 
-// FromSeedWords converts a sequence of words into a binary seed
-func FromSeedWords(s string) ([]byte, string) {
-	i := math.ZERO
+// WordsToEntropy converts a sequence of words into an entropy.
+// Returns the entropy OR the words where the conversion failed.
+// If the number of words are incorrect, "#" is returned.
+func WordsToEntropy(s string) ([]byte, string) {
+	// check word list
+	if check := checkWords(s); len(check) > 0 {
+		return nil, check
+	}
+	// reconstruct bit array from words
 	words := strings.Split(s, " ")
 	wl := len(words)
-	for _, w := range words {
-		j := int64(lookup(w))
-		if j < 0 {
+	i := math.ZERO
+	for j, w := range words {
+		if j = lookup(w); j < 0 {
 			return nil, w
 		}
-		i = i.Lsh(11).Add(math.NewInt(j))
+		i = i.Lsh(11).Add(math.NewInt(int64(j)))
 	}
+	// compute number of 32 bit blocks in entropy
+	// and number of checksum bits
 	n := wl * 11 / 32
 	cs := uint(wl*11 - n*32)
-	j := i.Rsh(cs)
-	k := i.Sub(j.Lsh(cs))
+	// compute entropy
+	ent := i.Rsh(cs)
+	x := ent.Bytes()
 	b := make([]byte, 4*n)
-	x := j.Bytes()
 	copy(b[len(b)-len(x):], x)
+	// perform checksum check
+	k := i.Sub(ent.Lsh(cs))
 	md := sha256.New()
 	md.Write(b)
 	v := math.NewIntFromBytes(md.Sum(nil)).Rsh(256 - cs)
 	if !v.Equals(k) {
 		return nil, ""
 	}
+	// return entropy
 	return b, ""
 }
 
-// lookup returns the index of a wod in the list.
+// CheckWords check if a word list complies with BIP39. It returns
+// an empty string on success, "#" if the number of words is wrong
+// or the list of words not in the word list
+func checkWords(s string) string {
+	words := strings.Split(s, " ")
+	wl := len(words)
+	if wl < 12 || wl > 24 || wl%3 != 0 {
+		return "#"
+	}
+	list := make([]string, 0)
+	for _, w := range words {
+		if lookup(w) < 0 {
+			list = append(list, w)
+		}
+	}
+	return strings.Join(list, " ")
+}
+
+// Lookup returns the index of a word in the list
+// (using binary search).
 func lookup(w string) int {
 	n := len(words_en)
-	s, e := 0, n-1
-	var i int
+	s, e, i := 0, n-1, 0
 	for {
 		i = (s + e) / 2
 		cmp := strings.Compare(w, words_en[i])
