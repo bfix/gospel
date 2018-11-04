@@ -23,7 +23,7 @@ func (list EntryList) Contains(e Entry) bool {
 
 func TestBloomfilter(t *testing.T) {
 
-	n := 2500
+	n := 500
 	fpRate := 0.0001
 
 	// generate positives (entries in the set)

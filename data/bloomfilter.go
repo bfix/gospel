@@ -15,11 +15,11 @@ import (
 // generated for an entry, a BloomFilter can handle a given number of entries
 // with a desired upper-bound for the false-positive rate.
 type BloomFilter struct {
-	numBits    int       // number of bits in filter
-	numIdx     int       // number of indices
-	numIdxBits int       // number of bits per index
-	numHash    int       // number of SHA256 hashes needed
-	bits       []byte    // bit storage
+	NumBits    uint32    `json:"numBits"`       // number of bits in filter
+	NumIdx     uint8     `json:"numIdx"`        // number of indices
+	NumIdxBits uint8     `json:"numIdxBits"`    // number of bits per index
+	NumHash    uint8     `json:"numHash"`       // number of SHA256 hashes needed
+	Bits       []byte    `json:"bits" size:"*"` // bit storage
 	hasher     hash.Hash // SHA256 hasher
 }
 
@@ -28,11 +28,11 @@ type BloomFilter struct {
 func NewBloomFilterDirect(numBits, numIdx int) *BloomFilter {
 	numIdxBits := int(math.Ceil(math.Log2(float64(numBits))))
 	return &BloomFilter{
-		numBits:    numBits,
-		numIdx:     numIdx,
-		numIdxBits: numIdxBits,
-		numHash:    (numIdxBits*numIdx + 255) / 256,
-		bits:       make([]byte, (numBits+7)/8),
+		NumBits:    uint32(numBits),
+		NumIdx:     uint8(numIdx),
+		NumIdxBits: uint8(numIdxBits),
+		NumHash:    uint8((numIdxBits*numIdx + 255) / 256),
+		Bits:       make([]byte, (numBits+7)/8),
 		hasher:     sha256.New(),
 	}
 }
@@ -52,7 +52,7 @@ func NewBloomFilter(numExpected int, falsePositiveRate float64) *BloomFilter {
 func (bf *BloomFilter) Add(entry []byte) {
 	for _, idx := range bf.indexList(entry) {
 		pos, mask := resolve(idx)
-		bf.bits[pos] |= mask
+		bf.Bits[pos] |= mask
 	}
 }
 
@@ -63,7 +63,7 @@ func (bf *BloomFilter) Add(entry []byte) {
 func (bf *BloomFilter) Contains(entry []byte) bool {
 	for _, idx := range bf.indexList(entry) {
 		pos, mask := resolve(idx)
-		if (bf.bits[pos] & mask) == 0 {
+		if (bf.Bits[pos] & mask) == 0 {
 			return false
 		}
 	}
@@ -74,17 +74,18 @@ func (bf *BloomFilter) Contains(entry []byte) bool {
 func (bf *BloomFilter) indexList(entry []byte) []int {
 	totalIdx := make([]byte, 0)
 	bf.hasher.Reset()
-	for i := 0; i < bf.numHash; i++ {
+	var i uint8
+	for i = 0; i < bf.NumHash; i++ {
 		bf.hasher.Write(entry)
 		totalIdx = bf.hasher.Sum(totalIdx)
 	}
 	v := new(big.Int).SetBytes(totalIdx)
-	mask := big.NewInt((1 << uint(bf.numIdxBits)) - 1)
-	list := make([]int, bf.numIdx)
-	for i := 0; i < bf.numIdx; i++ {
+	mask := big.NewInt((1 << uint(bf.NumIdxBits)) - 1)
+	list := make([]int, bf.NumIdx)
+	for i = 0; i < bf.NumIdx; i++ {
 		j := new(big.Int).And(v, mask)
-		list[i] = int(j.Int64()) % bf.numBits
-		v = new(big.Int).Rsh(v, uint(bf.numIdxBits))
+		list[i] = int(j.Int64()) % int(bf.NumBits)
+		v = new(big.Int).Rsh(v, uint(bf.NumIdxBits))
 	}
 	return list
 }

@@ -57,6 +57,7 @@ Packages
     * stacks
     * vectors
     * Marshal/Unmarshal Golang objects
+    * Bloom filter
 
 Install
 -------
