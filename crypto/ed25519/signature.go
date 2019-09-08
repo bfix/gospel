@@ -50,7 +50,7 @@ func NewEdSignatureFromBytes(data []byte) (*EdSignature, error) {
 // Bytes
 func (s *EdSignature) Bytes() []byte {
 	buf := make([]byte, 64)
-	copyBlock(buf[:32], s.R.Bytes())
+	copy(buf[:32], s.R.Bytes())
 	copy(buf[32:], reverse(s.S.Bytes()))
 	return buf
 }

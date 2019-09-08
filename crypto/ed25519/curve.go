@@ -153,13 +153,6 @@ func (p *Point) IsInf() bool {
 
 // Add two Points on the curve
 func (p *Point) Add(q *Point) *Point {
-	if p.IsInf() {
-		return q
-	}
-	if q.IsInf() {
-		return p
-	}
-
 	// r.x = (p.x*q.y + q.x*p.y) / (1 + d*p.x*q.x*p.y*q.y)
 	// r.y = (p.y*q.y + p.x*q.x) / (1 - d*p.x*q.x*p.y*q.y)
 	k1 := p.x.Mul(q.y).Mod(c.P)
