@@ -226,6 +226,9 @@ func (p *jacPoint) isInf() bool {
 
 // convert internal Point to external representation
 func (p *jacPoint) conv() *Point {
+	if p.z.Equals(math.ZERO) {
+		return NewPoint(math.ZERO, math.ZERO)
+	}
 	zi := pInv(p.z)
 	x := pMul(p.x, pSqr(zi))
 	y := pMul(p.y, pCub(zi))
