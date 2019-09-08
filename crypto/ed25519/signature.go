@@ -39,7 +39,7 @@ func NewEdSignatureFromBytes(data []byte) (*EdSignature, error) {
 	if err != nil {
 		return nil, err
 	}
-	S := math.NewIntFromBytes(data[32:])
+	S := math.NewIntFromBytes(reverse(data[32:]))
 	// assemble signature
 	return &EdSignature{
 		R: R,
@@ -51,7 +51,7 @@ func NewEdSignatureFromBytes(data []byte) (*EdSignature, error) {
 func (s *EdSignature) Bytes() []byte {
 	buf := make([]byte, 64)
 	copyBlock(buf[:32], s.R.Bytes())
-	copyBlock(buf[32:], s.S.Bytes())
+	copy(buf[32:], reverse(s.S.Bytes()))
 	return buf
 }
 
@@ -62,7 +62,7 @@ func (prv *PrivateKey) EdSign(msg []byte) (*EdSignature, error) {
 	}
 	// hash the private seed and derive R, S
 	md := sha512.Sum512(prv.Seed)
-	r := h2i(md[32:], msg, nil).Mod(c.P)
+	r := h2i(md[32:], msg, nil)
 	R := c.MultBase(r)
 	S := r.Add(h2i(R.Bytes(), prv.Public().Bytes(), msg).Mul(prv.D)).Mod(c.N)
 
