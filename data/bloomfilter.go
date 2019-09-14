@@ -48,12 +48,39 @@ func NewBloomFilter(numExpected int, falsePositiveRate float64) *BloomFilter {
 	return NewBloomFilterDirect(numBits, numIdx)
 }
 
+// SameKind checks if two BloomFilter have the same parameters.
+func (bf *BloomFilter) SameKind(bf2 *BloomFilter) bool {
+	return bf.NumBits == bf2.NumBits &&
+		bf.NumHash == bf2.NumHash &&
+		bf.NumIdx == bf2.NumIdx &&
+		bf.NumIdxBits == bf2.NumIdxBits
+}
+
 // Add an entry to the BloomFilter.
 func (bf *BloomFilter) Add(entry []byte) {
 	for _, idx := range bf.indexList(entry) {
 		pos, mask := resolve(idx)
 		bf.Bits[pos] |= mask
 	}
+}
+
+// Combine merges two BloomFilters (of same kind) into a new one.
+func (bf *BloomFilter) Combine(bf2 *BloomFilter) *BloomFilter {
+	if !bf.SameKind(bf2) {
+		return nil
+	}
+	res := &BloomFilter{
+		NumBits:    bf.NumBits,
+		NumIdx:     bf.NumIdx,
+		NumIdxBits: bf.NumIdxBits,
+		NumHash:    bf.NumHash,
+		Bits:       make([]byte, len(bf.Bits)),
+		hasher:     sha256.New(),
+	}
+	for i := range res.Bits {
+		res.Bits[i] = bf.Bits[i] | bf2.Bits[i]
+	}
+	return res
 }
 
 // Contains returns true if the BloomFilter contains the given entry, and
