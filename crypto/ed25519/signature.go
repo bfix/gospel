@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"fmt"
-	"hash"
 
 	"github.com/bfix/gospel/math"
 )
@@ -111,8 +110,8 @@ func (s *EcSignature) Bytes() []byte {
 	return buf
 }
 
-// get_bounded constructs an integer of order 'n' from binary data (message hash).
-func get_bounded(data []byte) *math.Int {
+// getBounded returns integer with same bit length as 'n' from binary data.
+func getBounded(data []byte) *math.Int {
 	z := math.NewIntFromBytes(data)
 	shift := len(data)*8 - c.N.BitLen()
 	if shift > 0 {
@@ -144,10 +143,13 @@ func newKGenerator(det bool, x *math.Int, h1 []byte) (gen kGenerator, err error)
 //----------------------------------------------------------------------
 // kGenDet is a RFC6979-compliant generator.
 type kGenDet struct {
-	x    *math.Int
 	V, K []byte
-	hmac hash.Hash
 }
+
+var (
+	b0 = []byte{0x00}
+	b1 = []byte{0x01}
+)
 
 // init prepares a generator
 func (k *kGenDet) init(x *math.Int, h1 []byte) error {
@@ -156,63 +158,66 @@ func (k *kGenDet) init(x *math.Int, h1 []byte) error {
 		return ErrSigHashTooSmall
 	}
 
-	// initialize generator specs
-	k.x = x
-	k.hmac = hmac.New(sha512.New, x.Bytes())
-
 	// initialize hmac'd data
 	// data = int2octets(key) || bits2octets(hash)
-	data := make([]byte, 128)
-	copyBlock(data[0:64], x.Bytes())
-	copyBlock(data[64:128], h1)
+	data := make([]byte, 64)
+	copyBlock(data[:32], x.Bytes())
+	h1i := getBounded(h1).Mod(c.N)
+	copyBlock(data[32:], h1i.Bytes())
 
-	k.V = bytes.Repeat([]byte{0x01}, 64)
-	k.K = bytes.Repeat([]byte{0x00}, 64)
+	// initialize K and V
+	k.V = bytes.Repeat(b1, 64)
+	k.K = bytes.Repeat(b0, 64)
 
 	// start sequence for 'V' and 'K':
 	// (1) K = HMAC_K(V || 0x00 || data)
-	k.hmac.Reset()
-	k.hmac.Write(k.V)
-	k.hmac.Write([]byte{0x00})
-	k.hmac.Write(data)
-	k.K = k.hmac.Sum(nil)
+	h := hmac.New(sha512.New, k.K)
+	h.Write(k.V)
+	h.Write(b0)
+	h.Write(data)
+	k.K = h.Sum(nil)
+
 	// (2) V = HMAC_K(V)
-	k.hmac.Reset()
-	k.hmac.Write(k.V)
-	k.V = k.hmac.Sum(nil)
+	h = hmac.New(sha512.New, k.K)
+	h.Write(k.V)
+	k.V = h.Sum(nil)
+
 	// (3) K = HMAC_K(V || 0x01 || data)
-	k.hmac.Reset()
-	k.hmac.Write(k.V)
-	k.hmac.Write([]byte{0x01})
-	k.hmac.Write(data)
-	k.K = k.hmac.Sum(nil)
+	h.Reset()
+	h.Write(k.V)
+	h.Write(b1)
+	h.Write(data)
+	k.K = h.Sum(nil)
+
 	// (4) V = HMAC_K(V)
-	k.hmac.Reset()
-	k.hmac.Write(k.V)
-	k.V = k.hmac.Sum(nil)
+	h = hmac.New(sha512.New, k.K)
+	h.Write(k.V)
+	k.V = h.Sum(nil)
 
 	return nil
 }
 
 // next returns the next 'k'
 func (k *kGenDet) next() (*math.Int, error) {
-	k.hmac.Reset()
-	k.hmac.Write(k.V)
-	k.V = k.hmac.Sum(nil)
+
+	// (0) V = HMAC_K(V)
+	h := hmac.New(sha512.New, k.K)
+	h.Write(k.V)
+	k.V = h.Sum(nil)
 
 	// extract 'k' from data
-	kRes := get_bounded(k.V)
+	kRes := getBounded(k.V)
 
-	// prepare for possible next round
 	// (1) K = HMAC_K(V || 0x00
-	k.hmac.Reset()
-	k.hmac.Write(k.V)
-	k.hmac.Write([]byte{0x00})
-	k.K = k.hmac.Sum(nil)
+	h.Reset()
+	h.Write(k.V)
+	h.Write(b0)
+	k.K = h.Sum(nil)
+
 	// (2) V = HMAC_K(V)
-	k.hmac.Reset()
-	k.hmac.Write(k.V)
-	k.V = k.hmac.Sum(nil)
+	h = hmac.New(sha512.New, k.K)
+	h.Write(k.V)
+	k.V = h.Sum(nil)
 
 	return kRes, nil
 }
@@ -240,9 +245,9 @@ func (prv *PrivateKey) EcSign(msg []byte) (*EcSignature, error) {
 	hv := sha512.Sum512(msg)
 
 	// compute z
-	z := get_bounded(hv[:])
+	z := getBounded(hv[:])
 
-	// dsa_sign creates a signature. A deterministic signature implements RFC6979.
+	// dsa_sign creates a deterministic signature (see RFC6979).
 	dsa_sign := func(det bool) (r, s *math.Int, err error) {
 		zero := math.NewInt(0)
 		gen, err := newKGenerator(det, prv.D, hv[:])
@@ -255,13 +260,14 @@ func (prv *PrivateKey) EcSign(msg []byte) (*EcSignature, error) {
 			if err != nil {
 				return nil, nil, err
 			}
-
+			if k.Cmp(c.N) >= 0 {
+				continue
+			}
 			// compute r = x-coordinate of point k*G; must be non-zero
 			r := c.MultBase(k).X()
 			if r.Cmp(zero) == 0 {
 				continue
 			}
-
 			// compute non-zero s
 			ki := k.ModInverse(c.N)
 			s := ki.Mul(z.Add(r.Mul(prv.D))).Mod(c.N)
@@ -272,31 +278,23 @@ func (prv *PrivateKey) EcSign(msg []byte) (*EcSignature, error) {
 			return r, s, nil
 		}
 	}
-
 	// assemble signature
 	r, s, err := dsa_sign(true)
 	if err != nil {
 		return nil, err
 	}
-	data := make([]byte, 64)
-	copyBlock(data[:32], r.Bytes())
-	copyBlock(data[32:], s.Bytes())
 	return &EcSignature{
-		R: r,
-		S: s,
+		R: r.Mod(c.N),
+		S: s.Mod(c.N),
 	}, nil
 }
 
 // EcVerify checks a EcDSA signature of a message.
 func (pub *PublicKey) EcVerify(msg []byte, sig *EcSignature) (bool, error) {
-	// check r,s values
-	if sig.R.Cmp(c.N) != -1 || sig.S.Cmp(c.N) != -1 {
-		return false, ErrSigInvalidEcDSA
-	}
 	// Hash message
 	hv := sha512.Sum512(msg)
 	// compute z
-	z := get_bounded(hv[:])
+	z := getBounded(hv[:])
 	// compute u1, u2
 	si := sig.S.ModInverse(c.N)
 	u1 := si.Mul(z).Mod(c.N)
@@ -304,5 +302,5 @@ func (pub *PublicKey) EcVerify(msg []byte, sig *EcSignature) (bool, error) {
 	// compute P = u2 * Q + u1 * G
 	P := pub.Q.Mult(u2).Add(c.MultBase(u1))
 	// verify signature
-	return sig.R.Cmp(P.X()) == 0, nil
+	return sig.R.Cmp(P.X().Mod(c.N)) == 0, nil
 }
