@@ -30,10 +30,10 @@ import (
 // Unmarshal function to figure out the number of slice elements to
 // process. The values can be "*" for greedy (as many elements as
 // possible before running out of data), "<num>" a decimal number specifying
-// the fixed size or "<name>" referring to a previous integer field in the
-// struct object:
+// the fixed size or "<name>" referring to a previous unsigned integer field
+// in the struct object:
 //
-//     ListSize int16
+//     ListSize uint16
 //     List     []*Entry `size:"ListSize"`
 //
 //######################################################################
@@ -282,7 +282,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 						if sizeTag == "*" {
 							count = -1
 						} else if len(sizeTag) > 0 {
-							count = int(x.FieldByName(sizeTag).Int())
+							count = int(x.FieldByName(sizeTag).Uint())
 						} else {
 							return errors.New("Missing size tag on field")
 						}
