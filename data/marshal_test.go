@@ -27,7 +27,8 @@ type MainStruct struct {
 	C uint64 `order:"big"`
 	D string
 	F *SubStruct
-	E []*NestedStruct
+	G uint32
+	E []*NestedStruct `size:"G"`
 }
 
 func TestNested(t *testing.T) {
@@ -36,6 +37,7 @@ func TestNested(t *testing.T) {
 	r.D = "Just a test"
 	r.E = make([]*NestedStruct, 3)
 	r.F = new(SubStruct)
+	r.G = 3
 	r.F.G = 0x23
 	for i := 0; i < 3; i++ {
 		n := new(NestedStruct)
@@ -52,11 +54,6 @@ func TestNested(t *testing.T) {
 	fmt.Printf("    [%s]\n", hex.EncodeToString(data))
 
 	s := new(MainStruct)
-	s.F = new(SubStruct)
-	s.E = make([]*NestedStruct, 3)
-	for i := 0; i < 3; i++ {
-		s.E[i] = new(NestedStruct)
-	}
 	if err = Unmarshal(s, data); err != nil {
 		t.Fatal(err)
 	}

@@ -271,13 +271,15 @@ func Unmarshal(obj interface{}, data []byte) error {
 				// Slices
 				//------------------------------------------------------
 				case reflect.Slice:
-					// get size of slice: if the size is zero (but the array
-					// is allocated), use the "size" tag to determine the
-					// desired length. The tag value can be "*" for greedy
-					// (read until end of buffer) or the name of a (previous)
+					// get size of slice: if the size is zero (empty or nil
+					// array), use the "size" tag to determine the desired
+					// length. The tag value can be "*" for greedy (read
+					// until end of buffer) or the name of a (previous)
 					// integer field containing the length.
 					count := f.Len()
+					add := false
 					if count == 0 {
+						add = true
 						sizeTag := ft.Tag.Get("size")
 						if sizeTag == "*" {
 							count = -1
@@ -305,7 +307,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 						// address the slice element. If the element does not
 						// exist, create a new one and append it to the slice.
 						var e reflect.Value
-						if count < 0 {
+						if add {
 							// create and add new element
 							ep := reflect.New(et)
 							e = ep.Elem()
