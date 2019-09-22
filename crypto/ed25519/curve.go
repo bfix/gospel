@@ -153,47 +153,22 @@ func (p *Point) IsInf() bool {
 
 // Add two Points on the curve
 func (p *Point) Add(q *Point) *Point {
-	// r.x = (p.x*q.y + q.x*p.y) / (1 + d*p.x*q.x*p.y*q.y)
-	// r.y = (p.y*q.y + p.x*q.x) / (1 - d*p.x*q.x*p.y*q.y)
-	k1 := p.x.Mul(q.y).Mod(c.P)
-	k2 := p.y.Mul(q.x).Mod(c.P)
-	dxy := c.D.Mul(k1).Mul(k2).Mod(c.P)
-	nom := k1.Add(k2).Mod(c.P)
-	den := math.ONE.Add(dxy).Mod(c.P)
-	rx := nom.Mul(den.ModInverse(c.P)).Mod(c.P)
-	k3 := p.x.Mul(q.x).Mod(c.P)
-	k4 := p.y.Mul(q.y).Mod(c.P)
-	nom = k3.Add(k4).Mod(c.P)
-	den = math.ONE.Sub(dxy).Mod(c.P)
-	ry := nom.Mul(den.ModInverse(c.P)).Mod(c.P)
-	return NewPoint(rx, ry)
+	_p := newPrjPoint(p)
+	_q := newPrjPoint(q)
+	return _p.add(_q).conv()
 }
 
 // Double a Point on the curve
 func (p *Point) Double() *Point {
-	return p.Add(p)
+	_p := newPrjPoint(p)
+	return _p.double().conv()
 }
 
 // Mult multiplies a Point on the curve with a scalar value k using
 // a Montgomery multiplication approach
 func (p *Point) Mult(k *math.Int) *Point {
-	if p.IsInf() {
-		return p
-	}
-	r := NewPoint(c.Ox, c.Oy)
-	if k.Cmp(math.ZERO) == 0 {
-		return r
-	}
-	for _, val := range k.Bytes() {
-		for pos := 0; pos < 8; pos++ {
-			r = r.Double()
-			if val&0x80 == 0x80 {
-				r = p.Add(r)
-			}
-			val <<= 1
-		}
-	}
-	return r
+	_p := newPrjPoint(p)
+	return _p.mult(k).conv()
 }
 
 // Bytes returns a byte representation of Point (compressed or uncompressed).
@@ -206,4 +181,107 @@ func (p *Point) Bytes() []byte {
 		buf[0] |= 0x80
 	}
 	return reverse(buf)
+}
+
+//----------------------------------------------------------------------
+// Projective coordinates
+//----------------------------------------------------------------------
+
+// prjPoint (x,y,z) on the curve
+type prjPoint struct {
+	x, y, z *math.Int // coordinate values
+}
+
+// Convert affine point to projective coordinates
+func newPrjPoint(p *Point) *prjPoint {
+	return &prjPoint{
+		x: p.x,
+		y: p.y,
+		z: math.ONE,
+	}
+}
+
+// String returns a human-readable representation of a point.
+func (p *prjPoint) String() string {
+	return fmt.Sprintf("(%v,%v,%v)", p.x, p.y, p.z)
+}
+
+// Convert projective coordinates to affine point.
+func (p *prjPoint) conv() *Point {
+	zi := p.z.ModInverse(c.P)
+	return NewPoint(p.x.Mul(zi).Mod(c.P), p.y.Mul(zi).Mod(c.P))
+}
+
+// Add two projective points
+// (see https://hyperelliptic.org/EFD/g1p/data/twisted/projective/addition/add-2008-bbjlp)
+//     A = Z1*Z2
+//     B = A2
+//     C = X1*X2
+//     D = Y1*Y2
+//     E = d*C*D
+//     F = B-E
+//     G = B+E
+//     X3 = A*F*((X1+Y1)*(X2+Y2)-C-D)
+//     Y3 = A*G*(D-a*C)
+//     Z3 = F*G
+
+func (p *prjPoint) add(q *prjPoint) *prjPoint {
+	_a := p.z.Mul(q.z)
+	_b := _a.Mul(_a)
+	_c := p.x.Mul(q.x)
+	_d := p.y.Mul(q.y)
+	_e := c.D.Mul(_c.Mul(_d))
+	_f := _b.Sub(_e)
+	_g := _b.Add(_e)
+	_h := p.x.Add(p.y).Mul(q.x.Add(q.y))
+	_i := _h.Sub(_c.Add(_d))
+	_j := _d.Add(_c)
+	return &prjPoint{
+		x: _a.Mul(_f.Mul(_i)).Mod(c.P),
+		y: _a.Mul(_g.Mul(_j)).Mod(c.P),
+		z: _f.Mul(_g).Mod(c.P),
+	}
+}
+
+// Doubling a projective point.
+// (see https://hyperelliptic.org/EFD/g1p/data/twisted/projective/doubling/dbl-2008-bbjlp)
+//     B = (X1+Y1)2
+//     C = X12
+//     D = Y12
+//     E = a*C
+//     F = E+D
+//     H = Z12
+//     J = F-2*H
+//     X3 = (B-C-D)*J
+//     Y3 = F*(E-D)
+//     Z3 = F*J
+func (p *prjPoint) double() *prjPoint {
+	_b := p.x.Add(p.y)
+	_b = _b.Mul(_b)
+	_c := p.x.Mul(p.x)
+	_d := p.y.Mul(p.y)
+	_e := _c.Neg()
+	_f := _e.Add(_d)
+	_h := p.z.Mul(p.z)
+	_j := _f.Sub(math.TWO.Mul(_h))
+	return &prjPoint{
+		x: _j.Mul(_b.Sub(_c.Add(_d))).Mod(c.P),
+		y: _f.Mul(_e.Sub(_d)).Mod(c.P),
+		z: _j.Mul(_f).Mod(c.P),
+	}
+}
+
+// Scalar multiplication of a curve point
+func (p *prjPoint) mult(k *math.Int) *prjPoint {
+	r := &prjPoint{c.Ox, c.Oy, math.ONE}
+	for _, val := range k.Bytes() {
+		for pos := 0; pos < 8; pos++ {
+			r = r.double()
+			if val&0x80 == 0x80 {
+				r = p.add(r)
+			}
+			val <<= 1
+		}
+	}
+	return r
 }
