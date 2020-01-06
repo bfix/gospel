@@ -1,5 +1,23 @@
 package logger
 
+//----------------------------------------------------------------------
+// This file is part of Gospel.
+// Copyright (C) 2011-2019 Bernd Fix
+//
+// Gospel is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Gospel is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Gospel.  If not, see <http://www.gnu.org/licenses/>.
+//----------------------------------------------------------------------
+
 import (
 	"fmt"
 	"os"
@@ -22,6 +40,8 @@ const (
 
 	// ROTATE log file command
 	ROTATE = iota // rotate log file
+	// FLUSH log (make sure all messages are processed)
+	FLUSH
 )
 
 type logger struct {
@@ -68,6 +88,7 @@ func init() {
 			case cmd := <-logInst.cmdChan:
 				switch cmd {
 				case ROTATE:
+					// Rotate log files
 					if logInst.logfile != os.Stdout {
 						fname := logInst.logfile.Name()
 						logInst.logfile.Close()
@@ -81,6 +102,10 @@ func init() {
 					} else {
 						Println(WARN, "[log] log rotation for 'stdout' not applicable.")
 					}
+				case FLUSH:
+					// Flush log messages: This is a functional NOP, as log
+					// messages have been processed before this command is
+					// handled.
 				}
 			}
 		}
@@ -119,6 +144,11 @@ func LogToFile(filename string) bool {
 // Rotate log file.
 func Rotate() {
 	logInst.cmdChan <- ROTATE
+}
+
+// Flush log: make sure all messages are processed.
+func Flush() {
+	logInst.cmdChan <- FLUSH
 }
 
 // GetLogLevel returns a numeric log level.

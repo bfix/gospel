@@ -6,7 +6,7 @@
 Gospel: GO SPEcial Library
 ==========================
 
-(c) 2010-2018 Bernd Fix <brf@hoi-polloi.org>   >Y<
+(c) 2010-2020 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -62,7 +62,7 @@ Packages
 Install
 -------
 
-This version is designed for the Go1.10 release.
+This version is designed for the Go1.10+ release.
 
 Make sure that your Go environment - especially ${GOPATH} - is set up and
 enter the following command:
