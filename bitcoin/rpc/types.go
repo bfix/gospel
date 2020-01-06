@@ -1,4 +1,5 @@
 package rpc
+
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2019 Bernd Fix
@@ -16,7 +17,7 @@ package rpc
 // You should have received a copy of the GNU General Public License
 // along with Gospel.  If not, see <http://www.gnu.org/licenses/>.
 //----------------------------------------------------------------------
-⎄
+
 //=====================================================================
 // Data structures as used as input or output of Bitcoin JSON-RPC
 // calls. The descriptions of fields is taken from the Bitcoin
