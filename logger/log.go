@@ -103,9 +103,14 @@ func init() {
 						Println(WARN, "[log] log rotation for 'stdout' not applicable.")
 					}
 				case FLUSH:
-					// Flush log messages: This is a functional NOP, as log
-					// messages have been processed before this command is
-					// handled.
+					// Flush log messages: Llog messages have been processed
+					// before this command is handled but repetition might
+					// be pending...
+					ts := time.Now().Format(time.Stamp)
+					if logInst.repeats > 0 {
+						s := fmt.Sprintf("...(last message repeated %d times)\n", logInst.repeats)
+						logInst.logfile.WriteString(ts + s)
+					}
 				}
 			}
 		}
