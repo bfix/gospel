@@ -77,8 +77,13 @@ func NewSignaller() *Signaller {
 					s.outChs[out] = true
 					s.resCh <- out
 				case LISTENER_DROP:
-					delete(s.outChs, cmd.ch)
-					s.resCh <- true
+					var err error
+					if _, ok := s.outChs[cmd.ch]; !ok {
+						err = ErrUnknownListener
+					} else {
+						delete(s.outChs, cmd.ch)
+					}
+					s.resCh <- err
 				}
 			case x := <-s.inCh:
 				// dispatch received signals
@@ -117,19 +122,27 @@ func (s *Signaller) Listen() chan Signal {
 	if !s.active {
 		return nil
 	}
+	// trigger add operation.
 	s.cmdCh <- &ListenerOp{op: LISTENER_ADD}
 	return (<-s.resCh).(chan Signal)
 }
 
 // DropListener removes a listener from the list.
 func (s *Signaller) Drop(out chan Signal) error {
-	if _, ok := s.outChs[out]; !ok {
-		return ErrUnknownListener
+	// check for active signaller
+	if !s.active {
+		return ErrSignallerRetired
 	}
+	// trigger delete operation
 	s.cmdCh <- &ListenerOp{
 		ch: out,
 		op: LISTENER_DROP,
 	}
-	<-s.resCh
-	return nil
+	// handle error return for command.
+	var err error
+	res := <-s.resCh
+	if res != nil {
+		err = res.(error)
+	}
+	return err
 }
