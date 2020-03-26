@@ -92,7 +92,6 @@ func NewSignaller() *Signaller {
 						out <- x
 					}
 				}
-			default:
 			}
 		}
 	}()
