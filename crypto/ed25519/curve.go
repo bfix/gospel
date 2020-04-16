@@ -292,11 +292,14 @@ func (p *prjPoint) double() *prjPoint {
 // Scalar multiplication of a curve point
 func (p *prjPoint) mult(k *math.Int) *prjPoint {
 	r := &prjPoint{c.Ox, c.Oy, math.ONE}
+	x := &prjPoint{c.Ox, c.Oy, math.ONE}
 	for _, val := range k.Bytes() {
 		for pos := 0; pos < 8; pos++ {
 			r = r.double()
 			if val&0x80 == 0x80 {
 				r = p.add(r)
+			} else {
+				x = p.add(x)
 			}
 			val <<= 1
 		}

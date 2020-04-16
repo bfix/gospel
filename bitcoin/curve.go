@@ -309,11 +309,14 @@ func (p *jacPoint) mult(k *math.Int) *jacPoint {
 		return jacInf
 	}
 	r := jacInf
+	x := jacInf
 	for _, val := range k.Bytes() {
 		for pos := 0; pos < 8; pos++ {
 			r = r.double()
 			if val&0x80 == 0x80 {
 				r = p.add(r)
+			} else {
+				x = p.add(x)
 			}
 			val <<= 1
 		}
