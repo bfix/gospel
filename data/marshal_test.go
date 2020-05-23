@@ -30,7 +30,7 @@ type NestedStruct struct {
 }
 
 func (n *NestedStruct) String() string {
-	return fmt.Sprintf("%v", *n)
+	return fmt.Sprintf("NS(%v)", *n)
 }
 
 type SubStruct struct {
@@ -38,7 +38,7 @@ type SubStruct struct {
 }
 
 func (s *SubStruct) String() string {
-	return fmt.Sprintf("%v", *s)
+	return fmt.Sprintf("SS(%v)", *s)
 }
 
 type MainStruct struct {
@@ -47,6 +47,7 @@ type MainStruct struct {
 	F *SubStruct
 	G uint32
 	E []*NestedStruct `size:"G"`
+	H []uint32        `size:"5" order:"big"`
 }
 
 func TestNested(t *testing.T) {
@@ -62,6 +63,10 @@ func TestNested(t *testing.T) {
 		n.A = int64(255 - i)
 		n.B = int32(815 * (i + 1))
 		r.E[i] = n
+	}
+	r.H = make([]uint32, 5)
+	for i := range r.H {
+		r.H[i] = uint32(i * 23)
 	}
 
 	data, err := Marshal(r)

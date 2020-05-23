@@ -82,7 +82,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 			//----------------------------------------------------------
 			// Integers
 			//----------------------------------------------------------
-			case uint8, uint16, int16, uint32, int32, uint64, int64:
+			case uint8, int8, uint16, int16, uint32, int32, uint64, int64:
 				if ft.Tag.Get("order") == "big" {
 					binary.Write(data, binary.BigEndian, v)
 				} else {
@@ -93,6 +93,10 @@ func Marshal(obj interface{}) ([]byte, error) {
 			//----------------------------------------------------------
 			case []uint8:
 				data.Write(v)
+
+			//----------------------------------------------------------
+			// Handle other complex types...
+			//----------------------------------------------------------
 			default:
 				switch f.Kind() {
 				//------------------------------------------------------
@@ -141,6 +145,21 @@ func Marshal(obj interface{}) ([]byte, error) {
 								return nil, err
 							}
 							data.Write(sub)
+						//----------------------------------------------
+						// Intrinsics (strings, integers)
+						//----------------------------------------------
+						default:
+							switch v := e.Interface().(type) {
+							case string:
+								data.Write([]byte(v))
+								data.Write([]byte{0})
+							case uint8, int8, uint16, int16, uint32, int32, uint64, int64:
+								if ft.Tag.Get("order") == "big" {
+									binary.Write(data, binary.BigEndian, v)
+								} else {
+									binary.Write(data, binary.LittleEndian, v)
+								}
+							}
 						}
 					}
 				default:
@@ -206,6 +225,10 @@ func Unmarshal(obj interface{}, data []byte) error {
 				var a uint8
 				binary.Read(buf, binary.LittleEndian, &a)
 				f.SetUint(uint64(a))
+			case int8:
+				var a int8
+				binary.Read(buf, binary.LittleEndian, &a)
+				f.SetInt(int64(a))
 			case uint16:
 				var a uint16
 				readInt(&a)
@@ -266,6 +289,10 @@ func Unmarshal(obj interface{}, data []byte) error {
 					return fmt.Errorf("Unmarshal: size mismatch - have %d, got %d", size, n)
 				}
 				f.SetBytes(a)
+
+			//----------------------------------------------------------
+			// Read more complex types.
+			//----------------------------------------------------------
 			default:
 				switch f.Kind() {
 				//------------------------------------------------------
@@ -273,10 +300,13 @@ func Unmarshal(obj interface{}, data []byte) error {
 				//------------------------------------------------------
 				case reflect.Ptr:
 					e := f.Elem()
-					if e.IsValid() {
-						if err := unmarshal(e); err != nil {
-							return err
-						}
+					if !e.IsValid() {
+						ep := reflect.New(f.Type().Elem())
+						e = ep.Elem()
+						f.Set(ep)
+					}
+					if err := unmarshal(e); err != nil {
+						return err
 					}
 				//------------------------------------------------------
 				// Structs
@@ -292,24 +322,31 @@ func Unmarshal(obj interface{}, data []byte) error {
 					// get size of slice: if the size is zero (empty or nil
 					// array), use the "size" tag to determine the desired
 					// length. The tag value can be "*" for greedy (read
-					// until end of buffer) or the name of a (previous)
-					// integer field containing the length.
+					// until end of buffer), the name of a (previous) integer
+					// field containing the length or an integer value.
 					count := f.Len()
 					add := false
 					if count == 0 {
 						add = true
+						// process "size" tag for slice
 						sizeTag := ft.Tag.Get("size")
+						stl := len(sizeTag)
 						if sizeTag == "*" {
 							count = -1
-						} else if len(sizeTag) > 0 {
-							count = int(x.FieldByName(sizeTag).Uint())
+						} else if stl > 0 {
+							n, err := strconv.ParseInt(sizeTag, 10, 16)
+							if err == nil {
+								count = int(n)
+							}
+							if count == 0 {
+								count = int(x.FieldByName(sizeTag).Uint())
+							}
 						} else {
 							return errors.New("Missing size tag on field")
 						}
 					}
-					// get the type of the slice elements. If the type is
-					// a pointer, get the type of the referenced object and
-					// remember to use a pointer.
+					// If the element type is a pointer, get the type of the
+					// referenced object and remember to use a pointer.
 					et := f.Type().Elem()
 					isPtr := false
 					if et.Kind() == reflect.Ptr {
@@ -334,10 +371,10 @@ func Unmarshal(obj interface{}, data []byte) error {
 							} else {
 								f.Set(reflect.Append(f, e))
 							}
-						} else {
-							// use existing element
-							e = f.Index(i)
 						}
+						// use existing element
+						e = f.Index(i)
+
 						switch e.Kind() {
 						//----------------------------------------------
 						// Pointer elements
@@ -353,6 +390,51 @@ func Unmarshal(obj interface{}, data []byte) error {
 							if err := unmarshal(e); err != nil {
 								return err
 							}
+						//----------------------------------------------------------
+						// Strings
+						//----------------------------------------------------------
+						case reflect.String:
+							s := ""
+							b := make([]byte, 1)
+							for {
+								buf.Read(b)
+								if b[0] == 0 {
+									break
+								}
+								s += string(b)
+							}
+							e.SetString(s)
+						//----------------------------------------------------------
+						// Integers
+						//----------------------------------------------------------
+						case reflect.Int8:
+							var a int8
+							binary.Read(buf, binary.LittleEndian, &a)
+							e.SetInt(int64(a))
+						case reflect.Uint16:
+							var a uint16
+							readInt(&a)
+							e.SetUint(uint64(a))
+						case reflect.Int16:
+							var a int16
+							readInt(&a)
+							e.SetInt(int64(a))
+						case reflect.Uint32:
+							var a uint32
+							readInt(&a)
+							e.SetUint(uint64(a))
+						case reflect.Int32:
+							var a int32
+							readInt(&a)
+							e.SetInt(int64(a))
+						case reflect.Uint64:
+							var a uint64
+							readInt(&a)
+							e.SetUint(a)
+						case reflect.Int64:
+							var a int64
+							readInt(&a)
+							e.SetInt(a)
 						}
 					}
 				default:
