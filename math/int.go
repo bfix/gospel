@@ -191,7 +191,11 @@ func (i *Int) Sign() int {
 
 // ModInverse returns the multiplicative inverse of i in the ring ℤ/jℤ.
 func (i *Int) ModInverse(j *Int) *Int {
-	return &Int{v: new(big.Int).ModInverse(i.v, j.v)}
+	v := new(big.Int).ModInverse(i.v, j.v)
+	if v == nil {
+		return nil
+	}
+	return &Int{v: v}
 }
 
 // Cmp returns the comparison between two Ints.
