@@ -315,6 +315,9 @@ func (pub *PublicKey) EcVerify(msg []byte, sig *EcSignature) (bool, error) {
 	z := getBounded(hv[:])
 	// compute u1, u2
 	si := sig.S.ModInverse(c.N)
+	if si == nil {
+		return false, fmt.Errorf("Invalid signature")
+	}
 	u1 := si.Mul(z).Mod(c.N)
 	u2 := si.Mul(sig.R).Mod(c.N)
 	// compute P = u2 * Q + u1 * G
