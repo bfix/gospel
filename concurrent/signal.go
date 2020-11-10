@@ -128,7 +128,7 @@ func (s *Signaller) Listen() chan Signal {
 	return (<-s.resCh).(chan Signal)
 }
 
-// DropListener removes a listener from the list.
+// Drop removes a listener from the list.
 func (s *Signaller) Drop(out chan Signal) error {
 	// check for active signaller
 	if !s.active {

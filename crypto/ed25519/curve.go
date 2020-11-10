@@ -85,7 +85,7 @@ func (c *Curve) MultBase(k *math.Int) *Point {
 	return c.BasePoint().Mult(k)
 }
 
-// Solve the curve equation for given y-coordinate (returns positive x)
+// SolveX returns the positive solution of the curve equation for given y-coordinate
 func (c *Curve) SolveX(y *math.Int) *math.Int {
 	// compute 'x = +√((y^2 - 1) / (d y^2 + 1))
 	y2 := y.ModPow(math.TWO, c.P)

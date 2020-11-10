@@ -29,6 +29,7 @@ import (
 	"github.com/bfix/gospel/math"
 )
 
+// Error codes for signing / verifying
 var (
 	ErrSigInvalidPrvKey = fmt.Errorf("Private key not suitable for EdDSA")
 	ErrSigNotEdDSA      = fmt.Errorf("Not a EdDSA signature")
@@ -41,13 +42,14 @@ var (
 // EdDSA
 //----------------------------------------------------------------------
 
-// EdSignature
+// EdSignature is a EdDSA signature
 type EdSignature struct {
 	R *Point
 	S *math.Int
 }
 
-// NewEdSignatureFromBytes
+// NewEdSignatureFromBytes builds a EdDSA signature from its binary
+// representation.
 func NewEdSignatureFromBytes(data []byte) (*EdSignature, error) {
 	// check signature size
 	if len(data) != 64 {
@@ -66,7 +68,7 @@ func NewEdSignatureFromBytes(data []byte) (*EdSignature, error) {
 	}, nil
 }
 
-// Bytes
+// Bytes returns the binary representation of an EdDSA signature
 func (s *EdSignature) Bytes() []byte {
 	buf := make([]byte, 64)
 	copy(buf[:32], s.R.Bytes())
@@ -88,7 +90,7 @@ func (prv *PrivateKey) EdSign(msg []byte) (*EdSignature, error) {
 	return &EdSignature{R, S}, nil
 }
 
-// Verify checks an EdDSA signature of a message.
+// EdVerify checks an EdDSA signature of a message.
 func (pub *PublicKey) EdVerify(msg []byte, sig *EdSignature) (bool, error) {
 	h := h2i(sig.R.Bytes(), pub.Bytes(), msg).Mod(c.N)
 	tl := c.MultBase(sig.S)
@@ -100,13 +102,14 @@ func (pub *PublicKey) EdVerify(msg []byte, sig *EdSignature) (bool, error) {
 // EcDSA (classic or deterministic; see RFC 6979)
 //----------------------------------------------------------------------
 
-// EcSignature
+// EcSignature is a ECDSA signature
 type EcSignature struct {
 	R *math.Int
 	S *math.Int
 }
 
-// NewEcSignatureFromBytes
+// NewEcSignatureFromBytes creates a ECDSA signature from its binary
+// representation.
 func NewEcSignatureFromBytes(data []byte) (*EcSignature, error) {
 	// check signature size
 	if len(data) != 64 {
@@ -122,7 +125,7 @@ func NewEcSignatureFromBytes(data []byte) (*EcSignature, error) {
 	}, nil
 }
 
-// Bytes
+// Bytes returns the binary representation of a ECDSA signature.
 func (s *EcSignature) Bytes() []byte {
 	buf := make([]byte, 64)
 	copyBlock(buf[:32], s.R.Bytes())
@@ -259,6 +262,7 @@ func (*kGenStd) next() (*math.Int, error) {
 }
 
 //----------------------------------------------------------------------
+
 // EcSign creates an EcDSA signature for a message.
 func (prv *PrivateKey) EcSign(msg []byte) (*EcSignature, error) {
 	// Hash message
@@ -267,8 +271,8 @@ func (prv *PrivateKey) EcSign(msg []byte) (*EcSignature, error) {
 	// compute z
 	z := getBounded(hv[:])
 
-	// dsa_sign creates a deterministic signature (see RFC6979).
-	dsa_sign := func(det bool) (r, s *math.Int, err error) {
+	// dsaSign creates a deterministic signature (see RFC6979).
+	dsaSign := func(det bool) (r, s *math.Int, err error) {
 		zero := math.NewInt(0)
 		gen, err := newKGenerator(det, prv.D, hv[:])
 		if err != nil {
@@ -299,7 +303,7 @@ func (prv *PrivateKey) EcSign(msg []byte) (*EcSignature, error) {
 		}
 	}
 	// assemble signature
-	r, s, err := dsa_sign(true)
+	r, s, err := dsaSign(true)
 	if err != nil {
 		return nil, err
 	}
