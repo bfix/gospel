@@ -32,6 +32,7 @@ import (
 	chacha "golang.org/x/crypto/chacha20poly1305"
 )
 
+// Error messages
 var (
 	ErrPacketSenderMismatch = fmt.Errorf("Sender not matching message header")
 	ErrPacketIntegrity      = fmt.Errorf("Packet integrity violated")

@@ -44,35 +44,35 @@ func TestPacket(t *testing.T) {
 	addrR := NewAddressFromKey(pubR)
 
 	// data to be transfered
-	msg_out := &MsgHeader{
+	msgOut := &MsgHeader{
 		Size:     HDR_SIZE,
 		TxId:     23,
 		Type:     PING,
 		Receiver: addrR,
 		Sender:   addrS,
 	}
-	buf_out, err := data.Marshal(msg_out)
+	bufOut, err := data.Marshal(msg_out)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("send message size is %d bytes\n", len(buf_out))
-	t.Logf("=> %s\n", hex.EncodeToString(buf_out))
+	t.Logf("send message size is %d bytes\n", len(bufOut))
+	t.Logf("=> %s\n", hex.EncodeToString(bufOut))
 
 	//------------------------------------------------------------------
 	// (2) Create packet with encrypted message
 	//------------------------------------------------------------------
 
-	pkt_out, err := NewPacketFromData(buf_out, prvS, pubR)
+	pktOut, err := NewPacketFromData(bufOut, prvS, pubR)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("packet size is %d bytes\n", 34+len(pkt_out.Body))
+	t.Logf("packet size is %d bytes\n", 34+len(pktOut.Body))
 
 	//------------------------------------------------------------------
 	// (3) Wire transfer
 	//------------------------------------------------------------------
 
-	wire, err := data.Marshal(pkt_out)
+	wire, err := data.Marshal(pktOut)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,8 +83,8 @@ func TestPacket(t *testing.T) {
 	// (4) Reconstruct packet
 	//------------------------------------------------------------------
 
-	pkt_in := new(Packet)
-	if err := data.Unmarshal(pkt_in, wire); err != nil {
+	pktIn := new(Packet)
+	if err := data.Unmarshal(pktIn, wire); err != nil {
 		t.Fatal(err)
 	}
 
@@ -92,21 +92,21 @@ func TestPacket(t *testing.T) {
 	// (5) Decrypt message from packet
 	//------------------------------------------------------------------
 
-	msg_in, err := pkt_in.Unwrap(prvR)
+	msgIn, err := pktIn.Unwrap(prvR)
 	if err != nil {
 		t.Fatal(err)
 	}
-	buf_in, err := data.Marshal(msg_in)
+	bufIn, err := data.Marshal(msgIn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("received message size is %d bytes\n", len(buf_in))
+	t.Logf("received message size is %d bytes\n", len(bufIn))
 
 	//------------------------------------------------------------------
 	// (6) Verify message
 	//------------------------------------------------------------------
 
-	if !bytes.Equal(buf_out, buf_in) {
+	if !bytes.Equal(bufOut, bufIn) {
 		t.Fatal("Message mismatch")
 	}
 }

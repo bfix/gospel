@@ -226,7 +226,7 @@ func (n *LocalNode) Run(ctx context.Context) {
 	}
 }
 
-// TaskCallback is used to notify listener of events during task processing
+// TaskHandler is used to notify listener of messages during task processing
 type TaskHandler struct {
 
 	// Message handler for responses in task
@@ -253,9 +253,9 @@ func (n *LocalNode) Task(ctx context.Context, m Message, f *TaskHandler) (err er
 		return rc
 	})
 	// send message
-	ctx_send, cancel := context.WithDeadline(ctx, time.Now().Add(f.timeout))
+	ctxSend, cancel := context.WithDeadline(ctx, time.Now().Add(f.timeout))
 	defer cancel()
-	if err = n.conn.Send(ctx_send, m); err != nil {
+	if err = n.conn.Send(ctxSend, m); err != nil {
 		return
 	}
 	// timeout for response(s)

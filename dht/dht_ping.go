@@ -93,7 +93,7 @@ func (n *LocalNode) PingService(ctx context.Context, m Message) bool {
 // PING task
 //----------------------------------------------------------------------
 
-// Ping a node
+// PingTask is used for a PING/PONG exchange with a receiver
 func (n *LocalNode) PingTask(ctx context.Context, rcv *Address, timeout time.Duration) error {
 	// assemble request
 	req := NewPingMsg()

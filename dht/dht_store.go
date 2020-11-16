@@ -56,41 +56,44 @@ type StoreMsg struct {
 	Val *Value   // DHT data blob
 }
 
-//
+// NewStoreMsg creates an empty STORE message
+func NewStoreMsg() *StoreMsg {
+	return &StoreMsg{
+		MsgHeader: MsgHeader{
+			Size:     uint16(HDR_SIZE + ADDR_SIZE), // size of message with empty value
+			TxId:     0,
+			Type:     STORE,
+			Sender:   nil,
+			Receiver: nil,
+		},
+		Key: nil,
+		Val: nil,
+	}
+}
+
+// Set additional data (address/key and value)
 func (m *StoreMsg) Set(addr *Address, value *Value) {
 	m.Key = addr
 	m.Val = value
 	m.Size = HDR_SIZE + 34 + value.Size
 }
 
-func NewStoreMsg() *StoreMsg {
-	return &StoreMsg{
-		MsgHeader: MsgHeader{
-			Size:     HDR_SIZE + 32, // size of message with empty value
-			TxId:     0,
-			Type:     PING,
-			Sender:   nil,
-			Receiver: nil,
-		},
-		Key: NewAddress(nil),
-		Val: nil,
-	}
-}
-
 //----------------------------------------------------------------------
 // STORE_RESP message (response)
 //----------------------------------------------------------------------
 
+// StoreRespMsg for STORE responses
 type StoreRespMsg struct {
 	MsgHeader
 }
 
-func NewStoreRespMsg() *PongMsg {
-	return &PongMsg{
+// NewStoreRespMsg creates an empty STORE response
+func NewStoreRespMsg() *StoreRespMsg {
+	return &StoreRespMsg{
 		MsgHeader: MsgHeader{
 			Size:     HDR_SIZE,
 			TxId:     0,
-			Type:     PONG,
+			Type:     STORE_RESP,
 			Sender:   nil,
 			Receiver: nil,
 		},
@@ -123,7 +126,7 @@ func (n *LocalNode) StoreService(ctx context.Context, m Message) bool {
 // STORE task
 //----------------------------------------------------------------------
 
-// Store data in the DHT
+// StoreTask for putting data in the DHT
 func (n *LocalNode) StoreTask(ctx context.Context, rcv, key *Address, val *Value, timeout time.Duration) error {
 	// assemble request
 	req := NewPingMsg()

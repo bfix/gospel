@@ -117,16 +117,15 @@ func (t *LocalTransport) Register(ctx context.Context, n Node, endp string) erro
 	if n.IsRemote() {
 		// no remote peers allowed in local transport
 		return ErrTransRemote
-	} else {
-		// check for already registered address
-		addr := n.Address().String()
-		if _, ok := t.nodes[addr]; ok {
-			return ErrTransAddressDup
-		}
-		t.nodes[addr] = n
-
-		// create a connector for node
-		n.Connect(&LocalConnector{t})
 	}
+	// check for already registered address
+	addr := n.Address().String()
+	if _, ok := t.nodes[addr]; ok {
+		return ErrTransAddressDup
+	}
+	t.nodes[addr] = n
+
+	// create a connector for node
+	n.Connect(&LocalConnector{t})
 	return nil
 }

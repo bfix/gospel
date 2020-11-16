@@ -83,18 +83,9 @@ func (a *Address) Equals(o *Address) bool {
 	return bytes.Equal(a.Data, o.Data)
 }
 
-// AddressFromKey generates a DHT address from a public node key
+// PublicKey returns the public node key (from its address)
 func (a *Address) PublicKey() *ed25519.PublicKey {
 	return ed25519.NewPublicKeyFromBytes(a.Data)
-}
-
-// Clone an address
-func (a *Address) Clonex() *Address {
-	b := &Address{
-		Data: make([]byte, len(a.Data)),
-	}
-	copy(b.Data, a.Data)
-	return b
 }
 
 //----------------------------------------------------------------------

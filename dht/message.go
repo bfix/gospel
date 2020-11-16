@@ -46,8 +46,8 @@ var (
 //  message types
 //----------------------------------------------------------------------
 
+// type values for node commands
 const (
-	// type values for node commands
 	//==================================================================
 	// IMPORTANT: Requests MUST have odd values, responses MUST be even!
 	// (If you have multiple responses for a single request, leave out
@@ -72,7 +72,7 @@ var (
 		"FIND_VALUE", "FIND_VALUE_RESP",
 	}
 
-	// Error message
+	// ErrMessageParse if message parsing from binary data failed
 	ErrMessageParse = fmt.Errorf("Failed to parse message")
 )
 

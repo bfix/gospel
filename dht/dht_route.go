@@ -126,7 +126,7 @@ func (n *LocalNode) FindNodeService(ctx context.Context, m Message) bool {
 // FIND_NODE task
 //----------------------------------------------------------------------
 
-// FindTask
+// FindNodeTask is used to lookup a node endpoint address.
 func (n *LocalNode) FindNodeTask(ctx context.Context, rcv, node *Address, timeout time.Duration) error {
 	// assemble request
 	req := NewFindNodeMsg()
