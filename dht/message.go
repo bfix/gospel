@@ -145,7 +145,7 @@ func (m *MsgHeader) Header() *MsgHeader {
 	return m
 }
 
-// Data() returns the binary representation the message
+// Data returns the binary representation the message
 func (m *MsgHeader) Data() []byte {
 	buf, _ := data.Marshal(m)
 	return buf

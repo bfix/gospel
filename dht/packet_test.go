@@ -43,7 +43,7 @@ func TestPacket(t *testing.T) {
 	pubR, prvR := ed25519.NewKeypair()
 	addrR := NewAddressFromKey(pubR)
 
-	// data to be transfered
+	// data to be transferred
 	msgOut := &MsgHeader{
 		Size:     HDR_SIZE,
 		TxId:     23,
@@ -51,7 +51,7 @@ func TestPacket(t *testing.T) {
 		Receiver: addrR,
 		Sender:   addrS,
 	}
-	bufOut, err := data.Marshal(msg_out)
+	bufOut, err := data.Marshal(msgOut)
 	if err != nil {
 		t.Fatal(err)
 	}

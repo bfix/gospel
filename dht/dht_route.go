@@ -99,7 +99,7 @@ func (m *FindNodeRespMsg) Set(addr *Address, endp string) *FindNodeRespMsg {
 func (n *LocalNode) FindNodeService(ctx context.Context, m Message) bool {
 	switch msg := m.(type) {
 	case *FindNodeMsg:
-		// find endpoint assoicated with address or closest node in
+		// find endpoint associated with address or closest node in
 		// our routing table
 		panic("not implemented")
 		var addr *Address = nil
