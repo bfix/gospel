@@ -48,6 +48,7 @@ func (v *Value) Address() *Address {
 // STORE message (request)
 //----------------------------------------------------------------------
 
+// StoreMsg for STORE requests
 type StoreMsg struct {
 	MsgHeader
 
@@ -55,6 +56,7 @@ type StoreMsg struct {
 	Val *Value   // DHT data blob
 }
 
+//
 func (m *StoreMsg) Set(addr *Address, value *Value) {
 	m.Key = addr
 	m.Val = value
@@ -101,12 +103,14 @@ func NewStoreRespMsg() *PongMsg {
 
 // StoreService responds to requests to store value under given key.
 func (n *LocalNode) StoreService(ctx context.Context, m Message) bool {
-	// assemble PONG as response to PING
+	// assemble response
 	hdr := m.Header()
-	resp := NewPongMsg()
+	resp := NewStoreRespMsg()
 	resp.TxId = hdr.TxId
 	resp.Sender = hdr.Receiver
 	resp.Receiver = hdr.Sender
+	// store data
+	panic("not implemented")
 
 	// send message
 	if err := n.conn.Send(ctx, resp); err != nil {
@@ -120,19 +124,21 @@ func (n *LocalNode) StoreService(ctx context.Context, m Message) bool {
 //----------------------------------------------------------------------
 
 // Store data in the DHT
-func (n *LocalNode) StoreTask(ctx context.Context, key *Address, val *Value, timeout time.Duration) error {
+func (n *LocalNode) StoreTask(ctx context.Context, rcv, key *Address, val *Value, timeout time.Duration) error {
 	// assemble request
 	req := NewPingMsg()
 	req.TxId = n.nextId()
 	req.Sender = n.addr
+	req.Receiver = rcv
 
+	// send request and process responses
 	hdlr := &TaskHandler{
 		msgHdlr: func(ctx context.Context, m Message) bool {
-			// handle PING response (update node list etc.)
+			// handle STORE responses
+			panic("not implemented")
 			return true
 		},
 		timeout: timeout,
 	}
-
-	return n.Task(ctx, nil, req, hdlr)
+	return n.Task(ctx, req, hdlr)
 }

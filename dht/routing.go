@@ -22,6 +22,7 @@ package dht
 
 import (
 	"bytes"
+	"context"
 	"encoding/base32"
 	"log"
 	"sync"
@@ -122,8 +123,9 @@ func NewBucket() *Bucket {
 
 // BucketList is a list of buckets (one for each address bit)
 type BucketList struct {
-	list []*Bucket
-	lock sync.Mutex
+	list  []*Bucket
+	lock  sync.Mutex
+	queue chan *BucketListTask
 }
 
 // NewBucketList returns a new BucketList.
@@ -134,11 +136,25 @@ func NewBucketList() *BucketList {
 	for i := range bl.list {
 		bl.list[i] = NewBucket()
 	}
+	// use a buffered channel for tasks
+	bl.queue = make(chan *BucketListTask, 10)
 	return bl
 }
 
+// BucketListTask describes a maintenance job on the bucket list
+type BucketListTask struct {
+	// what to do:
+	// 0 = delete address
+	// 1 = add address (if oldest peer is unresponsive)
+	job int
+
+	// Address to be processed (with bucket number)
+	addr *Address
+	k    int
+}
+
 // Add a new peer to the routing table (possibly)
-func (bl BucketList) Add(k int, addr *Address) {
+func (bl *BucketList) Add(k int, addr *Address) {
 	bl.lock.Lock()
 	defer bl.lock.Unlock()
 
@@ -161,6 +177,37 @@ func (bl BucketList) Add(k int, addr *Address) {
 		log.Printf("[buckets ] Appended '%.8s' in bucket #%d\n", addr, k)
 		return
 	}
-	// we need to check oldest peer
-	panic("not implemented")
+	// we need to process address serialized.
+	bl.queue <- &BucketListTask{
+		job:  1,
+		addr: addr,
+		k:    k,
+	}
+}
+
+// Run the processing loop for the bucket list.
+func (bl *BucketList) Run(ctx context.Context) {
+	go func() {
+		for {
+			select {
+			// process new addresses
+			case task := <-bl.queue:
+				switch task.job {
+				// delete address from bucket
+				case 0:
+					panic("not implemented")
+
+				// add address if oldest peer is unresponsive
+				case 1:
+					bl.lock.Lock()
+					//PingTask(ctx context.Context, rcv *Address, timeout time.Duration)
+					bl.lock.Unlock()
+				}
+
+			// externally terminated
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 }

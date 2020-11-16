@@ -29,10 +29,12 @@ import (
 // PING message (request)
 //----------------------------------------------------------------------
 
+// PingMsg for PING requests
 type PingMsg struct {
 	MsgHeader
 }
 
+// NewPingMsg creates an empty PING request
 func NewPingMsg() *PingMsg {
 	return &PingMsg{
 		MsgHeader: MsgHeader{
@@ -49,10 +51,12 @@ func NewPingMsg() *PingMsg {
 // PONG message (response)
 //----------------------------------------------------------------------
 
+// PongMsg for PONG responses
 type PongMsg struct {
 	MsgHeader
 }
 
+// NewPongMsg creates an empty PONG response
 func NewPongMsg() *PongMsg {
 	return &PongMsg{
 		MsgHeader: MsgHeader{
@@ -90,13 +94,14 @@ func (n *LocalNode) PingService(ctx context.Context, m Message) bool {
 //----------------------------------------------------------------------
 
 // Ping a node
-func (n *LocalNode) PingTask(ctx context.Context, o Node, timeout time.Duration) error {
+func (n *LocalNode) PingTask(ctx context.Context, rcv *Address, timeout time.Duration) error {
 	// assemble request
 	req := NewPingMsg()
 	req.TxId = n.nextId()
 	req.Sender = n.addr
-	req.Receiver = o.Address()
+	req.Receiver = rcv
 
+	// send request and process responses
 	hdlr := &TaskHandler{
 		msgHdlr: func(ctx context.Context, m Message) bool {
 			// handle PING response (update node list etc.)
@@ -104,5 +109,5 @@ func (n *LocalNode) PingTask(ctx context.Context, o Node, timeout time.Duration)
 		},
 		timeout: timeout,
 	}
-	return n.Task(ctx, o, req, hdlr)
+	return n.Task(ctx, req, hdlr)
 }

@@ -181,6 +181,9 @@ func (n *LocalNode) Run(ctx context.Context) {
 	epoch := 0
 	period := time.Tick(time.Minute)
 
+	// run bucket list processor
+	n.buckets.Run(ctx)
+
 	// run the connector listener
 	n.conn.Listen(ctx, n.inCh)
 
@@ -234,10 +237,9 @@ type TaskHandler struct {
 }
 
 // Task is a generic wrapper for tasks running on a local node. It sends
-// an initial message 'm' from sender 'n' to receiver 'o'; responses from
-// 'o' are handled by 'f'. If 'f' returns true, no further responses from
-// the receiver are expected.
-func (n *LocalNode) Task(ctx context.Context, o Node, m Message, f *TaskHandler) (err error) {
+// an initial message 'm'; responses are handled by 'f'. If 'f' returns
+// true, no further responses from the receiver are expected.
+func (n *LocalNode) Task(ctx context.Context, m Message, f *TaskHandler) (err error) {
 	// register for responses
 	ctrl := make(chan int)
 	txid := int(m.Header().TxId)
@@ -251,17 +253,19 @@ func (n *LocalNode) Task(ctx context.Context, o Node, m Message, f *TaskHandler)
 		return rc
 	})
 	// send message
-	ctx_send, _ := context.WithDeadline(ctx, time.Now().Add(f.timeout))
+	ctx_send, cancel := context.WithDeadline(ctx, time.Now().Add(f.timeout))
+	defer cancel()
 	if err = n.conn.Send(ctx_send, m); err != nil {
 		return
 	}
 	// timeout for response(s)
 	tick := time.Tick(f.timeout)
 	select {
-	case <-ctrl:
 	case <-tick:
 		err = ErrNodeTimeout
+	case <-ctrl:
 	}
+
 	// unregister handler
 	n.hdlrs.Remove(txid)
 	return

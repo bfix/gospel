@@ -86,6 +86,35 @@ func MsgType(m Message) string {
 }
 
 //----------------------------------------------------------------------
+// Helper types for message fields
+//----------------------------------------------------------------------
+
+// String is a sequence of unicode runes in binary format
+type String struct {
+	Len  uint16 `order:"big"` // length of string
+	Data []byte `size:"Len"`  // string data
+}
+
+// NewString encapsulates a standard string
+func NewString(s string) *String {
+	buf := []byte(s)
+	return &String{
+		Len:  uint16(len(buf)),
+		Data: buf,
+	}
+}
+
+// Size returns the total size of String in bytes
+func (s *String) Size() uint16 {
+	return s.Len + 2
+}
+
+// String returns the standard string object
+func (s *String) String() string {
+	return string(s.Data)
+}
+
+//----------------------------------------------------------------------
 // Message interface
 //----------------------------------------------------------------------
 

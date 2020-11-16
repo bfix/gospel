@@ -29,12 +29,14 @@ import (
 // FIND_NODE message (request)
 //----------------------------------------------------------------------
 
+// FindNodeMsg for FIND_NODE requests
 type FindNodeMsg struct {
 	MsgHeader
 
 	Addr *Address // address of node we are looking for
 }
 
+// NewFindNodeMsg creates an empty FIND_NODE message
 func NewFindNodeMsg() *FindNodeMsg {
 	return &FindNodeMsg{
 		MsgHeader: MsgHeader{
@@ -44,21 +46,29 @@ func NewFindNodeMsg() *FindNodeMsg {
 			Sender:   nil,
 			Receiver: nil,
 		},
-		Addr: NewAddress(nil),
+		Addr: nil,
 	}
+}
+
+// Set the additional address field
+func (m *FindNodeMsg) Set(addr *Address) *FindNodeMsg {
+	m.Addr = addr
+	return m
 }
 
 //----------------------------------------------------------------------
 // FIND_NODE_RESP message (response)
 //----------------------------------------------------------------------
 
+// FindNodeRespMsg for FIND_NODE responses
 type FindNodeRespMsg struct {
 	MsgHeader
 
-	Addr *Address
-	Endp string
+	Addr *Address // address query
+	Endp *String  // resolved network endpoint
 }
 
+// NewFindNodeRespMsg creates an empty FIND_NODE response
 func NewFindNodeRespMsg() *FindNodeRespMsg {
 	return &FindNodeRespMsg{
 		MsgHeader: MsgHeader{
@@ -68,9 +78,17 @@ func NewFindNodeRespMsg() *FindNodeRespMsg {
 			Sender:   nil,
 			Receiver: nil,
 		},
-		Addr: NewAddress(nil),
-		Endp: "",
+		Addr: nil,
+		Endp: nil,
 	}
+}
+
+// Set the additional fields (address and enspoint)
+func (m *FindNodeRespMsg) Set(addr *Address, endp string) *FindNodeRespMsg {
+	m.Addr = addr
+	m.Endp = NewString(endp)
+	m.Size += m.Endp.Size()
+	return m
 }
 
 //----------------------------------------------------------------------
@@ -79,18 +97,29 @@ func NewFindNodeRespMsg() *FindNodeRespMsg {
 
 // FindNodeService responds to FIND_NODE requests from remote peers.
 func (n *LocalNode) FindNodeService(ctx context.Context, m Message) bool {
-	// assemble FIND_NODE_RESP message
-	hdr := m.Header()
-	resp := NewPongMsg()
-	resp.TxId = hdr.TxId
-	resp.Sender = hdr.Receiver
-	resp.Receiver = hdr.Sender
+	switch msg := m.(type) {
+	case *FindNodeMsg:
+		// find endpoint assoicated with address or closest node in
+		// our routing table
+		panic("not implemented")
+		var addr *Address = nil
+		var endp string = ""
 
-	// send message
-	if err := n.conn.Send(ctx, resp); err != nil {
+		// assemble FIND_NODE_RESP message
+		hdr := msg.Header()
+		resp := NewFindNodeRespMsg().Set(addr, endp)
+		resp.TxId = hdr.TxId
+		resp.Sender = hdr.Receiver
+		resp.Receiver = hdr.Sender
+
+		// send message
+		if err := n.conn.Send(ctx, resp); err != nil {
+			return false
+		}
+		return true
+	default:
 		return false
 	}
-	return true
 }
 
 //----------------------------------------------------------------------
@@ -98,18 +127,22 @@ func (n *LocalNode) FindNodeService(ctx context.Context, m Message) bool {
 //----------------------------------------------------------------------
 
 // FindTask
-func (n *LocalNode) FindNodeTask(ctx context.Context, addr *Address, timeout time.Duration) error {
+func (n *LocalNode) FindNodeTask(ctx context.Context, rcv, node *Address, timeout time.Duration) error {
 	// assemble request
-	req := NewPingMsg()
+	req := NewFindNodeMsg()
 	req.TxId = n.nextId()
 	req.Sender = n.addr
+	req.Receiver = rcv
+	req.Addr = node
 
+	// send request and process responses
 	hdlr := &TaskHandler{
 		msgHdlr: func(ctx context.Context, m Message) bool {
-			// handle PING response (update node list etc.)
+			// handle FIND_NODE response
+			panic("not implemented")
 			return true
 		},
 		timeout: timeout,
 	}
-	return n.Task(ctx, nil, req, hdlr)
+	return n.Task(ctx, req, hdlr)
 }
