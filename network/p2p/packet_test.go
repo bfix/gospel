@@ -29,7 +29,23 @@ import (
 	"github.com/bfix/gospel/data"
 )
 
+type TestMsg struct {
+	MsgHeader
+}
+
+func (m *TestMsg) String() string {
+	return "TEST"
+}
+
 func TestPacket(t *testing.T) {
+
+	NewMessage := func(buf []byte) (Message, error) {
+		msg := new(TestMsg)
+		if err := data.Unmarshal(msg, buf); err != nil {
+			return nil, err
+		}
+		return msg, nil
+	}
 
 	//------------------------------------------------------------------
 	// (1) Prepare
@@ -44,12 +60,14 @@ func TestPacket(t *testing.T) {
 	addrR := NewAddressFromKey(pubR)
 
 	// data to be transferred
-	msgOut := &MsgHeader{
-		Size:     HDR_SIZE,
-		TxId:     23,
-		Type:     PING,
-		Receiver: addrR,
-		Sender:   addrS,
+	msgOut := &TestMsg{
+		MsgHeader: MsgHeader{
+			Size:     HDR_SIZE,
+			TxId:     23,
+			Type:     PING,
+			Receiver: addrR,
+			Sender:   addrS,
+		},
 	}
 	bufOut, err := data.Marshal(msgOut)
 	if err != nil {
@@ -92,7 +110,7 @@ func TestPacket(t *testing.T) {
 	// (5) Decrypt message from packet
 	//------------------------------------------------------------------
 
-	msgIn, err := pktIn.Unwrap(prvR)
+	msgIn, err := pktIn.Unwrap(prvR, NewMessage)
 	if err != nil {
 		t.Fatal(err)
 	}
