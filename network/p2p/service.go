@@ -200,7 +200,7 @@ func (s *ServiceImpl) Task(ctx context.Context, m Message, f *TaskHandler) (err 
 // List of services for a node
 //======================================================================
 
-// Service list for all services registered on a node
+// ServiceList for all services registered on a node
 type ServiceList struct {
 	srvcs []Service
 }
@@ -291,7 +291,7 @@ func (sl *ServiceList) Listen(ctx context.Context, msg Message) (bool, error) {
 			return false, err
 		}
 		if ok {
-			// response sucessfully handled
+			// response successfully handled
 			return true, nil
 		}
 	}

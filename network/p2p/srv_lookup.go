@@ -30,6 +30,7 @@ import (
 	"github.com/bfix/gospel/data"
 )
 
+// Error codes
 var (
 	ErrLookupFailed = fmt.Errorf("Lookup failed")
 )

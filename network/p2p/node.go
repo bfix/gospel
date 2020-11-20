@@ -166,8 +166,8 @@ func (n *Node) Learn(addr *Address, endp string) (err error) {
 	// learn network endpoint if specified
 	if len(endp) > 0 {
 		// get the associated network address
-		netw, err := net.ResolveUDPAddr("udp", endp)
-		if err != nil {
+		var netw *net.UDPAddr
+		if netw, err = net.ResolveUDPAddr("udp", endp); err != nil {
 			return err
 		}
 		err = n.conn.Learn(addr, netw)
@@ -242,7 +242,7 @@ func (n *Node) Run(ctx context.Context) {
 // Helper methods
 //----------------------------------------------------------------------
 
-// Factory produces messages from a binary representation
+// MessageFactory produces messages from a binary representation
 func (n *Node) MessageFactory(buf []byte) (Message, error) {
 	return n.srvcs.MessageFactory(buf)
 }

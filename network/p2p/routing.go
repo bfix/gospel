@@ -31,7 +31,7 @@ import (
 )
 
 var (
-	// Alpha is the concurrency parameter
+	// ALPHA is the concurrency parameter
 	ALPHA = 3
 )
 
@@ -128,7 +128,7 @@ var (
 // reference node (the local node usually). All addresses in one bucket have
 // the same distance value.
 // A bucket is ordered: LRU addresses are at the beginning of the list, the
-// MRU addressess are at the end (Kademlia scheme)
+// MRU addresses are at the end (Kademlia scheme)
 type Bucket struct {
 	num   int        // bucket number (for log purposes)
 	addrs []*Address // list of addresses

@@ -131,7 +131,7 @@ func (m *MsgHeader) Data() []byte {
 // Message factory
 //======================================================================
 
-// MessageFacotory reassembles messages from binary data
+// MessageFactory reassembles messages from binary data
 type MessageFactory func([]byte) (Message, error)
 
 // NewMessage returns a message (of specific type)
