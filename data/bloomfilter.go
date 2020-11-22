@@ -22,7 +22,6 @@ package data
 
 import (
 	"crypto/sha256"
-	"hash"
 	"math"
 	"math/big"
 )
@@ -35,12 +34,11 @@ import (
 // generated for an entry, a BloomFilter can handle a given number of entries
 // with a desired upper-bound for the false-positive rate.
 type BloomFilter struct {
-	NumBits    uint32    `json:"numBits"`       // number of bits in filter
-	NumIdx     uint8     `json:"numIdx"`        // number of indices
-	NumIdxBits uint8     `json:"numIdxBits"`    // number of bits per index
-	NumHash    uint8     `json:"numHash"`       // number of SHA256 hashes needed
-	Bits       []byte    `json:"bits" size:"*"` // bit storage
-	hasher     hash.Hash // SHA256 hasher
+	NumBits    uint32 `json:"numBits"`       // number of bits in filter
+	NumIdx     uint8  `json:"numIdx"`        // number of indices
+	NumIdxBits uint8  `json:"numIdxBits"`    // number of bits per index
+	NumHash    uint8  `json:"numHash"`       // number of SHA256 hashes needed
+	Bits       []byte `json:"bits" size:"*"` // bit storage
 }
 
 // NewBloomFilterDirect creates a new BloomFilter based on the number of bits
@@ -53,7 +51,6 @@ func NewBloomFilterDirect(numBits, numIdx int) *BloomFilter {
 		NumIdxBits: uint8(numIdxBits),
 		NumHash:    uint8((numIdxBits*numIdx + 255) / 256),
 		Bits:       make([]byte, (numBits+7)/8),
-		hasher:     sha256.New(),
 	}
 }
 
@@ -95,7 +92,6 @@ func (bf *BloomFilter) Combine(bf2 *BloomFilter) *BloomFilter {
 		NumIdxBits: bf.NumIdxBits,
 		NumHash:    bf.NumHash,
 		Bits:       make([]byte, len(bf.Bits)),
-		hasher:     sha256.New(),
 	}
 	for i := range res.Bits {
 		res.Bits[i] = bf.Bits[i] | bf2.Bits[i]
@@ -120,11 +116,11 @@ func (bf *BloomFilter) Contains(entry []byte) bool {
 // Helper method to extract the list of indices for an entry.
 func (bf *BloomFilter) indexList(entry []byte) []int {
 	totalIdx := make([]byte, 0)
-	bf.hasher.Reset()
+	hasher := sha256.New()
 	var i uint8
 	for i = 0; i < bf.NumHash; i++ {
-		bf.hasher.Write(entry)
-		totalIdx = bf.hasher.Sum(totalIdx)
+		hasher.Write(entry)
+		totalIdx = hasher.Sum(totalIdx)
 	}
 	v := new(big.Int).SetBytes(totalIdx)
 	mask := big.NewInt((1 << uint(bf.NumIdxBits)) - 1)
