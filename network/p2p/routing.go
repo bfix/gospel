@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base32"
+	"fmt"
 	"sync"
 
 	"github.com/bfix/gospel/crypto/ed25519"
@@ -43,6 +44,9 @@ var (
 var (
 	// ADDR_SIZE is the size of an address in bytes
 	ADDR_SIZE uint16 = 32
+
+	// Error codes
+	ErrAddressInvalid = fmt.Errorf("Invalid address")
 )
 
 // Address encapsulates data representing the object identifier.
@@ -67,6 +71,22 @@ func NewAddress(b []byte) *Address {
 	}
 }
 
+// NewAddressFromString recreates an address from string label
+func NewAddressFromString(addr string) (*Address, error) {
+	if len(addr) != 52 {
+		return nil, ErrAddressInvalid
+	}
+	addr += "===="
+	buf, err := base32.StdEncoding.DecodeString(addr)
+	if err != nil {
+		return nil, err
+	}
+	if len(buf) != 32 {
+		return nil, ErrAddressInvalid
+	}
+	return NewAddress(buf), nil
+}
+
 // Distance returns the distance between two addresses. The distance metric is
 // based on XOR'ing the address values.
 func (a *Address) Distance(b *Address) *math.Int {
@@ -79,7 +99,7 @@ func (a *Address) Distance(b *Address) *math.Int {
 
 // String returns a human-readable address
 func (a *Address) String() string {
-	return base32.StdEncoding.EncodeToString(a.Data)
+	return base32.StdEncoding.EncodeToString(a.Data)[:52]
 }
 
 // Equals checks if two addresses are the same
@@ -210,20 +230,22 @@ func (b *Bucket) MRU(offs int) *Address {
 
 // BucketList is a list of buckets (one for each address bit)
 type BucketList struct {
-	list  []*Bucket
-	queue chan *BucketListTask
+	addr  *Address             // base address for distance
+	list  []*Bucket            // distance-indexed buckets
+	queue chan *BucketListTask // process queue
 }
 
-// NewBucketList returns a new BucketList.
-func NewBucketList() *BucketList {
+// NewBucketList returns a new BucketList with given address as reference
+// point for distances.
+func NewBucketList(addr *Address) *BucketList {
 	bl := &BucketList{
-		list: make([]*Bucket, 256),
+		addr:  addr,
+		list:  make([]*Bucket, 256),
+		queue: make(chan *BucketListTask, 10), // buffered channel for tasks
 	}
 	for i := range bl.list {
 		bl.list[i] = NewBucket(i)
 	}
-	// use a buffered channel for tasks
-	bl.queue = make(chan *BucketListTask, 10)
 	return bl
 }
 
@@ -240,7 +262,13 @@ type BucketListTask struct {
 }
 
 // Add a new peer to the routing table (possibly)
-func (bl *BucketList) Add(k int, addr *Address) {
+func (bl *BucketList) Add(addr *Address) {
+	// compute the distance to reference
+	k := addr.Distance(bl.addr).BitLen() - 1
+	if k < 0 {
+		// no need to add our own address :)
+		return
+	}
 	// check if address is already in the bucket.
 	b := bl.list[k]
 	if pos := b.Contains(addr); pos != -1 {

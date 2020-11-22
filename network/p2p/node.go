@@ -72,15 +72,18 @@ type Node struct {
 func NewNode(prv *ed25519.PrivateKey) (n *Node, err error) {
 	// create new instance of a local node
 	pub := prv.Public()
+	addr := NewAddressFromKey(pub)
 	n = &Node{
 		prvKey:  prv,
 		pubKey:  pub,
-		addr:    NewAddressFromKey(pub),
+		addr:    addr,
 		inCh:    make(chan Message),
 		conn:    nil,
-		buckets: NewBucketList(),
+		buckets: NewBucketList(addr),
 		srvcs:   NewServiceList(),
 	}
+	log.Printf("[%.8s] Node created.\n", n.addr)
+
 	// add all standard services (P2P)
 	n.AddService(NewPingService())
 	n.AddService(NewLookupService())
@@ -155,14 +158,8 @@ func (n *Node) Connect(c Connector) error {
 
 // Learn about a new peer in the network
 func (n *Node) Learn(addr *Address, endp string) (err error) {
-	// compute the distance between node and addr
-	k := addr.Distance(n.Address()).BitLen() - 1
-	if k < 0 {
-		// no need to learn our own address :)
-		return
-	}
 	// add peer to routing table
-	n.buckets.Add(k, addr)
+	n.buckets.Add(addr)
 	// learn network endpoint if specified
 	if len(endp) > 0 {
 		// get the associated network address
