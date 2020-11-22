@@ -220,10 +220,52 @@ func (s *LookupService) Request(ctx context.Context, rcv, addr *Address, timeout
 	return
 }
 
+// Query remote peer for given address; result depends on query implementation.
+// It is either an error, a boolean "done" signal (no result) or a result
+// instance. In this service the "final" result is of type Endoint; other
+// services (like DHT) can use their own results (Value). If the result is an
+// address list, the referenced nodes are queried for a result.
+type Query func(ctx context.Context, peer, addr *Address) interface{}
+
 // Lookup a node endpoint address.
-func (s *LookupService) Lookup(ctx context.Context, addr *Address, timeout time.Duration) (entry *Endpoint, err error) {
+func (s *LookupService) LookupNode(ctx context.Context, addr *Address, timeout time.Duration) (entry *Endpoint, err error) {
 	log.Printf("[%.8s] Lookup for '%.8s':\n", s.Node().Address(), addr)
 
+	query := func(ctx context.Context, peer, addr *Address) interface{} {
+		// perform query
+		log.Printf("[%.8s] Lookup for '%.8s' on '%.8s'...\n", s.Node().Address(), addr, peer)
+		list, err := s.Request(ctx, peer, addr, timeout)
+		if err != nil {
+			log.Printf("[%.8s] Lookup for '%.8s' on '%.8s' failed: %s\n", s.Node().Address(), addr, peer, err.Error())
+			return err
+		}
+		// learn all entries
+		peers := make([]*Address, 0)
+		for _, e := range list {
+			peers = append(peers, e.Addr)
+			s.Node().Learn(e.Addr, e.Endp.String())
+		}
+		// check if we got a final result
+		if len(list) == 1 && list[0].Addr.Equals(addr) {
+			// node endpoint is resolved
+			return list[0]
+		}
+		// otherwise return the list of closer nodes.
+		return peers
+	}
+	// call the resolver
+	var res interface{}
+	res, err = s.Lookup(ctx, addr, query, timeout)
+	if err != nil {
+		return
+	}
+	if res == nil {
+		return
+	}
+	return res.(*Endpoint), nil
+}
+
+func (s *LookupService) Lookup(ctx context.Context, addr *Address, resolver Query, timeout time.Duration) (res interface{}, err error) {
 	// create internal state
 	wg := new(sync.WaitGroup)
 	bf := data.NewBloomFilter(1000, 1e-5)
@@ -249,98 +291,66 @@ func (s *LookupService) Lookup(ctx context.Context, addr *Address, timeout time.
 		}
 		if !bf.Contains(peer.Data) {
 			bf.Add(peer.Data)
-			// register in wait group
 			wg.Add(1)
 			defer wg.Done()
-
-			// perform query
-			log.Printf("[%.8s] Lookup for '%.8s' on '%.8s'...\n", s.Node().Address(), addr, peer)
-			list, err := s.Request(ctxLookup, peer, addr, timeout)
-			if err != nil {
-				log.Printf("[%.8s] Lookup for '%.8s' on '%.8s' failed: %s\n", s.Node().Address(), addr, peer, err.Error())
-				return
-			}
-			// learn all entries
-			peers := make([]*Address, 0)
-			for _, e := range list {
-				peers = append(peers, e.Addr)
-				s.Node().Learn(e.Addr, e.Endp.String())
-			}
-			// check if we got a final result
-			if len(list) == 1 && list[0].Addr.Equals(addr) {
-				// node endpoint is resolved
-				ch <- list[0]
-				return
-			}
+			switch x := resolver(ctxLookup, peer, addr).(type) {
 			// process list recursively
-			go queryPeers(peers, addr, ch)
+			case []*Address:
+				go queryPeers(x, addr, ch)
+			// return result (or error) in other cases
+			default:
+				ch <- x
+			}
 		}
 	}
-
-	// get closest nodes to start with
+	// start resolver with closest nodes
 	closest := s.Node().Closest(K_BUCKETS)
-	log.Printf("[%.8s] Closest: %d\n", s.Node().Address(), len(closest))
-
+	out := make(chan interface{})
+	defer close(out)
 	for {
-		out := make(chan interface{})
-		for {
-			// query the next peers
-			go func() {
-				ch := make(chan interface{})
-				queryPeers(closest, addr, ch)
+		// query the next group of peers
+		go queryPeers(closest, addr, out)
 
-				// wait for all queries to end
-				go func() {
-					wg.Wait()
-					out <- true
-				}()
+		// wait for all queries to end
+		go func() {
+			wg.Wait()
+			out <- true
+		}()
 
-				select {
-				// wait for results
-				case in := <-ch:
-					switch x := in.(type) {
-					// forward error
-					case error:
-						out <- x
-					// final result
-					case *Endpoint:
-						out <- x
-					}
-				// externally cancelled
-				case <-ctx.Done():
-					out <- ErrNodeTimeout
-				}
-			}()
-			// wait for final result, error or unresolved event
-			select {
-			case in := <-out:
-				switch x := in.(type) {
-				// leave with error message
-				case error:
+		// wait for final result, error or unresolved event
+		select {
+		case in := <-out:
+			switch x := in.(type) {
+			// leave with error message
+			case error:
+				cancel()
+				running = false
+				return nil, x
+			// all processing done but no result (unresolved)
+			case bool:
+				// re-try with next set of closest
+				pending := len(closest)
+				if pending == 0 {
 					cancel()
 					running = false
-					return nil, x
-				// leave with final lookup result
-				case *Endpoint:
-					cancel()
-					running = false
-					return x, nil
-				// all processing done but no result (unresolved)
-				case bool:
-					// re-try with next set of closest
-					pending := len(closest)
-					if pending == 0 {
-						cancel()
-						running = false
-						return nil, ErrLookupFailed
-					}
-					if pending > ALPHA {
-						closest = closest[:ALPHA]
-					}
+					return nil, ErrLookupFailed
 				}
+				if pending > ALPHA {
+					closest = closest[:ALPHA]
+				}
+				continue
+			// leave with final lookup result
+			default:
+				cancel()
+				running = false
+				return in, nil
 			}
+		// externally cancelled
+		case <-ctx.Done():
+			cancel()
+			running = false
+			return nil, ErrNodeTimeout
 		}
-		close(out)
 	}
 	return nil, ErrLookupFailed
 }
