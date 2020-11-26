@@ -46,14 +46,21 @@ const (
 	FLUSH
 )
 
+type logMsg struct {
+	level int       // log level for message
+	text  string    // message text
+	ts    time.Time // log timestamp
+}
+
 type logger struct {
-	msgChan chan string // message to be logged
-	cmdChan chan int    // commands to be executed
-	logfile *os.File    // current log file (can be stdout/stderr)
-	started time.Time   // start time of current log file
-	level   int         // current log level
-	lastMsg string      // last log message
-	repeats int         // number of repeats of last message
+	msgChan   chan *logMsg // message to be logged
+	cmdChan   chan int     // commands to be executed
+	logfile   *os.File     // current log file (can be stdout/stderr)
+	started   time.Time    // start time of current log file
+	level     int          // current log level
+	lastMsg   *logMsg      // last log message
+	repeats   int          // number of repeats of last message
+	formatter Formatter    // log message formatter
 }
 
 var (
@@ -63,30 +70,36 @@ var (
 // Instantiate new logger (to stdout) and run its handler loop.
 func init() {
 	logInst = new(logger)
-	logInst.msgChan = make(chan string)
+	logInst.msgChan = make(chan *logMsg)
 	logInst.cmdChan = make(chan int)
 	logInst.logfile = os.Stdout
 	logInst.started = time.Now()
 	logInst.level = DBG
-	logInst.lastMsg = ""
+	logInst.lastMsg = &logMsg{}
 	logInst.repeats = 0
+	logInst.formatter = SimpleFormat
 
 	go func() {
 		for {
 			select {
 			case msg := <-logInst.msgChan:
-				if msg == logInst.lastMsg {
+				if msg.text == logInst.lastMsg.text {
 					logInst.repeats++
 					continue
 				}
-				ts := time.Now().Format(time.Stamp)
 				if logInst.repeats > 0 {
-					s := fmt.Sprintf("...(last message repeated %d times)\n", logInst.repeats)
-					logInst.logfile.WriteString(ts + s)
+					rep := &logMsg{
+						level: logInst.lastMsg.level,
+						text:  fmt.Sprintf("...(last message repeated %d times)\n", logInst.repeats),
+						ts:    time.Now(),
+					}
+					s := logInst.formatter(rep)
+					logInst.logfile.WriteString(s)
 				}
 				logInst.repeats = 0
 				logInst.lastMsg = msg
-				logInst.logfile.WriteString(ts + msg)
+				s := logInst.formatter(msg)
+				logInst.logfile.WriteString(s)
 			case cmd := <-logInst.cmdChan:
 				switch cmd {
 				case ROTATE:
@@ -122,14 +135,22 @@ func init() {
 // Println punches logging data for given level.
 func Println(level int, line string) {
 	if level <= logInst.level {
-		logInst.msgChan <- getTag(level) + line + "\n"
+		logInst.msgChan <- &logMsg{
+			level: level,
+			text:  line,
+			ts:    time.Now(),
+		}
 	}
 }
 
 // Printf punches formatted logging data for givel level
 func Printf(level int, format string, v ...interface{}) {
 	if level <= logInst.level {
-		logInst.msgChan <- getTag(level) + fmt.Sprintf(format, v...)
+		logInst.msgChan <- &logMsg{
+			level: level,
+			text:  fmt.Sprintf(format, v...),
+			ts:    time.Now(),
+		}
 	}
 }
 
@@ -146,6 +167,13 @@ func LogToFile(filename string) bool {
 	}
 	Println(ERROR, "[log] can't enable file-based logging!")
 	return false
+}
+
+// Formatter sets a new format processor and returns the old one.
+func UseFormat(f Formatter) Formatter {
+	old := logInst.formatter
+	logInst.formatter = f
+	return old
 }
 
 // Rotate log file.
@@ -214,17 +242,17 @@ func SetLogLevelFromName(name string) {
 func getTag(level int) string {
 	switch level {
 	case CRITICAL:
-		return "{C}"
+		return "CRI"
 	case SEVERE:
-		return "{S}"
+		return "SEV"
 	case ERROR:
-		return "{E}"
+		return "ERR"
 	case WARN:
-		return "{W}"
+		return "WRN"
 	case INFO:
-		return "{I}"
+		return "INF"
 	case DBG:
-		return "{D}"
+		return "DBG"
 	}
-	return "{?}"
+	return "???"
 }
