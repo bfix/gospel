@@ -25,10 +25,10 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/bfix/gospel/data"
+	"github.com/bfix/gospel/logger"
 )
 
 //======================================================================
@@ -258,20 +258,20 @@ func (sl *ServiceList) Get(name string) Service {
 func (sl *ServiceList) Respond(ctx context.Context, msg Message) (bool, error) {
 	hdr := msg.Header()
 	rcv := hdr.Receiver.String()
-	log.Printf("[%.8s] Received request: %s\n", rcv, msg)
+	logger.Printf(logger.INFO, "[%.8s] Received request: %s\n", rcv, msg)
 
 	for _, srvc := range sl.srvcs {
 		ok, err := srvc.Respond(ctx, msg)
 		if err != nil {
 			// request processing failed
-			log.Printf("[%.8s] Request processing failed: %s\n", rcv, err.Error())
+			logger.Printf(logger.ERROR, "[%.8s] Request processing failed: %s\n", rcv, err.Error())
 		}
 		if ok {
 			// request handled
 			return true, err
 		}
 	}
-	log.Printf("[%.8s] Unknown request type '%d'...\n", rcv, hdr.Type)
+	logger.Printf(logger.WARN, "[%.8s] Unknown request type '%d'...\n", rcv, hdr.Type)
 	return false, ErrServiceRequestUnknown
 
 }
@@ -280,13 +280,13 @@ func (sl *ServiceList) Respond(ctx context.Context, msg Message) (bool, error) {
 func (sl *ServiceList) Listen(ctx context.Context, msg Message) (bool, error) {
 	hdr := msg.Header()
 	rcv := hdr.Receiver.String()
-	log.Printf("[%.8s] Received response: %s\n", rcv, msg)
+	logger.Printf(logger.INFO, "[%.8s] Received response: %s\n", rcv, msg)
 
 	for _, srvc := range sl.srvcs {
 		ok, err := srvc.Listen(ctx, msg)
 		if err != nil {
 			// response processing failed
-			log.Printf("[%.8s] Response processing failed: %s\n", rcv, err.Error())
+			logger.Printf(logger.ERROR, "[%.8s] Response processing failed: %s\n", rcv, err.Error())
 			return false, err
 		}
 		if ok {
@@ -294,6 +294,6 @@ func (sl *ServiceList) Listen(ctx context.Context, msg Message) (bool, error) {
 			return true, nil
 		}
 	}
-	log.Printf("[%.8s] Unknown response for txId '%d'...\n", rcv, hdr.TxId)
+	logger.Printf(logger.WARN, "[%.8s] Unknown response for txId '%d'...\n", rcv, hdr.TxId)
 	return false, ErrServiceResponseUnknown
 }

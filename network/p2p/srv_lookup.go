@@ -23,11 +23,11 @@ package p2p
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/bfix/gospel/data"
+	"github.com/bfix/gospel/logger"
 )
 
 // Error codes
@@ -230,14 +230,14 @@ type Query func(ctx context.Context, peer, addr *Address) interface{}
 // LookupNode a node endpoint address.
 func (s *LookupService) LookupNode(ctx context.Context, addr *Address, timeout time.Duration) (entry *Endpoint, err error) {
 	sAddr := s.Node().Address()
-	log.Printf("[%.8s] Lookup for '%.8s':\n", sAddr, addr)
+	logger.Printf(logger.INFO, "[%.8s] Lookup for '%.8s':\n", sAddr, addr)
 
 	query := func(ctx context.Context, peer, addr *Address) interface{} {
 		// perform query
-		log.Printf("[%.8s] Lookup for '%.8s' on '%.8s'...\n", sAddr, addr, peer)
+		logger.Printf(logger.INFO, "[%.8s] Lookup for '%.8s' on '%.8s'...\n", sAddr, addr, peer)
 		list, err := s.Request(ctx, peer, addr, timeout)
 		if err != nil {
-			log.Printf("[%.8s] Lookup for '%.8s' on '%.8s' failed: %s\n", sAddr, addr, peer, err.Error())
+			logger.Printf(logger.ERROR, "[%.8s] Lookup for '%.8s' on '%.8s' failed: %s\n", sAddr, addr, peer, err.Error())
 			return err
 		}
 		// learn all entries

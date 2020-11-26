@@ -23,12 +23,12 @@ package p2p
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"time"
 
 	"github.com/bfix/gospel/crypto/ed25519"
 	"github.com/bfix/gospel/data"
+	"github.com/bfix/gospel/logger"
 )
 
 // Error codes
@@ -97,7 +97,7 @@ func NewNode(prv *ed25519.PrivateKey) (n *Node, err error) {
 	// set node attributes with back references
 	n.buckets = NewBucketList(addr, n.ping)
 
-	log.Printf("[%.8s] Node created.\n", n.addr)
+	logger.Printf(logger.INFO, "[%.8s] Node created.\n", n.addr)
 	return
 }
 
@@ -118,10 +118,10 @@ func (n *Node) Address() *Address {
 func (n *Node) AddService(s Service) bool {
 	if n.srvcs.Add(s) {
 		s.link(n)
-		log.Printf("[%.8s] Service '%s' added to node\n", n.addr, s.Name())
+		logger.Printf(logger.INFO, "[%.8s] Service '%s' added to node\n", n.addr, s.Name())
 		return true
 	}
-	log.Printf("[%.8s] Failed to register service '%s' on node\n", n.addr, s.Name())
+	logger.Printf(logger.ERROR, "[%.8s] Failed to register service '%s' on node\n", n.addr, s.Name())
 	return false
 }
 
@@ -186,11 +186,11 @@ func (n *Node) Send(ctx context.Context, msg Message) (err error) {
 	// log error message if send faild
 	defer func() {
 		if err != nil {
-			log.Printf("[%.8s] Send failed: %s\n", n.addr, err.Error())
+			logger.Printf(logger.ERROR, "[%.8s] Send failed: %s\n", n.addr, err.Error())
 		}
 	}()
 	// announce message transfer
-	log.Printf("[%.8s] Sending message %s\n", n.addr, msg)
+	logger.Printf(logger.INFO, "[%.8s] Sending message %s\n", n.addr, msg)
 
 	// only associated node can send message
 	hdr := msg.Header()

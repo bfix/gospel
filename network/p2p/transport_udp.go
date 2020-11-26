@@ -23,7 +23,6 @@ package p2p
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -31,6 +30,7 @@ import (
 	"time"
 
 	"github.com/bfix/gospel/data"
+	"github.com/bfix/gospel/logger"
 )
 
 //======================================================================
@@ -165,7 +165,7 @@ func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 	// assemble listener configuration
 	cfg := &net.ListenConfig{
 		Control: func(netw string, addr string, raw syscall.RawConn) error {
-			log.Printf("[%.8s] Starting listener at %s:%s...\n", nodeAddr, netw, addr)
+			logger.Printf(logger.INFO, "[%.8s] Starting listener at %s:%s...\n", nodeAddr, netw, addr)
 			return nil
 		},
 		KeepAlive: 0,
@@ -177,8 +177,8 @@ func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 		var err error
 		for c.running {
 			if c.conn, err = cfg.ListenPacket(ctx, "udp", c.addr.String()); err != nil {
-				log.Printf("[%.8s] ERROR: Failed to (re-start) UDP connection", nodeAddr)
-				log.Printf("       %s\n", err.Error())
+				logger.Printf(logger.ERROR, "[%.8s] ERROR: Failed to (re-start) UDP connection", nodeAddr)
+				logger.Printf(logger.ERROR, "       %s\n", err.Error())
 				// wait some time, then retry
 				time.Sleep(3 * time.Second)
 				continue
@@ -187,7 +187,7 @@ func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 				// read single UDP packet
 				n, addr, err := c.conn.ReadFrom(buffer)
 				if err != nil {
-					log.Printf("[%.8s] Listener failed: %s\n", nodeAddr, err.Error())
+					logger.Printf(logger.ERROR, "[%.8s] Listener failed: %s\n", nodeAddr, err.Error())
 					break
 				}
 				//log.Printf("[%.8s] Packet received from %s\n", nodeAddr, addr)
@@ -195,14 +195,14 @@ func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 				// convert to message
 				msg, err := c.node.Unpack(buffer, n)
 				if err != nil {
-					log.Printf("[%.8s] Unwrapping packet failed: %s\n", nodeAddr, err.Error())
+					logger.Printf(logger.ERROR, "[%.8s] Unwrapping packet failed: %s\n", nodeAddr, err.Error())
 					continue
 				}
 				hdr := msg.Header()
 				// is packet for this node?
 				if !hdr.Receiver.Equals(c.node.Address()) || (hdr.Flags&MSGF_DROP != 0) {
 					// no: drop packet and continue
-					log.Printf("[%.8s] Dropping packet from '%.8s'\n", nodeAddr, hdr.Receiver)
+					logger.Printf(logger.WARN, "[%.8s] Dropping packet from '%.8s'\n", nodeAddr, hdr.Receiver)
 					continue
 				}
 				// tell transport and node about the sender (in case it is unknown and not forwarded)
@@ -214,7 +214,7 @@ func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 				ch <- msg
 			}
 			// close the listener
-			log.Printf("[%.8s] Closing listener\n", nodeAddr)
+			logger.Printf(logger.INFO, "[%.8s] Closing listener\n", nodeAddr)
 			c.conn.Close()
 			c.conn = nil
 			// wait before retrying
@@ -287,6 +287,6 @@ func (t *UDPTransport) Register(ctx context.Context, n *Node, endp string) error
 	}
 	// connect to suitable connector
 	n.Connect(NewUDPConnector(t, n, netwAddr))
-	log.Printf("[%.8s] Registered with transport at %s\n", addr, netwAddr)
+	logger.Printf(logger.INFO, "[%.8s] Registered with transport at %s\n", addr, netwAddr)
 	return nil
 }
