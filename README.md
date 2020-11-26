@@ -28,6 +28,7 @@ Packages
 
 - gospel/parser: Read/access/write nested data structures
 - gospel/network: Network-related functionality
+    * P2P core library
     * services
     * packet handling
     * TOR
@@ -64,7 +65,7 @@ Packages
 Install
 -------
 
-This version is designed for the Go1.10+ release.
+This version is designed for the Go1.11+ release.
 
 Make sure that your Go environment - especially ${GOPATH} - is set up and
 enter the following command:
