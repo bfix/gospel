@@ -34,7 +34,7 @@ const (
 )
 
 //----------------------------------------------------------------------
-//  message types
+//  message types and flags
 //----------------------------------------------------------------------
 
 // type values for node commands
@@ -48,6 +48,13 @@ const (
 	PONG           = 2 // response to PING
 	FIND_NODE      = 3 // FIND NODE returns a list of nodes "near" the requested one
 	FIND_NODE_RESP = 4 // response to FIND_NODE
+	RELAY          = 5 // relay message to another node (response-less)
+)
+
+// message flags
+const (
+	MSGF_RELAY = 1 // Message was forwarded (sender != originator)
+	MSGF_DROP  = 2 // Drop message without processing (cover traffic)
 )
 
 var (
@@ -105,13 +112,14 @@ type Message interface {
 //----------------------------------------------------------------------
 
 // HDR_SIZE is the size of the message header in bytes.
-const HDR_SIZE = 72
+const HDR_SIZE = 80
 
 // MsgHeader (common header for requests and responses, 80 bytes)
 type MsgHeader struct {
 	Size     uint16 `order:"big"` // Size of message (including size)
 	Type     uint16 `order:"big"` // Message type (see constants)
-	TxId     uint32 `order:"big"` // transaction identifier
+	Flags    uint32 `order:"big"` // Message flags (see constants)
+	TxId     uint64 `order:"big"` // transaction identifier
 	Sender   *Address
 	Receiver *Address
 }

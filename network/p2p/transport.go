@@ -23,15 +23,14 @@ package p2p
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
-	"sync"
 )
 
 // Error codes
 var (
 	ErrTransAddressDup      = fmt.Errorf("Address already registered")
 	ErrTransUnknownReceiver = fmt.Errorf("Unknown receiver")
+	ErrTransAddressInvalid  = fmt.Errorf("Invalid etwork address")
 )
 
 //======================================================================
@@ -40,8 +39,8 @@ var (
 
 // Connector can send and receive message over a transport layer.
 type Connector interface {
-	// Send message over transport
-	Send(context.Context, Message) error
+	// Send packet to endpoint (low-level transport)
+	Send(context.Context, net.Addr, *Packet) error
 
 	// Listen to messages from transport
 	Listen(context.Context, chan Message)
@@ -51,6 +50,13 @@ type Connector interface {
 
 	// Resolve the network address of a node address
 	Resolve(*Address) net.Addr
+
+	// NewAddress to instaniate a new endpoint address
+	NewAddress(string) (net.Addr, error)
+
+	// Sample given number of nodes with network addresses
+	// stored in cache.
+	Sample(int, *Address) []*Address
 }
 
 // Transport abstraction: Every endpoint (on a local machine) registers
@@ -60,84 +66,4 @@ type Connector interface {
 type Transport interface {
 	// Register a node for participation in this transport
 	Register(context.Context, *Node, string) error
-}
-
-//======================================================================
-// LocalTransport (used as parent for specific transport mechanism)
-//======================================================================
-
-//----------------------------------------------------------------------
-// Connector
-//----------------------------------------------------------------------
-
-// LocalConnector is used in LocalTransport
-type LocalConnector struct {
-	trans *LocalTransport
-}
-
-// Send a message locally.
-func (c *LocalConnector) Send(ctx context.Context, msg Message) error {
-	// send message to receiver
-	hdr := msg.Header()
-	if node, ok := c.trans.nodes[hdr.Receiver.String()]; ok {
-		// send the message to receiver
-		go func() {
-			log.Printf("[%.8s] Sent message %s\n", hdr.Sender, msg)
-			node.Handle() <- msg
-		}()
-		return nil
-	}
-	return ErrTransUnknownReceiver
-}
-
-// Listen to messages from "outside" not necessary in local transport
-func (c *LocalConnector) Listen(ctx context.Context, ch chan Message) {
-}
-
-// Learn network address of node address
-func (c *LocalConnector) Learn(addr *Address, endp net.Addr) error {
-	return nil
-}
-
-// Resolve node address into a network address
-func (c *LocalConnector) Resolve(addr *Address) net.Addr {
-	return nil
-}
-
-//----------------------------------------------------------------------
-// Transport implementation
-//----------------------------------------------------------------------
-
-// LocalTransport handles all common transport functionality and is able
-// to route messages to local nodes
-type LocalTransport struct {
-
-	// map of known endpoints
-	nodes map[string]*Node
-	lock  sync.Mutex
-}
-
-// NewLocalTransport instantiates a local transport implementation
-func NewLocalTransport() LocalTransport {
-	return LocalTransport{
-		nodes: make(map[string]*Node),
-	}
-}
-
-// Register a node for participation in the transport layer.
-func (t *LocalTransport) Register(ctx context.Context, n *Node, endp string) error {
-	// synchronize access to node list
-	t.lock.Lock()
-	defer t.lock.Unlock()
-
-	// check for already registered address
-	addr := n.Address().String()
-	if _, ok := t.nodes[addr]; ok {
-		return ErrTransAddressDup
-	}
-	t.nodes[addr] = n
-
-	// create a connector for node
-	n.Connect(&LocalConnector{t})
-	return nil
 }

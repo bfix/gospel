@@ -26,14 +26,21 @@ import (
 	"encoding/base32"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/bfix/gospel/crypto/ed25519"
 	"github.com/bfix/gospel/math"
 )
 
-var (
+const (
 	// ALPHA is the concurrency parameter
 	ALPHA = 3
+
+	// BUCKET_TTL_SECS is the lifetime of a drop in a bucket (in seconds)
+	BUCKET_TTL_SECS = 300
+
+	// PING_TIMEOUT is the grace period for "still-alive" checks
+	PING_TIMEOUT = 10 * time.Second
 )
 
 //----------------------------------------------------------------------
@@ -45,7 +52,7 @@ var (
 	// ADDR_SIZE is the size of an address in bytes
 	ADDR_SIZE uint16 = 32
 
-	// Error codes
+	// ErrAddressInvalid error message for malformed addresses
 	ErrAddressInvalid = fmt.Errorf("Invalid address")
 )
 
@@ -135,6 +142,39 @@ func (e *Endpoint) Size() uint16 {
 	return ADDR_SIZE + e.Endp.Size()
 }
 
+// String returns human-readable endpoint description
+func (e *Endpoint) String() string {
+	return fmt.Sprintf("%.8s@%s", e.Addr, e.Endp)
+}
+
+//----------------------------------------------------------------------
+// Drops in a bucket...
+//----------------------------------------------------------------------
+
+// bucket entry
+type drop struct {
+	addr *Address
+	seen time.Time
+}
+
+// create a new drop instance
+func newDrop(addr *Address) *drop {
+	return &drop{
+		addr: addr,
+		seen: time.Now(),
+	}
+}
+
+// update drop instance
+func (d *drop) update() {
+	d.seen = time.Now()
+}
+
+// check if a drop has expired
+func (d *drop) expired() bool {
+	return time.Now().Sub(d.seen).Seconds() > BUCKET_TTL_SECS
+}
+
 //----------------------------------------------------------------------
 // Routing buckets
 //----------------------------------------------------------------------
@@ -151,7 +191,7 @@ var (
 // MRU addresses are at the end (Kademlia scheme)
 type Bucket struct {
 	num   int        // bucket number (for log purposes)
-	addrs []*Address // list of addresses
+	addrs []*drop    // list of addresses
 	lock  sync.Mutex // lock for list access
 	count int        // number of addresses in bucket
 }
@@ -160,7 +200,7 @@ type Bucket struct {
 func NewBucket(n int) *Bucket {
 	return &Bucket{
 		num:   n,
-		addrs: make([]*Address, K_BUCKETS),
+		addrs: make([]*drop, K_BUCKETS),
 		count: 0,
 	}
 }
@@ -169,7 +209,7 @@ func NewBucket(n int) *Bucket {
 func (b *Bucket) Add(addr *Address) bool {
 	if b.count < K_BUCKETS {
 		b.lock.Lock()
-		b.addrs[b.count] = addr
+		b.addrs[b.count] = newDrop(addr)
 		b.count++
 		b.lock.Unlock()
 		return true
@@ -187,24 +227,38 @@ func (b *Bucket) Contains(addr *Address) int {
 		if i == b.count {
 			break
 		}
-		if addr.Equals(a) {
+		if addr.Equals(a.addr) {
 			return i
 		}
 	}
 	return -1
 }
 
-// Update move the address from position to end of list (tail)
-func (b *Bucket) Update(pos int) {
+// Expired returns true if the indexed drop has expired.
+func (b *Bucket) Expired(pos int) bool {
+	// check range
+	if pos < 0 || pos > b.count-2 {
+		// skip if outside of range
+		return false
+	}
+	return b.addrs[pos].expired()
+}
+
+// Update changes and moves the address from position to end of list (tail)
+// If addr is nil, the currently stored address is moved.
+func (b *Bucket) Update(pos int, drop *drop) {
 	// check range
 	if pos < 0 || pos > b.count-2 {
 		// skip if outside of range
 		return
 	}
 	b.lock.Lock()
-	addr := b.addrs[pos]
+	if drop == nil {
+		drop = b.addrs[pos]
+		drop.update()
+	}
 	copy(b.addrs[pos:b.count-1], b.addrs[pos+1:b.count])
-	b.addrs[b.count-1] = addr
+	b.addrs[b.count-1] = drop
 	b.lock.Unlock()
 	return
 }
@@ -223,7 +277,7 @@ func (b *Bucket) MRU(offs int) *Address {
 		return nil
 	}
 	// return address
-	return b.addrs[b.count-offs-1]
+	return b.addrs[b.count-offs-1].addr
 }
 
 //----------------------------------------------------------------------
@@ -231,15 +285,17 @@ func (b *Bucket) MRU(offs int) *Address {
 // BucketList is a list of buckets (one for each address bit)
 type BucketList struct {
 	addr  *Address             // base address for distance
+	ping  *PingService         // ping helper
 	list  []*Bucket            // distance-indexed buckets
 	queue chan *BucketListTask // process queue
 }
 
 // NewBucketList returns a new BucketList with given address as reference
 // point for distances.
-func NewBucketList(addr *Address) *BucketList {
+func NewBucketList(addr *Address, ping *PingService) *BucketList {
 	bl := &BucketList{
 		addr:  addr,
+		ping:  ping,
 		list:  make([]*Bucket, 256),
 		queue: make(chan *BucketListTask, 10), // buffered channel for tasks
 	}
@@ -273,16 +329,19 @@ func (bl *BucketList) Add(addr *Address) {
 	b := bl.list[k]
 	if pos := b.Contains(addr); pos != -1 {
 		// found: move it to the tail of the list
-		b.Update(pos)
+		b.Update(pos, nil)
 		return
 	}
 	// can we simply add the address to the bucket?
 	if !b.Add(addr) {
 		// no, we need to process address separately.
-		bl.queue <- &BucketListTask{
-			job:  1,
-			addr: addr,
-			k:    k,
+		if b.Expired(0) && bl.ping != nil {
+			// LRU entry is expired and can be replaced
+			bl.queue <- &BucketListTask{
+				job:  1,
+				addr: addr,
+				k:    k,
+			}
 		}
 	}
 }
@@ -326,6 +385,18 @@ func (bl *BucketList) Run(ctx context.Context) {
 
 				// add address if oldest peer is unresponsive
 				case 1:
+					// get address to check from indexed bucker
+					buck := bl.list[task.k]
+					drop := buck.addrs[0]
+					if drop.expired() {
+						// ping address with short timeout
+						if err := bl.ping.Ping(ctx, task.addr, PING_TIMEOUT, 0); err != nil {
+							// ping failed: use new address drop
+							drop = newDrop(task.addr)
+							// update bucket
+							buck.Update(0, drop)
+						}
+					}
 				}
 
 			// externally terminated

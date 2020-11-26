@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/bfix/gospel/crypto/ed25519"
+	"github.com/bfix/gospel/data"
 )
 
 // Error codes
@@ -36,6 +37,7 @@ var (
 	ErrNodeRemote         = fmt.Errorf("No remote nodes allowed")
 	ErrNodeConnectorSet   = fmt.Errorf("Connector for node already set")
 	ErrNodeSendNoReceiver = fmt.Errorf("Send has no recipient")
+	ErrNodeResolve        = fmt.Errorf("Can't resolve network address")
 )
 
 // constants
@@ -56,8 +58,12 @@ var (
 // Node represents a local network peer
 type Node struct {
 	prvKey *ed25519.PrivateKey // Private Ed25519 key
-	pubKey *ed25519.PublicKey  // node public key
 	addr   *Address            // address of the node in the P2P network
+
+	// standard services
+	ping   *PingService
+	lookup *LookupService
+	relay  *RelayService
 
 	inCh chan Message // channel for incoming messages
 	conn Connector    // send/receive stub
@@ -65,7 +71,7 @@ type Node struct {
 	buckets *BucketList  // routing table
 	srvcs   *ServiceList // list of services
 
-	lastID int64 // last used identifier
+	lastID uint64 // last used identifier
 }
 
 // NewNode instantiates a new local node with given private key.
@@ -74,39 +80,34 @@ func NewNode(prv *ed25519.PrivateKey) (n *Node, err error) {
 	pub := prv.Public()
 	addr := NewAddressFromKey(pub)
 	n = &Node{
-		prvKey:  prv,
-		pubKey:  pub,
-		addr:    addr,
-		inCh:    make(chan Message),
-		conn:    nil,
-		buckets: NewBucketList(addr),
-		srvcs:   NewServiceList(),
+		prvKey: prv,
+		addr:   addr,
+		inCh:   make(chan Message),
+		conn:   nil,
+		srvcs:  NewServiceList(),
 	}
-	log.Printf("[%.8s] Node created.\n", n.addr)
-
 	// add all standard services (P2P)
-	n.AddService(NewPingService())
-	n.AddService(NewLookupService())
+	n.ping = NewPingService()
+	n.AddService(n.ping)
+	n.lookup = NewLookupService()
+	n.AddService(n.lookup)
+	n.relay = NewRelayService()
+	n.AddService(n.relay)
+
+	// set node attributes with back references
+	n.buckets = NewBucketList(addr, n.ping)
+
+	log.Printf("[%.8s] Node created.\n", n.addr)
 	return
 }
 
 //----------------------------------------------------------------------
-// Address and key handling
+// Address handling
 //----------------------------------------------------------------------
 
 // Address returns the P2P address of a node
 func (n *Node) Address() *Address {
 	return n.addr
-}
-
-// PublicKey returns the Ed25519 key from the node address
-func (n *Node) PublicKey() *ed25519.PublicKey {
-	return n.pubKey
-}
-
-// PrivateKey returns the private Ed25519 key for the node
-func (n *Node) PrivateKey() *ed25519.PrivateKey {
-	return n.prvKey
 }
 
 //----------------------------------------------------------------------
@@ -133,9 +134,89 @@ func (n *Node) Service(name string) Service {
 // Message exchange (incoming and outgoing messages)
 //----------------------------------------------------------------------
 
+// RelayedMessage creates a nested relay message
+func (n *Node) RelayedMessage(msg Message, peers []*Address) (Message, error) {
+	// onion-wrapping
+	envelope := func(m Message, peer, rcv *Address) (Message, error) {
+		// resolve next hop
+		hop := m.Header().Receiver
+		netw := n.Resolve(rcv)
+		// skip hops without network address
+		if netw == nil {
+			return nil, ErrNodeResolve
+		}
+		endp := &Endpoint{
+			Addr: hop,
+			Endp: NewString(netw.String()),
+		}
+		// wrap message into packet
+		pkt, err := n.Wrap(m)
+		if err != nil {
+			return nil, err
+		}
+		// assemble relay message
+		wrp := n.relay.NewMessage(RELAY).(*RelayMsg)
+		wrp.Set(endp, pkt)
+		wrp.TxId = n.NextId()
+		wrp.Flags = MSGF_RELAY
+		wrp.Sender = n.Address()
+		wrp.Receiver = peer
+		return wrp, nil
+	}
+	// prepare original message
+	hdr := msg.Header()
+	hdr.Flags |= MSGF_RELAY
+	// create self-relayed message to announce network address
+	m, err := envelope(msg, hdr.Receiver, n.Address())
+	if err != nil {
+		return nil, err
+	}
+	// assemble nested relay message
+	for _, hop := range peers {
+		m, err = envelope(m, hop, m.Header().Receiver)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return m, nil
+}
+
 // Send a message from this node to a peer on the network
-func (n *Node) Send(ctx context.Context, msg Message) error {
-	return n.conn.Send(ctx, msg)
+func (n *Node) Send(ctx context.Context, msg Message) (err error) {
+	// log error message if send faild
+	defer func() {
+		if err != nil {
+			log.Printf("[%.8s] Send failed: %s\n", n.addr, err.Error())
+		}
+	}()
+	// announce message transfer
+	log.Printf("[%.8s] Sending message %s\n", n.addr, msg)
+
+	// only associated node can send message
+	hdr := msg.Header()
+	if !n.addr.Equals(hdr.Sender) {
+		err = ErrTransSenderMismatch
+		return
+	}
+	// wrap message into packet
+	pkt, err := n.Wrap(msg)
+	if err != nil {
+		return
+	}
+	// resolve receiver
+	netw := n.Resolve(hdr.Receiver)
+	if netw == nil {
+		err = ErrTransUnknownReceiver
+		return
+	}
+	// send message
+	err = n.SendRaw(ctx, netw, pkt)
+	return
+}
+
+// SendRaw message from this node to a peer on the network
+func (n *Node) SendRaw(ctx context.Context, dst net.Addr, pkt *Packet) error {
+	return n.conn.Send(ctx, dst, pkt)
 }
 
 // Handle messages from channel
@@ -153,6 +234,46 @@ func (n *Node) Connect(c Connector) error {
 }
 
 //----------------------------------------------------------------------
+// Packet-related methods
+//----------------------------------------------------------------------
+
+// Pack message into a byte array
+func (n *Node) Pack(msg Message) ([]byte, error) {
+	pkt, err := n.Wrap(msg)
+	if err != nil {
+		return nil, err
+	}
+	return data.Marshal(pkt)
+}
+
+// Unpack byte array into a message
+func (n *Node) Unpack(buf []byte, size int) (msg Message, err error) {
+	// convert data to packet
+	pkt := new(Packet)
+	if err = data.Unmarshal(pkt, buf[:size]); err != nil {
+		return
+	}
+	if size != int(pkt.Size) {
+		err = ErrPacketSizeMismatch
+		return
+	}
+	// decrypt packet into message
+	return n.Unwrap(pkt)
+}
+
+// Wrap message into a packet
+func (n *Node) Wrap(msg Message) (pkt *Packet, err error) {
+	// wrap the message into a packet
+	return NewPacket(msg, n.prvKey)
+}
+
+// Unwrap packet into a message
+func (n *Node) Unwrap(pkt *Packet) (msg Message, err error) {
+	// decrypt packet into message
+	return pkt.Unwrap(n.prvKey, n.srvcs.MessageFactory)
+}
+
+//----------------------------------------------------------------------
 // Endpoint management (mapping node addresses to network addresses)
 //----------------------------------------------------------------------
 
@@ -163,8 +284,8 @@ func (n *Node) Learn(addr *Address, endp string) (err error) {
 	// learn network endpoint if specified
 	if len(endp) > 0 {
 		// get the associated network address
-		var netw *net.UDPAddr
-		if netw, err = net.ResolveUDPAddr("udp", endp); err != nil {
+		netw, err := n.conn.NewAddress(endp)
+		if err != nil {
 			return err
 		}
 		err = n.conn.Learn(addr, netw)
@@ -173,12 +294,26 @@ func (n *Node) Learn(addr *Address, endp string) (err error) {
 }
 
 // Resolve peer address to network address
-func (n *Node) Resolve(addr *Address) string {
-	netw := n.conn.Resolve(addr)
-	if netw == nil {
-		return ""
+// This will only deliver a result if the address has been learned before by
+// the transport connector. Unknown endpoints must be resolved with the
+// LookupService.
+func (n *Node) Resolve(addr *Address) net.Addr {
+	res := n.conn.Resolve(addr)
+	if res == nil {
+		return nil
 	}
-	return netw.String()
+	return res
+}
+
+// NewNetworkAddr returns the network address for endpoint (transport-specific)
+func (n *Node) NewNetworkAddr(endp string) (net.Addr, error) {
+	return n.conn.NewAddress(endp)
+}
+
+// Sample returns a random collection of node/network address pairs this node
+// has learned during up-time.
+func (n *Node) Sample(num int, skip *Address) []*Address {
+	return n.conn.Sample(num, skip)
 }
 
 //----------------------------------------------------------------------
@@ -239,18 +374,13 @@ func (n *Node) Run(ctx context.Context) {
 // Helper methods
 //----------------------------------------------------------------------
 
-// MessageFactory produces messages from a binary representation
-func (n *Node) MessageFactory(buf []byte) (Message, error) {
-	return n.srvcs.MessageFactory(buf)
-}
-
 // Closest returns the n closest nodes we know of
 func (n *Node) Closest(num int) []*Address {
 	return n.buckets.Closest(num)
 }
 
 // NextId returns the next unique identifier for this node context
-func (n *Node) NextId() int64 {
+func (n *Node) NextId() uint64 {
 	n.lastID++
 	return n.lastID
 

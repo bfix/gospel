@@ -47,6 +47,7 @@ func NewPingMsg() Message {
 			Size:     HDR_SIZE,
 			TxId:     0,
 			Type:     PING,
+			Flags:    0,
 			Sender:   nil,
 			Receiver: nil,
 		},
@@ -74,6 +75,7 @@ func NewPongMsg() Message {
 			Size:     HDR_SIZE,
 			TxId:     0,
 			Type:     PONG,
+			Flags:    0,
 			Sender:   nil,
 			Receiver: nil,
 		},
@@ -113,7 +115,7 @@ func (s *PingService) Name() string {
 func (s *PingService) Respond(ctx context.Context, m Message) (bool, error) {
 	// check we are responsible for this
 	hdr := m.Header()
-	if hdr.Type != PONG {
+	if hdr.Type != PING {
 		return false, nil
 	}
 	// assemble PONG as response to PING
@@ -123,10 +125,7 @@ func (s *PingService) Respond(ctx context.Context, m Message) (bool, error) {
 	resp.Receiver = hdr.Sender
 
 	// send message
-	if err := s.Send(ctx, resp); err != nil {
-		return true, err
-	}
-	return true, nil
+	return true, s.Send(ctx, resp)
 }
 
 // NewMessage creates an empty service message of given type
@@ -145,12 +144,28 @@ func (s *PingService) NewMessage(mt int) Message {
 //----------------------------------------------------------------------
 
 // Ping sends a ping to another node and waits for a response (with timeout)
-func (s *PingService) Ping(ctx context.Context, rcv *Address, timeout time.Duration) error {
+func (s *PingService) Ping(ctx context.Context, rcv *Address, timeout time.Duration, relays int) error {
 	// assemble request
 	req := NewPingMsg().(*PingMsg)
-	req.TxId = uint32(s.node.NextId())
+	req.TxId = s.node.NextId()
 	req.Sender = s.node.Address()
 	req.Receiver = rcv
+
+	// check for relayed message
+	var msg Message = req
+	if relays > 0 {
+		// select hops for relay chain
+		var err error
+		hops := s.Node().Sample(relays, rcv)
+		if hops != nil {
+			// assemble relay message (chain)
+			if msg, err = s.Node().RelayedMessage(msg, hops); err != nil {
+				return err
+			}
+			// set transaction id of final request in outer relay message
+			msg.Header().TxId = req.TxId
+		}
+	}
 
 	// send request and process responses
 	hdlr := &TaskHandler{
@@ -160,5 +175,5 @@ func (s *PingService) Ping(ctx context.Context, rcv *Address, timeout time.Durat
 		},
 		timeout: timeout,
 	}
-	return s.Task(ctx, req, hdlr)
+	return s.Task(ctx, msg, hdlr)
 }

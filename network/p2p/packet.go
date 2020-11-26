@@ -36,6 +36,7 @@ import (
 var (
 	ErrPacketSenderMismatch = fmt.Errorf("Sender not matching message header")
 	ErrPacketIntegrity      = fmt.Errorf("Packet integrity violated")
+	ErrPacketSizeMismatch   = fmt.Errorf("Packet size mismatch")
 )
 
 //----------------------------------------------------------------------
@@ -85,10 +86,11 @@ type Packet struct {
 }
 
 // NewPacket creates a new packet from a message.
-func NewPacket(msg Message, sender *Node) (*Packet, error) {
+func NewPacket(msg Message, skey *ed25519.PrivateKey) (*Packet, error) {
 	// check if sender is correctly specified in message
 	hdr := msg.Header()
-	if !sender.Address().Equals(hdr.Sender) {
+	sAddr := NewAddressFromKey(skey.Public())
+	if !sAddr.Equals(hdr.Sender) {
 		return nil, ErrPacketSenderMismatch
 	}
 	// convert message to binary object
@@ -97,7 +99,6 @@ func NewPacket(msg Message, sender *Node) (*Packet, error) {
 		return nil, err
 	}
 	// get keys from peers
-	skey := sender.PrivateKey()
 	rkey := hdr.Receiver.PublicKey()
 	return NewPacketFromData(buf, skey, rkey)
 }
@@ -133,12 +134,10 @@ func NewPacketFromData(buf []byte, sender *ed25519.PrivateKey, receiver *ed25519
 	}, nil
 }
 
-// Unwrap a packet
-func (p *Packet) Unwrap(receiver *ed25519.PrivateKey, mf MessageFactory) (Message, error) {
-
+// Unpack a packet
+func (p *Packet) Unpack(receiver *ed25519.PrivateKey) ([]byte, error) {
 	// compute shared secret and derive encryption key
 	Q := ed25519.NewPublicKeyFromBytes(p.KXT).Mult(receiver.D)
-
 	// decrypt with ChaCha20-Poly1305 AEAD
 	aead, err := chacha.New(Q.Bytes())
 	if err != nil {
@@ -146,22 +145,29 @@ func (p *Packet) Unwrap(receiver *ed25519.PrivateKey, mf MessageFactory) (Messag
 	}
 	nonce := p.Body[:aead.NonceSize()]
 	enc := p.Body[aead.NonceSize():]
-	body, err := aead.Open(nil, nonce, enc, nil)
+	buf, err := aead.Open(nil, nonce, enc, nil)
 	if err != nil {
 		return nil, err
 	}
+	return buf, nil
+}
 
+// Unwrap a packet
+func (p *Packet) Unwrap(receiver *ed25519.PrivateKey, mf MessageFactory) (Message, error) {
+	buf, err := p.Unpack(receiver)
+	if err != nil {
+		return nil, err
+	}
 	// compute 'r = SHA256(b) mod N'
-	rb := sha256.Sum256(body)
+	rb := sha256.Sum256(buf)
 	r := math.NewIntFromBytes(rb[:])
 	r = r.Mod(ed25519.GetCurve().N)
 
 	// reconstruct message
-	msg, err := mf(body)
+	msg, err := mf(buf)
 	if err != nil {
 		return nil, err
 	}
-
 	// check message integrity
 	k := msg.Header().Sender.PublicKey().Mult(r).Bytes()
 	if !bytes.Equal(k, p.KXT) {

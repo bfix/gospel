@@ -58,6 +58,7 @@ func NewFindNodeMsg() Message {
 			Size:     uint16(HDR_SIZE + ADDR_SIZE),
 			TxId:     0,
 			Type:     FIND_NODE,
+			Flags:    0,
 			Sender:   nil,
 			Receiver: nil,
 		},
@@ -95,6 +96,7 @@ func NewFindNodeRespMsg() Message {
 			Size:     HDR_SIZE,
 			TxId:     0,
 			Type:     FIND_NODE_RESP,
+			Flags:    0,
 			Sender:   nil,
 			Receiver: nil,
 		},
@@ -155,28 +157,26 @@ func (s *LookupService) Respond(ctx context.Context, m Message) (bool, error) {
 
 	// get address to lookup and try to resolve it locally.
 	addr := msg.Addr
-	endp := s.Node().Resolve(addr)
-	if len(endp) > 0 {
+	netw := s.Node().Resolve(addr)
+	if netw != nil {
 		// we know the address being resolved: send it
 		// as the only result in the response
 		resp.Add(&Endpoint{
 			Addr: addr,
-			Endp: NewString(endp),
+			Endp: NewString(netw.String()),
 		})
 	} else {
 		// return closest nodes in our routing table
 		for _, addr := range s.Node().Closest(K_BUCKETS) {
+			netw = s.Node().Resolve(addr)
 			resp.Add(&Endpoint{
 				Addr: addr,
-				Endp: NewString(s.Node().Resolve(addr)),
+				Endp: NewString(netw.String()),
 			})
 		}
 	}
 	// send message
-	if err := s.Send(ctx, resp); err != nil {
-		return true, err
-	}
-	return true, nil
+	return true, s.Send(ctx, resp)
 }
 
 // NewMessage creates an empty service message of given type
@@ -198,7 +198,7 @@ func (s *LookupService) NewMessage(mt int) Message {
 func (s *LookupService) Request(ctx context.Context, rcv, addr *Address, timeout time.Duration) (res []*Endpoint, err error) {
 	// assemble request
 	req := NewFindNodeMsg().(*FindNodeMsg)
-	req.TxId = uint32(s.node.NextId())
+	req.TxId = s.node.NextId()
 	req.Sender = s.node.Address()
 	req.Receiver = rcv
 	req.Addr = addr
@@ -227,16 +227,17 @@ func (s *LookupService) Request(ctx context.Context, rcv, addr *Address, timeout
 // address list, the referenced nodes are queried for a result.
 type Query func(ctx context.Context, peer, addr *Address) interface{}
 
-// Lookup a node endpoint address.
+// LookupNode a node endpoint address.
 func (s *LookupService) LookupNode(ctx context.Context, addr *Address, timeout time.Duration) (entry *Endpoint, err error) {
-	log.Printf("[%.8s] Lookup for '%.8s':\n", s.Node().Address(), addr)
+	sAddr := s.Node().Address()
+	log.Printf("[%.8s] Lookup for '%.8s':\n", sAddr, addr)
 
 	query := func(ctx context.Context, peer, addr *Address) interface{} {
 		// perform query
-		log.Printf("[%.8s] Lookup for '%.8s' on '%.8s'...\n", s.Node().Address(), addr, peer)
+		log.Printf("[%.8s] Lookup for '%.8s' on '%.8s'...\n", sAddr, addr, peer)
 		list, err := s.Request(ctx, peer, addr, timeout)
 		if err != nil {
-			log.Printf("[%.8s] Lookup for '%.8s' on '%.8s' failed: %s\n", s.Node().Address(), addr, peer, err.Error())
+			log.Printf("[%.8s] Lookup for '%.8s' on '%.8s' failed: %s\n", sAddr, addr, peer, err.Error())
 			return err
 		}
 		// learn all entries
@@ -265,6 +266,7 @@ func (s *LookupService) LookupNode(ctx context.Context, addr *Address, timeout t
 	return res.(*Endpoint), nil
 }
 
+// Lookup with specific resolver logic to handle mutlitple lookup scenarios.
 func (s *LookupService) Lookup(ctx context.Context, addr *Address, resolver Query, timeout time.Duration) (res interface{}, err error) {
 	// create internal state
 	wg := new(sync.WaitGroup)

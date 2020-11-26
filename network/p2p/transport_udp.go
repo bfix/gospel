@@ -24,6 +24,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"sync"
 	"syscall"
@@ -35,6 +36,12 @@ import (
 //======================================================================
 // Internet-based transport: send and receive packets as UDP datagrams
 //======================================================================
+
+// Internal constants
+const (
+	SAMPLE_CACHE = 100
+	MAX_SAMPLE   = 5
+)
 
 // Error codes
 var (
@@ -63,58 +70,87 @@ type UDPConnector struct {
 	conn    net.PacketConn
 	running bool
 
-	cache map[string]*net.UDPAddr
-	lock  sync.Mutex
+	cache  map[string]*net.UDPAddr
+	sample []*Address
+	pos    int
+	lock   sync.Mutex
+}
+
+// NewUDPConnector creates an empty instance for node at given network address
+func NewUDPConnector(trans *UDPTransport, node *Node, addr *net.UDPAddr) *UDPConnector {
+	// assemble connector
+	conn := &UDPConnector{
+		trans:   trans,
+		node:    node,
+		addr:    addr,
+		conn:    nil,
+		running: false,
+		cache:   make(map[string]*net.UDPAddr),
+		sample:  make([]*Address, SAMPLE_CACHE),
+		pos:     0,
+	}
+	// register our own node
+	conn.Learn(node.Address(), addr)
+	return conn
+}
+
+// NewAddress returns a new UDP address for an endpoint
+func (c *UDPConnector) NewAddress(endp string) (net.Addr, error) {
+	return net.ResolveUDPAddr("udp", endp)
+}
+
+// Sample returns a random collection of node/network address pairs this node
+// has learned during up-time.
+func (c *UDPConnector) Sample(num int, skip *Address) []*Address {
+	// limit number of hops
+	if num > MAX_SAMPLE {
+		num = MAX_SAMPLE
+	}
+	// check if request can be satisfied
+	if num > len(c.cache)-2 {
+		// too few cache entries
+		return nil
+	}
+	// collect random addresses
+	res := make([]*Address, num)
+loop:
+	for i := 0; i < num; {
+		pos := rand.Intn(SAMPLE_CACHE)
+		addr := c.sample[pos]
+		if addr == nil || addr.Equals(c.node.addr) || addr.Equals(skip) {
+			continue
+		}
+		for _, v := range res {
+			if v == nil {
+				break
+			}
+			if addr.Equals(v) {
+				continue loop
+			}
+		}
+		res[i] = addr
+		i++
+	}
+	return res
 }
 
 // Send message from node to the UDP network.
-func (c *UDPConnector) Send(ctx context.Context, msg Message) (err error) {
-	// log error message if send faild
-	defer func() {
-		if err != nil {
-			log.Printf("[%.8s] Send failed: %s\n", c.node.Address(), err.Error())
-		}
-	}()
-
+func (c *UDPConnector) Send(ctx context.Context, dst net.Addr, pkt *Packet) error {
 	// check if we have an UDP connection
 	if c.conn == nil {
-		err = ErrTransClosed
-		return
-	}
-	// announce message transfer
-	hdr := msg.Header()
-	log.Printf("[%.8s] Sending message %s\n", c.node.Address(), msg)
-
-	// only associated node can send message
-	if !c.node.Address().Equals(hdr.Sender) {
-		err = ErrTransSenderMismatch
-		return
-	}
-	// wrap the message into a packet
-	pkt, err := NewPacket(msg, c.node)
-	if err != nil {
-		err = ErrTransPackaging
-		return
+		return ErrTransClosed
 	}
 	buf, err := data.Marshal(pkt)
 	if err != nil {
-		err = ErrTransMarshalling
-		return
+		return err
 	}
 	// do the UDP transfer
-	netwAddr := c.Resolve(hdr.Receiver)
-	if netwAddr == nil {
-		err = ErrTransUnknownReceiver
-		return
-	}
-	n, err := c.conn.WriteTo(buf, netwAddr)
+	n, err := c.conn.WriteTo(buf, dst)
 	if err != nil {
-		err = ErrTransWrite
-		return
+		return ErrTransWrite
 	}
 	if n != len(buf) {
-		err = ErrTransWriteShort
-		return
+		return ErrTransWriteShort
 	}
 	return nil
 }
@@ -156,35 +192,24 @@ func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 				}
 				//log.Printf("[%.8s] Packet received from %s\n", nodeAddr, addr)
 
-				// convert to transport packet
-				pkt := new(Packet)
-				if err = data.Unmarshal(pkt, buffer[:n]); err != nil {
-					log.Printf("[%.8s] Listener failed: %.8s\n", nodeAddr, err.Error())
-					break
-				}
-				if n != int(pkt.Size) {
-					log.Printf("[%.8s] Listener failed with invalid packet size %d (%d)\n", nodeAddr, n, int(pkt.Size))
-					break
-				}
-
-				// decrypt packet into message
-				msg, err := pkt.Unwrap(c.node.PrivateKey(), c.node.MessageFactory)
+				// convert to message
+				msg, err := c.node.Unpack(buffer, n)
 				if err != nil {
 					log.Printf("[%.8s] Unwrapping packet failed: %s\n", nodeAddr, err.Error())
 					continue
 				}
+				hdr := msg.Header()
 				// is packet for this node?
-				receiver := msg.Header().Receiver
-				if !receiver.Equals(c.node.Address()) {
+				if !hdr.Receiver.Equals(c.node.Address()) || (hdr.Flags&MSGF_DROP != 0) {
 					// no: drop packet and continue
-					log.Printf("[%.8s] Dropping packet from '%.8s'\n", nodeAddr, receiver)
+					log.Printf("[%.8s] Dropping packet from '%.8s'\n", nodeAddr, hdr.Receiver)
 					continue
 				}
-				// tell transport and node about the sender (in case it is unknown)
-				sender := msg.Header().Sender
-				c.Learn(sender, addr)
-				c.node.Learn(sender, "")
-
+				// tell transport and node about the sender (in case it is unknown and not forwarded)
+				if hdr.Flags&MSGF_RELAY == 0 {
+					c.Learn(hdr.Sender, addr)
+					c.node.Learn(hdr.Sender, "")
+				}
 				// let the node handle the message
 				ch <- msg
 			}
@@ -206,6 +231,8 @@ func (c *UDPConnector) Learn(addr *Address, endp net.Addr) error {
 	switch x := endp.(type) {
 	case *net.UDPAddr:
 		c.cache[addr.String()] = x
+		c.sample[c.pos] = addr
+		c.pos = (c.pos + 1) % SAMPLE_CACHE
 		//log.Printf("[connectr] Learned network address '%s' for node '%.8s'\n", x, addr)
 	default:
 		//log.Printf("[connectr] Can't learn network address '%s' for node '%.8s'\n", x, addr)
@@ -258,15 +285,8 @@ func (t *UDPTransport) Register(ctx context.Context, n *Node, endp string) error
 	if _, ok := t.registry[addr]; ok {
 		return ErrTransAddressDup
 	}
-	// assemble suitable connector
-	conn := &UDPConnector{
-		trans:   t,
-		node:    n,
-		addr:    netwAddr,
-		running: false,
-		cache:   make(map[string]*net.UDPAddr),
-	}
-	n.Connect(conn)
+	// connect to suitable connector
+	n.Connect(NewUDPConnector(t, n, netwAddr))
 	log.Printf("[%.8s] Registered with transport at %s\n", addr, netwAddr)
 	return nil
 }

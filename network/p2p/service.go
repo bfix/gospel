@@ -190,7 +190,6 @@ func (s *ServiceImpl) Task(ctx context.Context, m Message, f *TaskHandler) (err 
 		err = ErrNodeTimeout
 	case <-ctrl:
 	}
-
 	// unregister handler
 	s.listeners.Remove(txid)
 	return
