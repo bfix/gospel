@@ -137,7 +137,7 @@ func Println(level int, line string) {
 	if level <= logInst.level {
 		logInst.msgChan <- &logMsg{
 			level: level,
-			text:  line + "\n",
+			text:  line,
 			ts:    time.Now(),
 		}
 	}

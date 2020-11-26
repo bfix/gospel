@@ -32,7 +32,13 @@ type Formatter func(msg *logMsg) string
 func SimpleFormat(msg *logMsg) string {
 	ts := msg.ts.Format(time.Stamp)
 	lvl := getTag(msg.level)
-	return fmt.Sprintf("%s [%s] %s", ts, lvl, msg.text)
+	txt := msg.text
+	pos := len(txt) - 1
+	for txt[pos] == '\n' {
+		txt = txt[:pos]
+		pos--
+	}
+	return fmt.Sprintf("%s [%s] %s", ts, lvl, txt)
 }
 
 // ColorFormat uses colors for different log levels
@@ -51,5 +57,5 @@ func ColorFormat(msg *logMsg) string {
 		col = 90
 	}
 	txt := SimpleFormat(msg)
-	return fmt.Sprintf("\033[01;%dm%s\033[01;0m", col, txt)
+	return fmt.Sprintf("\033[01;%dm%s\033[01;0m\n", col, txt)
 }
