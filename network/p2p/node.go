@@ -79,6 +79,7 @@ func NewNode(prv *ed25519.PrivateKey) (n *Node, err error) {
 	// create new instance of a local node
 	pub := prv.Public()
 	addr := NewAddressFromKey(pub)
+	logger.Printf(logger.INFO, "[%.8s] Creating node...\n", addr)
 	n = &Node{
 		prvKey: prv,
 		addr:   addr,
@@ -96,8 +97,6 @@ func NewNode(prv *ed25519.PrivateKey) (n *Node, err error) {
 
 	// set node attributes with back references
 	n.buckets = NewBucketList(addr, n.ping)
-
-	logger.Printf(logger.INFO, "[%.8s] Node created.\n", n.addr)
 	return
 }
 
@@ -118,7 +117,7 @@ func (n *Node) Address() *Address {
 func (n *Node) AddService(s Service) bool {
 	if n.srvcs.Add(s) {
 		s.link(n)
-		logger.Printf(logger.INFO, "[%.8s] Service '%s' added to node\n", n.addr, s.Name())
+		logger.Printf(logger.DBG, "[%.8s] Service '%s' added to node\n", n.addr, s.Name())
 		return true
 	}
 	logger.Printf(logger.ERROR, "[%.8s] Failed to register service '%s' on node\n", n.addr, s.Name())

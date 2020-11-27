@@ -165,7 +165,7 @@ func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 	// assemble listener configuration
 	cfg := &net.ListenConfig{
 		Control: func(netw string, addr string, raw syscall.RawConn) error {
-			logger.Printf(logger.INFO, "[%.8s] Starting listener at %s:%s...\n", nodeAddr, netw, addr)
+			logger.Printf(logger.DBG, "[%.8s] Starting listener at %s:%s...\n", nodeAddr, netw, addr)
 			return nil
 		},
 		KeepAlive: 0,
@@ -214,7 +214,7 @@ func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 				ch <- msg
 			}
 			// close the listener
-			logger.Printf(logger.INFO, "[%.8s] Closing listener\n", nodeAddr)
+			logger.Printf(logger.WARN, "[%.8s] Closing listener\n", nodeAddr)
 			c.conn.Close()
 			c.conn = nil
 			// wait before retrying
@@ -287,6 +287,6 @@ func (t *UDPTransport) Register(ctx context.Context, n *Node, endp string) error
 	}
 	// connect to suitable connector
 	n.Connect(NewUDPConnector(t, n, netwAddr))
-	logger.Printf(logger.INFO, "[%.8s] Registered with transport at %s\n", addr, netwAddr)
+	logger.Printf(logger.DBG, "[%.8s] Registered with transport at %s\n", addr, netwAddr)
 	return nil
 }
