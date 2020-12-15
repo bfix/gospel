@@ -42,26 +42,27 @@ var (
 //----------------------------------------------------------------------
 // Packet is the unit of transfer in a network. It wraps messages
 // so they are encrypted and authenticated during transit; only
-// the sending and the receiving peers can read the message. A new
+// the receiving peer can decrypt and read the message. A new
 // encryption key is generated for each Packet.
 //
 // The sending and receiving peers (with indices 's' and 'r') both have
 // a public/private Ed25519 key pair: 'd_s' and 'd_r' are the private
 // keys, 'P_s = [d_s]G' and 'P_r = [d_r]G' are the public keys (with G
 // as the base point of the Ed25519 group). The public keys are mutually
-// known to the peers.
+// known to the peers (either long-term or ephemeral keys depending on
+// the layer around transport).
 //
 // Encryption:
 // ===========
 // (1) The sender generates the SHA256 hash of the message to be wrapped
-//     into a packet and derives a value 'r' as 'r = SHA256(m) mod N'
+//     into a packet and derives a value 'h' as 'h = SHA256(m) mod N'
 //     where 'N' is the group order of Ed25519.
-// (2) The sender computes 'Q = [r*d_s]P_r' (=[r*d_s*d_r]G) as a shared
+// (2) The sender computes 'Q = [h*d_s]P_r' (=[h*d_s*d_r]G) as a shared
 //     secret and derives a symmetric encryption key from it.
 // (3) The message is encrypted and stored in the 'Body' field of the
-//     packet; the length of the encrypted message is the same as the
-//     plain message.
-// (4) The sender computes 'KXT = [r]P_s' as the key exchange token and
+//     packet; the length of the encrypted message can be slightly greater
+//     than the plain message (encryption overhead).
+// (4) The sender computes 'KXT = [h]P_s' as the key exchange token and
 //     stores it in the 'KXT' field of the packet.
 //
 // Decryption:
@@ -70,8 +71,8 @@ var (
 //     and to derive a symmetric decryption key from it. The 'Body'
 //     is decrypted.
 // (2) The receiver computes the SHA256 hash value of the decrypted
-//     body and derives a value 'r = SHA256(Body) mod N'
-// (3) The receiver verifies that the equation '[r]P_s == KXT' holds to
+//     body and derives a value 'h = SHA256(Body) mod N'
+// (3) The receiver verifies that the equation '[h]P_s == KXT' holds to
 //     verify the integrity of the packet. 'P_s' is part of the message
 //     header as defined in this framework. The receiver now knows that
 //     the (plain text) message is originating from the sender.
@@ -108,11 +109,11 @@ func NewPacketFromData(buf []byte, sender *ed25519.PrivateKey, receiver *ed25519
 
 	// compute 'r = SHA256(b) mod N'
 	rb := sha256.Sum256(buf)
-	r := math.NewIntFromBytes(rb[:])
-	r = r.Mod(ed25519.GetCurve().N)
+	h := math.NewIntFromBytes(rb[:])
+	h = h.Mod(ed25519.GetCurve().N)
 
 	// compute shared secret and derive encryption key
-	Q := receiver.Mult(r.Mul(sender.D))
+	Q := receiver.Mult(h.Mul(sender.D))
 
 	// encrypt body with ChaCha20-Poly1305 AEAD
 	aead, err := chacha.New(Q.Bytes())
@@ -129,7 +130,7 @@ func NewPacketFromData(buf []byte, sender *ed25519.PrivateKey, receiver *ed25519
 	pubS := sender.Public()
 	return &Packet{
 		Size: uint16(34 + len(enc)),
-		KXT:  pubS.Mult(r).Bytes(),
+		KXT:  pubS.Mult(h).Bytes(),
 		Body: enc,
 	}, nil
 }
@@ -160,8 +161,8 @@ func (p *Packet) Unwrap(receiver *ed25519.PrivateKey, mf MessageFactory) (Messag
 	}
 	// compute 'r = SHA256(b) mod N'
 	rb := sha256.Sum256(buf)
-	r := math.NewIntFromBytes(rb[:])
-	r = r.Mod(ed25519.GetCurve().N)
+	h := math.NewIntFromBytes(rb[:])
+	h = h.Mod(ed25519.GetCurve().N)
 
 	// reconstruct message
 	msg, err := mf(buf)
@@ -169,7 +170,7 @@ func (p *Packet) Unwrap(receiver *ed25519.PrivateKey, mf MessageFactory) (Messag
 		return nil, err
 	}
 	// check message integrity
-	k := msg.Header().Sender.PublicKey().Mult(r).Bytes()
+	k := msg.Header().Sender.PublicKey().Mult(h).Bytes()
 	if !bytes.Equal(k, p.KXT) {
 		return nil, ErrPacketIntegrity
 	}
