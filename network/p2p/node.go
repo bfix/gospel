@@ -124,9 +124,25 @@ func (n *Node) AddService(s Service) bool {
 	return false
 }
 
-// Service returns the named service instance for node
+// Service returns the named service instance for node. Useful for external
+// services that are unknown within the framework.
 func (n *Node) Service(name string) Service {
 	return n.srvcs.Get(name)
+}
+
+// PingService returns the PING service instance
+func (n *Node) PingService() *PingService {
+	return n.ping
+}
+
+// LookupService returns the PING service instance
+func (n *Node) LookupService() *LookupService {
+	return n.lookup
+}
+
+// RelayService returns the RELAY service instance
+func (n *Node) RelayService() *RelayService {
+	return n.relay
 }
 
 //----------------------------------------------------------------------
@@ -277,7 +293,7 @@ func (n *Node) Unwrap(pkt *Packet) (msg Message, err error) {
 //----------------------------------------------------------------------
 
 // Learn about a new peer in the network
-func (n *Node) Learn(addr *Address, endp string) (err error) {
+func (n *Node) Learn(addr *Address, endp string) error {
 	// add peer to routing table
 	n.buckets.Add(addr)
 	// learn network endpoint if specified
@@ -287,9 +303,9 @@ func (n *Node) Learn(addr *Address, endp string) (err error) {
 		if err != nil {
 			return err
 		}
-		err = n.conn.Learn(addr, netw)
+		return n.conn.Learn(addr, netw)
 	}
-	return
+	return nil
 }
 
 // Resolve peer address to network address
@@ -373,7 +389,7 @@ func (n *Node) Run(ctx context.Context) {
 // Helper methods
 //----------------------------------------------------------------------
 
-// Closest returns the n closest nodes we know of
+// Closest returns the 'num' closest nodes we know of
 func (n *Node) Closest(num int) []*Address {
 	return n.buckets.Closest(num)
 }
