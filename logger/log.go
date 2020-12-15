@@ -169,7 +169,7 @@ func LogToFile(filename string) bool {
 	return false
 }
 
-// Formatter sets a new format processor and returns the old one.
+// UseFormat sets a new format processor and returns the old one.
 func UseFormat(f Formatter) Formatter {
 	old := logInst.formatter
 	logInst.formatter = f
