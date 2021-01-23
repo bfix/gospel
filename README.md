@@ -6,7 +6,7 @@
 Gospel: GO SPEcial Library
 ==========================
 
-(c) 2010-2020 Bernd Fix <brf@hoi-polloi.org>   >Y<
+(c) 2010-2021 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
 Gospel is free software: you can redistribute it and/or modify it
 under the terms of the GNU Affero General Public License as published
