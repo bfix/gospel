@@ -31,6 +31,7 @@ import (
 
 func main() {
 
+	fmt.Printf("Passphrase: ")
 	rdr := bufio.NewReader(os.Stdin)
 	in, _, err := rdr.ReadLine()
 	if err != nil {
