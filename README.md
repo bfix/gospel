@@ -41,6 +41,7 @@ Packages
     * raw transactions
     * hash functions (Hash160, Hash256)
     * base58 encoding
+    * Tools (passphrase2seed, vanityaddress)
 - gospel/bitcoin/wallet:
     * HD key space
     * BIP39 seed words
