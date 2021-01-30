@@ -2,7 +2,7 @@ package network
 
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2020 Bernd Fix
+// Copyright (C) 2011-2021 Bernd Fix
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -24,6 +24,10 @@ import (
 	"net"
 	"strconv"
 )
+
+//======================================================================
+// Tor utility functions
+//======================================================================
 
 // IsTorExitToDest checks if source is a TOR exit node that can
 // connect to dst:dport
