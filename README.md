@@ -28,12 +28,16 @@ Packages
 
 - gospel/parser: Read/access/write nested data structures
 - gospel/network: Network-related functionality
-    * P2P core library
     * services
     * packet handling
-    * TOR
     * SOCKS5 connection handler
     * SMTP/POP3 mail handling
+- gospel/network/p2p:
+    * P2P core library
+- gospel/network/tor:
+    * Tor controller
+    * hidden services (onion handling)
+    * Tor utilities
 - gospel/bitcoin:
     * Elliptic curve crypto (Secp256k1)
     * Bitcoin addresses
@@ -41,12 +45,14 @@ Packages
     * raw transactions
     * hash functions (Hash160, Hash256)
     * base58 encoding
-    * Tools (passphrase2seed, vanityaddress)
 - gospel/bitcoin/wallet:
     * HD key space
     * BIP39 seed words
 - gospel/bitcoin/rpc: JSON-RPC to Bitcoin server
 - gospel/bitcoin/script: Bitcoin script parser/interpreter
+- gospel/bitcoin/tools:
+    * passphrase2seed
+    * vanityaddress
 - gospel/math: Mathematical helpers
     * Fast Fourier Transformation
     * Arbitrary precision integers with chainable methods
@@ -56,6 +62,8 @@ Packages
     * PRNG
     * Paillier crypto scheme
     * cryptographic counters
+- gospel/crypto/ed25519:
+    * general purpose Ed25519 crypto
 - gospel/logger: logging facilities
 - gospel/data: useful data structures like
     * stacks
@@ -76,17 +84,37 @@ enter the following command:
 Test notes
 ----------
 
+## Network-related tests
+
+#### 1. Tor-related tests
+
+To run the Tor-related tests you need to set some environment variables to
+access the Tor control port:
+
+```bash
+export TOR_CONTROL_PROTO=tcp
+export TOR_CONTROL_ENDPOINT=127.0.0.1:9052
+export TOR_CONTROL_PASSWORD="my_torcontrol_secret"
+```
+
+Only `TOR_CONTROL_PASSWORD` is mandatory; `TOR_CONTROL_PROTO` and
+`TOR_CONTROL_ENDPOINT` default to the above values.
+
+## Bitcoin-related tests
+
 To successfully run the Bitcoin-JSON-RPC tests, follow these steps:
 
 #### 1. Edit the 'bitcoin.conf' configuration file
 
 Use an ASCII editor to set the RPC variables to appropriate values:
-   
-    server=1
-    rpcuser=<username>
-    rpcpassword=<password>
-    rpctimeout=30
-    rpcport=8332
+
+```bash
+server=1
+rpcuser=<username>
+rpcpassword=<password>
+rpctimeout=30
+rpcport=8332
+```
    
 #### 2. Prepare an encrypted test wallet
 
@@ -99,24 +127,30 @@ The RPC calls implemented in the library are compliant with Bitcoin
 Core v.0.14.0 and probably result in errors if used with previous
 (or later) versions; tests only work in 'testnet' (enforced).
 
-    $ bitcoind -testnet
+```bash
+bitcoind -testnet
+```
 
 #### 4. Export environment variables for the RPC tests
 
 If none of these variables are defined, the RPC tests will be
 silently skipped:
 
-    $ export BTC_HOST="http://127.0.0.1:8332"
-    $ export BTC_USER="<username>"
-    $ export BTC_PASSWORD="<password>"
-    $ export BTC_WALLET_PP="<your test wallet passphrase>"
-    $ export BTC_WALLET_COPY="/tmp/testwallet.dat"
+```bash
+export BTC_HOST="http://127.0.0.1:8332"
+export BTC_USER="<username>"
+export BTC_PASSWORD="<password>"
+export BTC_WALLET_PP="<your test wallet passphrase>"
+export BTC_WALLET_COPY="/tmp/testwallet.dat"
+```
    
 The following environment variables are optional and listed with
 their default value; you can replace them with other valid data:
 
-    $ export BTC_PRIVKEY=""
-    $ export BTC_BLOCK_HASH="000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"
+```bash
+export BTC_PRIVKEY=""
+export BTC_BLOCK_HASH="000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"
+```
     
 N.B.: The variable BTC_PRIVKEY is a string representing a private Bitcoin key
 (like "93DaDjT5M5cBE6ApLhniKL1ct6N55tboJ8BdZYjfu5ZkWENS8VK"). If defined,
@@ -125,10 +159,13 @@ its balance -- this could take a long time (see next step).
 
 #### 5. Run the tests
 
-    $ go test github.com/bfix/gospel/bitcoin/rpc
+```bash
+go test github.com/bfix/gospel/bitcoin/rpc
+```
 
 If you import a private key the rescanning will timeout the test run and result
 in a failure. Please run the test command with a 'timeout' setting in this case:
-    
-    $ go test -timeout 3600s github.com/bfix/gospel/bitcoin/rpc
-    
+
+```bash
+go test -timeout 3600s github.com/bfix/gospel/bitcoin/rpc
+```
