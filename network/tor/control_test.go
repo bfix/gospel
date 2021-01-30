@@ -1,7 +1,6 @@
 package network
 
 import (
-	"fmt"
 	"os"
 	"testing"
 )
@@ -24,7 +23,7 @@ func TestTorControl(t *testing.T) {
 	if len(passwd) == 0 {
 		t.Skip("Skipping 'network/tor' tests!")
 	}
-	testCtrl, err = NewTorControl(proto, endp)
+	testCtrl, err = NewControl(proto, endp)
 	if err != nil {
 		t.Fatal(err)
 	}
