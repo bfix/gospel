@@ -57,20 +57,26 @@ var (
 
 // Onion is a hidden service implementation on a Tor service
 type Onion struct {
-	key     interface{}    // private key
-	flags   []string       // hidden service flags
-	ports   map[int]string // port mappings
-	srvId   string         // service identifier
-	running bool           // hidden service running?
+	key        interface{}    // private key
+	flags      []string       // hidden service flags
+	ports      map[int]string // port mappings
+	srvId      string         // service identifier
+	maxStreams int            // max. number of allowed streams
+	userName   string         // user name (basic auth)
+	userPasswd string         // user password (basic auth)
+	running    bool           // hidden service running?
 }
 
 // NewOnion instantiates a new hidden service
 func NewOnion(key interface{}) (o *Onion, err error) {
 	o = &Onion{
-		key:     key,
-		flags:   make([]string, 0),
-		ports:   make(map[int]string),
-		running: false,
+		key:        key,
+		flags:      make([]string, 0),
+		ports:      make(map[int]string),
+		maxStreams: 0,
+		userName:   "",
+		userPasswd: "",
+		running:    false,
 	}
 	o.srvId, err = o.ServiceID()
 	return
@@ -114,6 +120,12 @@ func (o *Onion) AddPort(listen int, spec string) {
 	o.ports[listen] = spec
 }
 
+// SetCredentials sets username and password for basic authentication
+func (o *Onion) SetCredentials(name, passwd string) {
+	o.userName = name
+	o.userPasswd = passwd
+}
+
 // Start a new hidden service via a Tor controller.
 func (o *Onion) Start(ctrl *Control) (err error) {
 	// check if hidden service is already active
@@ -147,6 +159,8 @@ func (o *Onion) Start(ctrl *Control) (err error) {
 		return ErrOnionInvalidKey
 	}
 	// add flags (optional)
+	limitStreams := false
+	withAuth := false
 	if len(o.flags) > 0 {
 		cmd += " Flags="
 		for i, flag := range o.flags {
@@ -154,11 +168,31 @@ func (o *Onion) Start(ctrl *Control) (err error) {
 				cmd += ","
 			}
 			cmd += flag
+			switch flag {
+			case "BasicAuth":
+				if len(o.userName) == 0 {
+					o.userName = "none"
+				}
+				if len(o.userPasswd) == 0 {
+					o.userPasswd = "none"
+				}
+				withAuth = true
+			case "MaxStreamsCloseCircuit":
+				limitStreams = true
+			}
 		}
 	}
 	// add port mappings
 	for listen, tgt := range o.ports {
 		cmd += fmt.Sprintf(" Port=%d,%s", listen, tgt)
+	}
+	// set max. number of streams
+	if limitStreams {
+		cmd += fmt.Sprintf(" MaxStreams=%d", o.maxStreams)
+	}
+	// set credentials for basic authentication
+	if withAuth {
+		cmd += fmt.Sprintf(" ClientAuth=%s:%s", o.userName, o.userPasswd)
 	}
 	// execute command
 	list, err := ctrl.execute(cmd)
