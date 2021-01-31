@@ -42,252 +42,114 @@ import (
 
 // Error codes
 var (
+	ErrOnionAlreadyRunning = fmt.Errorf("Onion already running")
+	ErrOnionInvalidKey     = fmt.Errorf("Invalid onion key specification")
+	ErrOnionKeyInvalidSize = fmt.Errorf("Invalid onion key size")
 	ErrOnionKeyExists      = fmt.Errorf("Onion private key already exists")
 	ErrOnionMissingKey     = fmt.Errorf("Missing private key for onion")
 	ErrOnionInvalidKeySpec = fmt.Errorf("Invalid provate key specification")
 	ErrOnionAddFailed      = fmt.Errorf("Failed to add hidden service")
 )
 
-// Onion interface for Tor hidden services
-type Onion interface {
-	SetKey(string) error      // set private key from string representation
-	KeySpec() (string, error) // get key specification (for ADD_ONION call)
-	AddFlag(string)           // add a flag for the hidden service
-	Flags() []string          // hidden service flags
-	AddPort(int, string)      // add a port mapping
-	Ports() map[int]string    // hidden service port mappings
-	ServiceID() string        // get associated service identifier
-}
-
 //----------------------------------------------------------------------
-// Base onion
+// Onion (hidden service)
 //----------------------------------------------------------------------
 
-// onionBase is a base type for onion implementations
-type onionBase struct {
-	flags []string       // hidden service flags
-	ports map[int]string // port mappings
-	srvId string         // service identifier
+// Onion is a hidden service implementation on a Tor service
+type Onion struct {
+	key     interface{}    // private key
+	flags   []string       // hidden service flags
+	ports   map[int]string // port mappings
+	srvId   string         // service identifier
+	running bool           // hidden service running?
 }
 
-// AddFlag adds a flag to the list
-func (o *onionBase) AddFlag(flag string) {
-	o.flags = append(o.flags, flag)
+// NewOnion instantiates a new hidden service
+func NewOnion(key interface{}) (o *Onion, err error) {
+	o = &Onion{
+		key:     key,
+		flags:   make([]string, 0),
+		ports:   make(map[int]string),
+		running: false,
+	}
+	o.srvId, err = o.ServiceID()
+	return
 }
 
-// Flags returns a list of hidden service flags
-func (o *onionBase) Flags() []string {
-	return o.flags
+// ServiceID returns the "onion name" of the hidden service (without the
+// trailing ".onion")
+func (o *Onion) ServiceID() (id string, err error) {
+	switch prv := o.key.(type) {
+	case *ed25519.PrivateKey:
+		keyData := prv.Public().Bytes()
+		hsh := sha3.New256()
+		hsh.Write([]byte(".onion checksum"))
+		hsh.Write(keyData)
+		hsh.Write([]byte{0x03})
+		sum := hsh.Sum(nil)
+		sum[2] = 0x03
+		id = base32.StdEncoding.EncodeToString(append(keyData, sum[:3]...))
+	case *rsa.PrivateKey:
+		pub := prv.Public().(*rsa.PublicKey)
+		var data []byte
+		if data, err = asn1.Marshal(*pub); err != nil {
+			return
+		}
+		sum := sha1.Sum(data)
+		id = base32.StdEncoding.EncodeToString(sum[:len(sum)/2])
+	}
+	id = strings.ToLower(id)
+	return
+}
+
+// AddFlag adds service flags
+func (o *Onion) AddFlag(flags ...string) {
+	for _, flag := range flags {
+		o.flags = append(o.flags, flag)
+	}
 }
 
 // AddPort adds a port mapping for the hidden service
-func (o *onionBase) AddPort(listen int, spec string) {
+func (o *Onion) AddPort(listen int, spec string) {
 	o.ports[listen] = spec
 }
 
-// Ports returns port mappings for hidden service
-func (o *onionBase) Ports() map[int]string {
-	return o.ports
-}
-
-//----------------------------------------------------------------------
-// Ed25519-based onion
-//----------------------------------------------------------------------
-
-// OnionEd25519 is a Ed25519-based hidden Tor service.
-type OnionEd25519 struct {
-	onionBase
-	prv *ed25519.PrivateKey // private key
-}
-
-// NewOnionEd25519 instantiates a new Ed25519-based hidden service
-func NewOnionEd25519(prv *ed25519.PrivateKey) *OnionEd25519 {
-	id := ""
-	if prv != nil {
-		id = ServiceIdEd25519(prv.Public())
+// Start a new hidden service via a Tor controller.
+func (o *Onion) Start(ctrl *Control) (err error) {
+	// check if hidden service is already active
+	if o.running {
+		return ErrOnionAlreadyRunning
 	}
-	return &OnionEd25519{
-		onionBase: onionBase{
-			flags: make([]string, 0),
-			ports: make(map[int]string),
-			srvId: id,
-		},
-		prv: prv,
-	}
-}
+	// assemble control command to start hidden service
+	cmd := "ADD_ONION "
 
-// ServiceIdEd25519 computes the hidden service identifier from an Ed25519
-// public key of a hidden service.
-func ServiceIdEd25519(pub *ed25519.PublicKey) string {
-	keyData := pub.Bytes()
-	hsh := sha3.New256()
-	hsh.Write([]byte(".onion checksum"))
-	hsh.Write(keyData)
-	hsh.Write([]byte{0x03})
-	sum := hsh.Sum(nil)
-	sum[2] = 0x03
-	id := base32.StdEncoding.EncodeToString(append(keyData, sum[:3]...))
-	return strings.ToLower(id)
-}
-
-// SetKey sets the private key for a hidden service (only if no key is defined
-// yet).
-func (o *OnionEd25519) SetKey(spec string) error {
-	if o.prv != nil {
-		return ErrOnionKeyExists
-	}
-	parts := strings.Split(spec, ":")
-	if len(parts) != 2 || parts[0] != "ED25519-V3" {
-		return ErrOnionInvalidKeySpec
-	}
-	kd, err := base64.StdEncoding.DecodeString(parts[1])
-	if err != nil {
-		return err
-	}
-	d := math.NewIntFromBytes(kd[:32])
-	o.prv = ed25519.NewPrivateKeyFromD(d)
-	return nil
-}
-
-// KeySpec returns the key specification used to add hidden services
-func (o *OnionEd25519) KeySpec() (string, error) {
-	// check for existing key
-	if o.prv != nil {
-		kb := make([]byte, 64)
-		if _, err := rand.Read(kb); err != nil {
-			return "", err
+	// specify private service key
+	switch prv := o.key.(type) {
+	case *ed25519.PrivateKey:
+		kd := make([]byte, 64)
+		if _, err = rand.Read(kd); err != nil {
+			return
 		}
-		copy(kb[:32], o.prv.D.Bytes())
-		return fmt.Sprintf("ED25519-V3:%s", base64.StdEncoding.EncodeToString(kb)), nil
-	}
-	// create a new key
-	return "NEW:ED25519-V3", nil
-}
-
-// ServiceID generates a service identifier for a hidden service
-func (o *OnionEd25519) ServiceID() string {
-	// handle case of unknown key
-	if o.prv == nil {
-		return ""
-	}
-	// check for existing service identifier
-	if len(o.srvId) == 0 {
-		// generate service identifier
-		o.srvId = ServiceIdEd25519(o.prv.Public())
-	}
-	return o.srvId
-}
-
-//----------------------------------------------------------------------
-// RSA1024-based onion
-//----------------------------------------------------------------------
-
-// OnionRSA1024 is a RSA1024-based hidden Tor service.
-type OnionRSA1024 struct {
-	onionBase
-	prv *rsa.PrivateKey // private key
-}
-
-// NewOnionRSA1024 instantiates a new RSA1024-based hidden service
-func NewOnionRSA1024(prv *rsa.PrivateKey) (*OnionRSA1024, error) {
-	id := ""
-	if prv != nil {
-		var err error
-		if id, err = ServiceIdRSA1024(prv.Public().(*rsa.PublicKey)); err != nil {
-			return nil, err
+		copy(kd[:32], prv.D.Bytes())
+		cmd += fmt.Sprintf("ED25519-V3:%s", base64.StdEncoding.EncodeToString(kd))
+	case *rsa.PrivateKey:
+		if prv.Size() != 128 {
+			return ErrOnionKeyInvalidSize
 		}
-	}
-	return &OnionRSA1024{
-		onionBase: onionBase{
-			flags: make([]string, 0),
-			ports: make(map[int]string),
-			srvId: id,
-		},
-		prv: prv,
-	}, nil
-}
-
-// ServiceIdRSA1024 computes the hidden service identifier from a RSA-1024
-// public key of a hidden service.
-func ServiceIdRSA1024(pub *rsa.PublicKey) (string, error) {
-	der, err := asn1.Marshal(*pub)
-	if err != nil {
-		return "", err
-	}
-	// Onion id is base32(firstHalf(sha1(publicKeyDER)))
-	hash := sha1.Sum(der)
-	half := hash[:len(hash)/2]
-	id := base32.StdEncoding.EncodeToString(half)
-	return strings.ToLower(id), nil
-}
-
-// SetKey sets the private key for a hidden service (only if no key is defined
-// yet).
-func (o *OnionRSA1024) SetKey(spec string) error {
-	if o.prv != nil {
-		return ErrOnionKeyExists
-	}
-	parts := strings.Split(spec, ":")
-	if len(parts) != 2 || parts[0] != "RSA1024" {
-		return ErrOnionInvalidKeySpec
-	}
-	kd, err := base64.StdEncoding.DecodeString(parts[1])
-	if err != nil {
-		return err
-	}
-	o.prv, err = x509.ParsePKCS1PrivateKey(kd)
-	return err
-}
-
-// KeySpec returns the key specification used to add hidden services
-func (o *OnionRSA1024) KeySpec() (string, error) {
-	// check for existing key
-	if o.prv != nil {
-		kd := x509.MarshalPKCS1PrivateKey(o.prv)
-		return fmt.Sprintf("RSA1024:%s", base64.StdEncoding.EncodeToString(kd)), nil
-	}
-	// create a new key
-	return "NEW:RSA1024", nil
-}
-
-// ServiceID generates a service identifier for a hidden service
-func (o *OnionRSA1024) ServiceID() string {
-	// handle case of unknown key
-	if o.prv == nil {
-		return ""
-	}
-	// check for existing service identifier
-	if len(o.srvId) == 0 {
-		// generate service identifier
-		var err error
-		pub, ok := o.prv.Public().(*rsa.PublicKey)
-		if !ok {
-			return ""
+		kd := x509.MarshalPKCS1PrivateKey(prv)
+		cmd += fmt.Sprintf("RSA1024:%s", base64.StdEncoding.EncodeToString(kd))
+	case string:
+		if prv != "ED25519-V3" && prv != "RSA1024" {
+			return ErrOnionInvalidKey
 		}
-		if o.srvId, err = ServiceIdRSA1024(pub); err != nil {
-			return ""
-		}
+		cmd += fmt.Sprintf("NEW:%s", prv)
+	default:
+		return ErrOnionInvalidKey
 	}
-	return o.srvId
-}
-
-//----------------------------------------------------------------------
-// Ading and deleting hidden service for a running Tor service
-//----------------------------------------------------------------------
-
-// AddOnion instantiates a new hidden service. The service will listen at the
-// specified port and will redirect traffic to host:port.
-func (c *Control) AddOnion(o Onion) (string, error) {
-	spec, err := o.KeySpec()
-	if err != nil {
-		return "", err
-	}
-	cmd := "ADD_ONION " + spec
 	// add flags (optional)
-	flags := o.Flags()
-	if len(flags) > 0 {
+	if len(o.flags) > 0 {
 		cmd += " Flags="
-		for i, flag := range flags {
+		for i, flag := range o.flags {
 			if i > 0 {
 				cmd += ","
 			}
@@ -295,34 +157,56 @@ func (c *Control) AddOnion(o Onion) (string, error) {
 		}
 	}
 	// add port mappings
-	for listen, tgt := range o.Ports() {
+	for listen, tgt := range o.ports {
 		cmd += fmt.Sprintf(" Port=%d,%s", listen, tgt)
 	}
 	// execute command
-	list, err := c.execute(cmd)
+	list, err := ctrl.execute(cmd)
 	if err != nil {
-		return "", err
+		return err
 	}
 	// get newly generated key (optional)
-	kd, ok := list["PrivateKey"]
-	if ok {
-		if err = o.SetKey(kd); err != nil {
-			return "", err
+	if kd, ok := list["PrivateKey"]; ok {
+		parts := strings.Split(kd, ":")
+		var data []byte
+		if spec, ok := o.key.(string); ok {
+			if len(parts) != 2 || parts[1] != spec {
+				return ErrOnionInvalidKeySpec
+			}
+			if data, err = base64.StdEncoding.DecodeString(parts[1]); err != nil {
+				return
+			}
+			switch spec {
+			case "ED25519-V3":
+				d := math.NewIntFromBytes(data[:32])
+				o.key = ed25519.NewPrivateKeyFromD(d)
+			case "RSA1024":
+				if o.key, err = x509.ParsePKCS1PrivateKey(data); err != nil {
+					return
+				}
+			}
 		}
 	}
 	// get generated service identifier
-	srvId := o.ServiceID()
+	srvId, err := o.ServiceID()
+	if err != nil {
+		return
+	}
 	if id, ok := list["ServiceID"]; ok {
 		if id != srvId {
-			return "", ErrOnionAddFailed
+			return ErrOnionAddFailed
 		}
 	}
-	return srvId, nil
+	o.running = true
+	return nil
 }
 
-// DelOnion removes a hidden service with given ID
-func (c *Control) DelOnion(o Onion) error {
-	cmd := fmt.Sprintf("DEL_ONION %s", o.ServiceID())
-	_, err := c.execute(cmd)
+// Stop removes a hidden service from the Tor service
+func (o *Onion) Stop(ctrl *Control) error {
+	id, err := o.ServiceID()
+	if err == nil {
+		cmd := fmt.Sprintf("DEL_ONION %s", id)
+		_, err = ctrl.execute(cmd)
+	}
 	return err
 }
