@@ -21,11 +21,35 @@ package tor
 //----------------------------------------------------------------------
 
 import (
+	"fmt"
+	"os"
 	"testing"
 )
 
-func TestAuthentication(t *testing.T) {
-	if err = testCtrl.Authenticate(passwd); err != nil {
-		t.Fatal(err)
+var (
+	testCtrl *Control = nil
+	passwd   string
+	err      error
+)
+
+func TestMain(m *testing.M) {
+	proto := os.Getenv("TOR_CONTROL_PROTO")
+	if len(proto) == 0 {
+		proto = "tcp"
 	}
+	endp := os.Getenv("TOR_CONTROL_ENDPOINT")
+	if len(endp) == 0 {
+		endp = "127.0.0.1:9052"
+	}
+	if passwd = os.Getenv("TOR_CONTROL_PASSWORD"); len(passwd) == 0 {
+		fmt.Println("Skipping 'network/tor' tests!")
+		return
+	}
+	testCtrl, err = NewControl(proto, endp)
+	if err != nil {
+		fmt.Printf("ERROR: %s\n", err.Error())
+		return
+	}
+	m.Run()
+	testCtrl.Close()
 }

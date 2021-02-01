@@ -1,4 +1,4 @@
-package network
+package tor
 
 //----------------------------------------------------------------------
 // This file is part of Gospel.
