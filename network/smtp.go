@@ -38,6 +38,7 @@ import (
 	"net/smtp"
 	"net/textproto"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -76,15 +77,16 @@ func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) error {
 	if proxy == "" {
 		c0, err = net.Dial("tcp", uSrv.Host)
 	} else {
-		var (
-			host string
-			port int
-		)
-		host, port, err = SplitHost(uSrv.Host)
+		var host, portS string
+		host, portS, err = net.SplitHostPort(uSrv.Host)
 		if err != nil {
 			return err
 		}
-		c0, err = Socks5Connect("tcp", host, port, proxy)
+		port, err := strconv.ParseInt(portS, 10, 32)
+		if err != nil {
+			return err
+		}
+		c0, err = Socks5Connect("tcp", host, int(port), proxy)
 	}
 	if err != nil {
 		return err
