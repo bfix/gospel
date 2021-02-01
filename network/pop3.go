@@ -77,12 +77,15 @@ func POP3Connect(service, proxy string) (*POP3Session, error) {
 	if proxy == "" {
 		sess.c0, err = net.Dial("tcp", uSrv.Host)
 	} else {
-		var host, portS string
+		var (
+			host, portS string
+			port        int64
+		)
 		host, portS, err = net.SplitHostPort(uSrv.Host)
 		if err != nil {
 			return nil, err
 		}
-		port, err := strconv.ParseInt(portS, 10, 32)
+		port, err = strconv.ParseInt(portS, 10, 32)
 		if err != nil {
 			return nil, err
 		}

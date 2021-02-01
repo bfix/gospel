@@ -77,12 +77,15 @@ func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) error {
 	if proxy == "" {
 		c0, err = net.Dial("tcp", uSrv.Host)
 	} else {
-		var host, portS string
+		var (
+			host, portS string
+			port        int64
+		)
 		host, portS, err = net.SplitHostPort(uSrv.Host)
 		if err != nil {
 			return err
 		}
-		port, err := strconv.ParseInt(portS, 10, 32)
+		port, err = strconv.ParseInt(portS, 10, 32)
 		if err != nil {
 			return err
 		}
