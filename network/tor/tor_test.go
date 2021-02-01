@@ -120,7 +120,15 @@ func TestSocksPort(t *testing.T) {
 
 func TestDial(t *testing.T) {
 	// connect through Tor to website
-	conn, err := srv.DialTimeout("tcp", "ipify.org:80", time.Minute, tor_proxy)
+	var (
+		conn net.Conn
+		err  error
+	)
+	if srv.isLocal {
+		conn, err = srv.DialTimeout("tcp", "ipify.org:80", time.Minute)
+	} else {
+		conn, err = srv.DialTimeout("tcp", "ipify.org:80", time.Minute, tor_proxy)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

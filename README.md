@@ -95,7 +95,7 @@ access the Tor control port:
 export TOR_CONTROL_PROTO=tcp
 export TOR_CONTROL_ENDPOINT=127.0.0.1:9051
 export TOR_CONTROL_PASSWORD="my_torcontrol_secret"
-export TOR_PROXY=127.0.0.1:9050
+export TOR_PROXY=socks5://127.0.0.1:9050
 ```
 
 Only `TOR_CONTROL_PASSWORD` is mandatory; `TOR_CONTROL_PROTO`,
