@@ -126,8 +126,8 @@ func (o *Onion) SetCredentials(name, passwd string) {
 	o.userPasswd = passwd
 }
 
-// Start a new hidden service via a Tor controller.
-func (o *Onion) Start(ctrl *Control) (err error) {
+// Start a new hidden service via a Tor service.
+func (o *Onion) Start(srv *Service) (err error) {
 	// check if hidden service is already active
 	if o.running {
 		return ErrOnionAlreadyRunning
@@ -195,13 +195,16 @@ func (o *Onion) Start(ctrl *Control) (err error) {
 		cmd += fmt.Sprintf(" ClientAuth=%s:%s", o.userName, o.userPasswd)
 	}
 	// execute command
-	list, err := ctrl.execute(cmd)
+	list, err := srv.execute(cmd)
 	if err != nil {
 		return err
 	}
 	// get newly generated key (optional)
-	if kd, ok := list["PrivateKey"]; ok {
-		parts := strings.Split(kd, ":")
+	if keyList, ok := list["PrivateKey"]; ok {
+		if len(keyList) != 1 {
+			return ErrOnionInvalidKeySpec
+		}
+		parts := strings.Split(keyList[0], ":")
 		var data []byte
 		if spec, ok := o.key.(string); ok {
 			if len(parts) != 2 || parts[1] != spec {
@@ -226,8 +229,8 @@ func (o *Onion) Start(ctrl *Control) (err error) {
 	if err != nil {
 		return
 	}
-	if id, ok := list["ServiceID"]; ok {
-		if id != srvId {
+	if idList, ok := list["ServiceID"]; ok {
+		if len(idList) != 1 && idList[0] != srvId {
 			return ErrOnionAddFailed
 		}
 	}
@@ -236,11 +239,11 @@ func (o *Onion) Start(ctrl *Control) (err error) {
 }
 
 // Stop removes a hidden service from the Tor service
-func (o *Onion) Stop(ctrl *Control) error {
+func (o *Onion) Stop(srv *Service) error {
 	id, err := o.ServiceID()
 	if err == nil {
 		cmd := fmt.Sprintf("DEL_ONION %s", id)
-		_, err = ctrl.execute(cmd)
+		_, err = srv.execute(cmd)
 	}
 	return err
 }

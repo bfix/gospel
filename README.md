@@ -93,12 +93,13 @@ access the Tor control port:
 
 ```bash
 export TOR_CONTROL_PROTO=tcp
-export TOR_CONTROL_ENDPOINT=127.0.0.1:9052
+export TOR_CONTROL_ENDPOINT=127.0.0.1:9051
 export TOR_CONTROL_PASSWORD="my_torcontrol_secret"
+export TOR_PROXY=127.0.0.1:9050
 ```
 
-Only `TOR_CONTROL_PASSWORD` is mandatory; `TOR_CONTROL_PROTO` and
-`TOR_CONTROL_ENDPOINT` default to the above values.
+Only `TOR_CONTROL_PASSWORD` is mandatory; `TOR_CONTROL_PROTO`,
+`TOR_CONTROL_ENDPOINT` and `TOR_PROXY` default to the above values.
 
 ## Bitcoin-related tests
 

@@ -23,6 +23,7 @@ package tor
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -35,15 +36,29 @@ import (
 // https://github.com/torproject/torspec/blob/master/control-spec.txt
 //======================================================================
 
-// Control instance to communicate commands (and responses) with a
+// Error codes
+var (
+	ErrTorNoSocksPort = fmt.Errorf("No SocksPort found")
+	ErrTorNotLocal    = fmt.Errorf("Tor service not local")
+)
+
+// Service instance to communicate commands (and responses) with a
 // running Tor process.
-type Control struct {
-	conn net.Conn      // connection to control port (or socket)
-	rdr  *bufio.Reader // buffered reader for responses
+type Service struct {
+	isLocal bool          // locally running service?
+	conn    net.Conn      // connection to control port (or socket)
+	rdr     *bufio.Reader // buffered reader for responses
 }
 
-// NewTorControl instantiates a new Tor controller
-func NewControl(schema, endp string) (*Control, error) {
+// NewService instantiates a new Tor controller
+func NewService(schema, endp string) (*Service, error) {
+	// check for local service instance
+	host, _, err := net.SplitHostPort(endp)
+	if err != nil {
+		return nil, err
+	}
+	isLocal := (schema == "unix" || host == "localhost" || host == "127.0.0.1")
+
 	// connect to control port or socket
 	conn, err := net.Dial(schema, endp)
 	if err != nil {
@@ -51,59 +66,112 @@ func NewControl(schema, endp string) (*Control, error) {
 	}
 	// instantiate controller object
 	rdr := bufio.NewReader(conn)
-	tc := &Control{
-		conn: conn,
-		rdr:  rdr,
+	srv := &Service{
+		conn:    conn,
+		rdr:     rdr,
+		isLocal: isLocal,
 	}
-	return tc, nil
+	return srv, nil
 }
 
 // Close connection to Tor process
-func (c *Control) Close() error {
-	return c.conn.Close()
+func (s *Service) Close() error {
+	return s.conn.Close()
 }
 
 // Authenticate client by password defined in torrc as
 // "HashedControlPassword 16:..."
-func (c *Control) Authenticate(auth string) error {
+func (s *Service) Authenticate(auth string) error {
 	cmd := fmt.Sprintf("AUTHENTICATE \"%s\"", auth)
-	_, err := c.execute(cmd)
+	_, err := s.execute(cmd)
 	return err
 }
 
+// GetSocksPort returns the best-matching SocksPort definition for a given
+// set of flags (only works for local Tor services)
+func (s *Service) GetSocksPort(flags ...string) (string, error) {
+	// check for local service
+	if !s.isLocal {
+		return "", ErrTorNotLocal
+	}
+	// get list of defined proxy ports
+	list, err := s.GetConf("SocksPort")
+	if err != nil {
+		return "", err
+	}
+	entries, ok := list["SocksPort"]
+	if !ok {
+		return "", ErrTorNoSocksPort
+	}
+	// find best port match
+	bestProxy := ""
+	bestDiff := 1000
+	bestOff := 1000
+	eval := func(list []string, flags ...string) int {
+		found := 0
+		for _, flag := range flags {
+			for _, e := range list {
+				if e == flag {
+					found++
+					break
+				}
+			}
+		}
+		return len(flags) - found
+	}
+	for _, e := range entries {
+		parts := strings.Split(e, " ")
+		if diff := eval(parts[1:], flags...); diff <= bestDiff {
+			off := len(parts) - diff - 1
+			if off < bestOff {
+				bestDiff = diff
+				bestProxy = parts[0]
+			}
+		}
+	}
+	if len(bestProxy) == 0 {
+		return "", ErrTorNoSocksPort
+	}
+	return bestProxy, nil
+}
+
+//----------------------------------------------------------------------
+// Low-level service and helper methods.
+//----------------------------------------------------------------------
+
 // GetConf returns the configuration settings associated with a config string.
 // Key/value pairs are returned in a map.
-func (c *Control) GetConf(cfg string) (map[string]string, error) {
+func (s *Service) GetConf(cfg string) (map[string][]string, error) {
 	cmd := fmt.Sprintf("GETCONF %s", cfg)
-	return c.execute(cmd)
+	return s.execute(cmd)
 }
 
 // SetConf sets a configration from a key/value pair.
-func (c *Control) SetConf(key, value string) error {
+func (s *Service) SetConf(key, value string) error {
 	cmd := fmt.Sprintf("SETCONF %s=\"%s\"", key, value)
-	_, err := c.execute(cmd)
+	_, err := s.execute(cmd)
 	return err
 }
 
 // SetConfList sets all settings from a list of key/value pairs
-func (c *Control) SetConfList(cfg map[string]string) error {
+func (s *Service) SetConfList(cfg map[string]string) error {
 	cmd := "SETCONF"
 	for k, v := range cfg {
 		cmd += fmt.Sprintf(" %s=\"%s\"", k, v)
 	}
-	_, err := c.execute(cmd)
+	_, err := s.execute(cmd)
 	return err
 }
 
-// ResetConf resets a configration to its default value
-func (c *Control) ResetConf(cfg string) error {
+// ResetConf resets a configuration to its default value
+func (s *Service) ResetConf(cfg string) error {
 	cmd := fmt.Sprintf("RESETCONF %s", cfg)
-	_, err := c.execute(cmd)
+	_, err := s.execute(cmd)
 	return err
 }
 
 // SetEvents requests the server to inform the client about interesting events.
-func (c *Control) SetEvents(evs []string, extended bool) error {
+func (s *Service) SetEvents(evs []string, extended bool) error {
 	cmd := "SETEVENTS"
 	if extended {
 		cmd += " EXTENDED"
@@ -111,45 +179,45 @@ func (c *Control) SetEvents(evs []string, extended bool) error {
 	for _, e := range evs {
 		cmd += " " + e
 	}
-	_, err := c.execute(cmd)
+	_, err := s.execute(cmd)
 	return err
 }
 
 // SaveConf instructs the server to write out its config options into its torrc.
-func (c *Control) SaveConf(force bool) error {
+func (s *Service) SaveConf(force bool) error {
 	cmd := "SAVECONF"
 	if force {
 		cmd += " FORCE"
 	}
-	_, err := c.execute(cmd)
+	_, err := s.execute(cmd)
 	return err
 }
 
 // Signal the server for action.
-func (c *Control) Signal(sig string) error {
+func (s *Service) Signal(sig string) error {
 	cmd := fmt.Sprintf("SIGNAL %s", sig)
-	_, err := c.execute(cmd)
+	_, err := s.execute(cmd)
 	return err
 }
 
 // MapAddress tells the Tor servce that future SOCKS requests for connections
 // to the original address should be replaced with connections to the
 // specified replacement address.
-func (c *Control) MapAddress(addrs map[string]string) (map[string]string, error) {
+func (s *Service) MapAddress(addrs map[string]string) (map[string][]string, error) {
 	cmd := "MAPADDRESS"
 	for oldAddr, newAddr := range addrs {
 		cmd += fmt.Sprintf(" %s=%s", oldAddr, newAddr)
 	}
-	return c.execute(cmd)
+	return s.execute(cmd)
 }
 
 // GetInfo from Tor service for non-torrc values
-func (c *Control) GetInfo(keys []string) (map[string]string, error) {
+func (s *Service) GetInfo(keys []string) (map[string][]string, error) {
 	cmd := "GETINFO"
 	for _, k := range keys {
 		cmd += fmt.Sprintf(" %s", k)
 	}
-	return c.execute(cmd)
+	return s.execute(cmd)
 }
 
 // Execute (send) a control command to Tor and collect response(s).
@@ -157,10 +225,10 @@ func (c *Control) GetInfo(keys []string) (map[string]string, error) {
 // is "250" for success and any other three digit number for failure.
 // If "cont" is "-", more response lines will follow.
 // The method returns a list of response texts (without a final "OK").
-func (c *Control) execute(cmd string) (list map[string]string, err error) {
+func (s *Service) execute(cmd string) (list map[string][]string, err error) {
 	// send command
-	logger.Printf(logger.DBG, "[TorControl] <<< %s\n", cmd)
-	if _, err = c.conn.Write([]byte(cmd + "\n")); err != nil {
+	logger.Printf(logger.DBG, "[TorService] <<< %s\n", cmd)
+	if _, err = s.conn.Write([]byte(cmd + "\n")); err != nil {
 		return
 	}
 	// read responses
@@ -169,13 +237,17 @@ func (c *Control) execute(cmd string) (list map[string]string, err error) {
 		rc   int64
 		resp []string
 	)
-	for {
+	done := false
+	for !done {
 		// read next reponse line
-		if line, _, err = c.rdr.ReadLine(); err != nil {
-			return
+		if line, _, err = s.rdr.ReadLine(); err != nil {
+			if err != io.EOF {
+				return
+			}
+			done = true
 		}
 		out := strings.Trim(string(line), " \t\n\v\r")
-		logger.Printf(logger.DBG, "[TorControl] >>> %s\n", out)
+		logger.Printf(logger.DBG, "[TorService] >>> %s\n", out)
 		// check for error status
 		if rc, err = strconv.ParseInt(out[:3], 10, 32); err != nil {
 			return
@@ -185,11 +257,12 @@ func (c *Control) execute(cmd string) (list map[string]string, err error) {
 			return
 		}
 		// check for multi-line response
-		if out[3] == '+' {
+		tag := out[3]
+		if tag == '+' {
 			out = out[4:]
 			for {
 				// read next line
-				if line, _, err = c.rdr.ReadLine(); err != nil {
+				if line, _, err = s.rdr.ReadLine(); err != nil {
 					return
 				}
 				frag := string(line)
@@ -207,18 +280,24 @@ func (c *Control) execute(cmd string) (list map[string]string, err error) {
 			resp = append(resp, out)
 		}
 		// check for continuation
-		if out[3] == ' ' {
+		if tag == ' ' {
 			// no continuation
 			break
 		}
 	}
+	// build result list
+	list = make(map[string][]string)
 	for _, pair := range resp {
 		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) == 2 {
-			list[parts[0]] = parts[1]
-		} else {
-			list[parts[0]] = ""
+		entries, ok := list[parts[0]]
+		if !ok {
+			entries = make([]string, 0)
 		}
+		entry := ""
+		if len(parts) == 2 {
+			entry = parts[1]
+		}
+		list[parts[0]] = append(entries, entry)
 	}
 	return
 }

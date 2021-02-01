@@ -21,42 +21,52 @@ package tor
 //----------------------------------------------------------------------
 
 import (
+	"fmt"
 	"net"
 	"strconv"
+	"time"
+
+	"github.com/bfix/gospel/network"
 )
 
 //======================================================================
-// Tor utility functions
+// Tor connectivity functions
 //======================================================================
 
-// IsTorExit checks if source is a TOR exit node
-func IsTorExit(src net.IP) bool {
-	return checkTor(revAddr(src))
+// Error codes
+var (
+	ErrTorInvalidProto = fmt.Errorf("Only TCP protocol allowed")
+)
+
+// Dial a Tor-based connection
+func (s *Service) Dial(netw, address string, flags ...string) (net.Conn, error) {
+	return s.DialTimeout(netw, address, 0, flags...)
 }
 
-// Check if a TOR exit node is specified in name.
-// name is a dotted list of "<src>.<port>.<dst>" where all addresses
-// are IPv4 addresses.
-func checkTor(name string) bool {
-	addrs, err := net.LookupHost(name + ".dnsel.torproject.org")
+// DialTimeout to establish a Tor-based connection with timeout
+func (s *Service) DialTimeout(netw, address string, timeout time.Duration, flags ...string) (net.Conn, error) {
+	// check protocol
+	if netw != "tcp" {
+		return nil, ErrTorInvalidProto
+	}
+	// split address
+	host, portS, err := net.SplitHostPort(address)
 	if err != nil {
-		return false
+		return nil, err
 	}
-	for _, addr := range addrs {
-		if addr == "127.0.0.2" {
-			return true
+	port, err := strconv.ParseInt(portS, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	// get Tor proxy port
+	var torProxy string
+	if s.isLocal {
+		if torProxy, err = s.GetSocksPort(flags...); err != nil {
+			return nil, err
 		}
+	} else {
+		torProxy = flags[0]
 	}
-	return false
-}
-
-// Get reversed order IPv4 address.
-func revAddr(ip net.IP) string {
-	if addr := ip.To4(); addr != nil {
-		return strconv.Itoa(int(addr[3])) + "." +
-			strconv.Itoa(int(addr[2])) + "." +
-			strconv.Itoa(int(addr[1])) + "." +
-			strconv.Itoa(int(addr[0]))
-	}
-	return "0.0.0.0"
+	// connect through Tor proxy
+	return network.Socks5ConnectTimeout(netw, host, int(port), torProxy, timeout)
 }
