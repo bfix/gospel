@@ -45,20 +45,12 @@ var (
 // Service instance to communicate commands (and responses) with a
 // running Tor process.
 type Service struct {
-	isLocal bool          // locally running service?
-	conn    net.Conn      // connection to control port (or socket)
-	rdr     *bufio.Reader // buffered reader for responses
+	conn net.Conn      // connection to control port (or socket)
+	rdr  *bufio.Reader // buffered reader for responses
 }
 
 // NewService instantiates a new Tor controller
 func NewService(schema, endp string) (*Service, error) {
-	// check for local service instance
-	host, _, err := net.SplitHostPort(endp)
-	if err != nil {
-		return nil, err
-	}
-	isLocal := (schema == "unix" || host == "localhost" || host == "127.0.0.1")
-
 	// connect to control port or socket
 	conn, err := net.Dial(schema, endp)
 	if err != nil {
@@ -67,9 +59,8 @@ func NewService(schema, endp string) (*Service, error) {
 	// instantiate controller object
 	rdr := bufio.NewReader(conn)
 	srv := &Service{
-		conn:    conn,
-		rdr:     rdr,
-		isLocal: isLocal,
+		conn: conn,
+		rdr:  rdr,
 	}
 	return srv, nil
 }
@@ -91,9 +82,6 @@ func (s *Service) Authenticate(auth string) error {
 // set of flags (only works for local Tor services)
 func (s *Service) GetSocksPort(flags ...string) (string, error) {
 	// check for local service
-	if !s.isLocal {
-		return "", ErrTorNotLocal
-	}
 	// get list of defined proxy ports
 	list, err := s.GetConf("SocksPort")
 	if err != nil {
@@ -239,7 +227,7 @@ func (s *Service) execute(cmd string) (list map[string][]string, err error) {
 	)
 	done := false
 	for !done {
-		// read next reponse line
+		// read next response line
 		if line, _, err = s.rdr.ReadLine(); err != nil {
 			if err != io.EOF {
 				return

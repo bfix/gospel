@@ -35,7 +35,7 @@ import (
 var (
 	srv       *Service = nil
 	passwd    string
-	tor_proxy string
+	torProxy  string
 	err       error
 	socksPort = make(map[string][]string)
 )
@@ -46,31 +46,71 @@ var (
 
 func TestMain(m *testing.M) {
 	logger.SetLogLevel(logger.INFO)
+	rc := 0
+	defer func() {
+		os.Exit(rc)
+	}()
 
+	// handle environment variables
 	proto := os.Getenv("TOR_CONTROL_PROTO")
 	if len(proto) == 0 {
 		proto = "tcp"
 	}
 	endp := os.Getenv("TOR_CONTROL_ENDPOINT")
+	isLocal := (proto == "unix")
 	if len(endp) == 0 {
 		endp = "127.0.0.1:9051"
-	}
-	tor_proxy = os.Getenv("TOR_PROXY")
-	if len(tor_proxy) == 0 {
-		tor_proxy = "127.0.0.1:9050"
+		isLocal = true
+	} else {
+		// check for local service instance
+		host, _, err := net.SplitHostPort(endp)
+		if err != nil {
+			fmt.Printf("ERROR: %s\n", err.Error())
+			rc = 1
+			return
+		}
+		isLocal = isLocal || (host == "localhost" || host == "127.0.0.1")
 	}
 	if passwd = os.Getenv("TOR_CONTROL_PASSWORD"); len(passwd) == 0 {
 		fmt.Println("Skipping 'network/tor' tests!")
 		return
 	}
+	// instaniate new service for tests
 	srv, err = NewService(proto, endp)
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err.Error())
+		rc = 1
 		return
 	}
-	rc := m.Run()
-	srv.Close()
-	os.Exit(rc)
+	// determine Tor proxy spec
+	torProxy = os.Getenv("TOR_PROXY")
+	if len(torProxy) == 0 {
+		if isLocal {
+			proxy, err := srv.GetSocksPort()
+			if err != nil {
+				fmt.Printf("ERROR: %s\n", err.Error())
+				rc = 1
+				return
+			}
+			_, port, err := net.SplitHostPort(proxy)
+			if err != nil {
+				fmt.Printf("ERROR: %s\n", err.Error())
+				rc = 1
+				return
+			}
+			torProxy = "socks5://127.0.0.1:" + port
+		} else {
+			torProxy = "socks5://127.0.0.1:9050"
+		}
+	}
+
+	// run test cases
+	rc = m.Run()
+
+	// clean-up
+	if err = srv.Close(); err != nil {
+		rc = 1
+	}
 }
 
 //----------------------------------------------------------------------
@@ -100,9 +140,6 @@ func TestGetConf(t *testing.T) {
 }
 
 func TestSocksPort(t *testing.T) {
-	if !srv.isLocal {
-		t.Skip("Skipping SocksPort test on non-local service")
-	}
 	for proxy, flags := range socksPort {
 		found, err := srv.GetSocksPort(flags...)
 		if err != nil {
@@ -120,15 +157,7 @@ func TestSocksPort(t *testing.T) {
 
 func TestDial(t *testing.T) {
 	// connect through Tor to website
-	var (
-		conn net.Conn
-		err  error
-	)
-	if srv.isLocal {
-		conn, err = srv.DialTimeout("tcp", "ipify.org:80", time.Minute)
-	} else {
-		conn, err = srv.DialTimeout("tcp", "ipify.org:80", time.Minute, tor_proxy)
-	}
+	conn, err := DialTimeout("tcp", "ipify.org:80", time.Minute, torProxy)
 	if err != nil {
 		t.Fatal(err)
 	}

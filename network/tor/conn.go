@@ -39,12 +39,12 @@ var (
 )
 
 // Dial a Tor-based connection
-func (s *Service) Dial(netw, address string, flags ...string) (net.Conn, error) {
-	return s.DialTimeout(netw, address, 0, flags...)
+func Dial(netw, address string, proxy string) (net.Conn, error) {
+	return DialTimeout(netw, address, 0, proxy)
 }
 
 // DialTimeout to establish a Tor-based connection with timeout
-func (s *Service) DialTimeout(netw, address string, timeout time.Duration, flags ...string) (net.Conn, error) {
+func DialTimeout(netw, address string, timeout time.Duration, proxy string) (net.Conn, error) {
 	// check protocol
 	if netw != "tcp" {
 		return nil, ErrTorInvalidProto
@@ -58,15 +58,6 @@ func (s *Service) DialTimeout(netw, address string, timeout time.Duration, flags
 	if err != nil {
 		return nil, err
 	}
-	// get Tor proxy port
-	var torProxy string
-	if s.isLocal {
-		if torProxy, err = s.GetSocksPort(flags...); err != nil {
-			return nil, err
-		}
-	} else {
-		torProxy = flags[0]
-	}
 	// connect through Tor proxy
-	return network.Socks5ConnectTimeout(netw, host, int(port), torProxy, timeout)
+	return network.Socks5ConnectTimeout(netw, host, int(port), proxy, timeout)
 }
