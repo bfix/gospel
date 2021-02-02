@@ -56,19 +56,8 @@ func TestMain(m *testing.M) {
 		proto = "tcp"
 	}
 	endp := os.Getenv("TOR_CONTROL_ENDPOINT")
-	isLocal := (proto == "unix")
 	if len(endp) == 0 {
 		endp = "127.0.0.1:9051"
-		isLocal = true
-	} else {
-		// check for local service instance
-		host, _, err := net.SplitHostPort(endp)
-		if err != nil {
-			fmt.Printf("ERROR: %s\n", err.Error())
-			rc = 1
-			return
-		}
-		isLocal = isLocal || (host == "localhost" || host == "127.0.0.1")
 	}
 	if passwd = os.Getenv("TOR_CONTROL_PASSWORD"); len(passwd) == 0 {
 		fmt.Println("Skipping 'network/tor' tests!")
