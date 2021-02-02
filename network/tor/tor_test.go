@@ -21,6 +21,7 @@ package tor
 //----------------------------------------------------------------------
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -29,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bfix/gospel/crypto/ed25519"
 	"github.com/bfix/gospel/logger"
 )
 
@@ -141,5 +143,100 @@ func TestDial(t *testing.T) {
 	// close connection
 	if err = conn.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestDialOnion(t *testing.T) {
+	// connect to Riseup through Tor
+	conn, err := srv.DialTimeout("tcp", "vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd.onion:80", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// get web page
+	if _, err = conn.Write([]byte("GET /\n\n")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = ioutil.ReadAll(conn); err != nil {
+		t.Fatal(err)
+	}
+	// close connection
+	if err = conn.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+//----------------------------------------------------------------------
+// Hidden service tests (onion.go)
+//----------------------------------------------------------------------
+
+func TestOnion(t *testing.T) {
+	// start a simple echo server
+	var echoErr error
+	go func() {
+		listener, err := net.Listen("tcp", "0.0.0.0:12345")
+		if err != nil {
+			echoErr = err
+			return
+		}
+		conn, err := listener.Accept()
+		if err != nil {
+			echoErr = err
+			return
+		}
+		defer conn.Close()
+		rdr := bufio.NewReader(conn)
+		data, err := rdr.ReadBytes(byte('\n'))
+		if err != nil {
+			echoErr = err
+			return
+		}
+		_, echoErr = conn.Write(data)
+	}()
+	// start a hidden service
+	_, prv := ed25519.NewKeypair()
+	hs, err := NewOnion(prv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hs.AddPort(80, "172.17.0.1:12345")
+	if err = hs.Start(srv); err != nil {
+		t.Fatal(err)
+	}
+	host, err := hs.ServiceID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	host += ".onion:80"
+	// wait for hidden service to settle down
+	t.Log("Waiting 60\" for hidden service to settle down...")
+	time.Sleep(60 * time.Second)
+	// connect to echo server through Tor to website
+	t.Logf("Connecting to '%s'\n", host)
+	conn, err := srv.DialTimeout("tcp", host, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = conn.Write([]byte("TEST\n")); err != nil {
+		t.Fatal(err)
+	}
+	var data []byte
+	if data, err = ioutil.ReadAll(conn); err != nil {
+		t.Fatal(err)
+	}
+	res := strings.TrimSpace(string(data))
+	if res != "TEST" {
+		t.Fatalf("Received '%s' instead of 'TEST'\n", res)
+	}
+	// close connection
+	if err = conn.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// stop hidden service
+	if err = hs.Stop(srv); err != nil {
+		t.Fatal(err)
+	}
+	// check echo server status
+	if echoErr != nil {
+		t.Fatal(echoErr)
 	}
 }
