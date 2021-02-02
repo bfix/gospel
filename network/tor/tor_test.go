@@ -35,7 +35,6 @@ import (
 var (
 	srv       *Service = nil
 	passwd    string
-	torProxy  string
 	err       error
 	socksPort = make(map[string][]string)
 )
@@ -82,31 +81,8 @@ func TestMain(m *testing.M) {
 		rc = 1
 		return
 	}
-	// determine Tor proxy spec
-	torProxy = os.Getenv("TOR_PROXY")
-	if len(torProxy) == 0 {
-		if isLocal {
-			proxy, err := srv.GetSocksPort()
-			if err != nil {
-				fmt.Printf("ERROR: %s\n", err.Error())
-				rc = 1
-				return
-			}
-			_, port, err := net.SplitHostPort(proxy)
-			if err != nil {
-				fmt.Printf("ERROR: %s\n", err.Error())
-				rc = 1
-				return
-			}
-			torProxy = "socks5://127.0.0.1:" + port
-		} else {
-			torProxy = "socks5://127.0.0.1:9050"
-		}
-	}
-
 	// run test cases
 	rc = m.Run()
-
 	// clean-up
 	if err = srv.Close(); err != nil {
 		rc = 1
@@ -157,7 +133,7 @@ func TestSocksPort(t *testing.T) {
 
 func TestDial(t *testing.T) {
 	// connect through Tor to website
-	conn, err := DialTimeout("tcp", "ipify.org:80", time.Minute, torProxy)
+	conn, err := srv.DialTimeout("tcp", "ipify.org:80", time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

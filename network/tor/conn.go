@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bfix/gospel/network"
@@ -39,12 +40,12 @@ var (
 )
 
 // Dial a Tor-based connection
-func Dial(netw, address string, proxy string) (net.Conn, error) {
-	return DialTimeout(netw, address, 0, proxy)
+func (s *Service) Dial(netw, address string, flags ...string) (net.Conn, error) {
+	return s.DialTimeout(netw, address, 0, flags...)
 }
 
 // DialTimeout to establish a Tor-based connection with timeout
-func DialTimeout(netw, address string, timeout time.Duration, proxy string) (net.Conn, error) {
+func (s *Service) DialTimeout(netw, address string, timeout time.Duration, flags ...string) (net.Conn, error) {
 	// check protocol
 	if netw != "tcp" {
 		return nil, ErrTorInvalidProto
@@ -58,6 +59,18 @@ func DialTimeout(netw, address string, timeout time.Duration, proxy string) (net
 	if err != nil {
 		return nil, err
 	}
+	// determine best proxy port
+	socks, err := s.GetSocksPort(flags...)
+	if err != nil {
+		return nil, err
+	}
+	if strings.LastIndex(socks, ":") != -1 {
+		_, socks, err = net.SplitHostPort(socks)
+		if err != nil {
+			return nil, err
+		}
+	}
+	proxy := fmt.Sprintf("socks5://%s:%s", s.host, socks)
 	// connect through Tor proxy
 	return network.Socks5ConnectTimeout(netw, host, int(port), proxy, timeout)
 }

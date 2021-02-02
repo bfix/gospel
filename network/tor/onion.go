@@ -43,6 +43,7 @@ import (
 // Error codes
 var (
 	ErrOnionAlreadyRunning = fmt.Errorf("Onion already running")
+	ErrOnionNotRunning     = fmt.Errorf("Onion not running")
 	ErrOnionInvalidKey     = fmt.Errorf("Invalid onion key specification")
 	ErrOnionKeyInvalidSize = fmt.Errorf("Invalid onion key size")
 	ErrOnionKeyExists      = fmt.Errorf("Onion private key already exists")
@@ -60,7 +61,7 @@ type Onion struct {
 	key        interface{}    // private key
 	flags      []string       // hidden service flags
 	ports      map[int]string // port mappings
-	srvId      string         // service identifier
+	srvID      string         // service identifier
 	maxStreams int            // max. number of allowed streams
 	userName   string         // user name (basic auth)
 	userPasswd string         // user password (basic auth)
@@ -78,7 +79,7 @@ func NewOnion(key interface{}) (o *Onion, err error) {
 		userPasswd: "",
 		running:    false,
 	}
-	o.srvId, err = o.ServiceID()
+	o.srvID, err = o.ServiceID()
 	return
 }
 
@@ -207,7 +208,7 @@ func (o *Onion) Start(srv *Service) (err error) {
 		parts := strings.Split(keyList[0], ":")
 		var data []byte
 		if spec, ok := o.key.(string); ok {
-			if len(parts) != 2 || parts[1] != spec {
+			if len(parts) != 2 || parts[0] != spec {
 				return ErrOnionInvalidKeySpec
 			}
 			if data, err = base64.StdEncoding.DecodeString(parts[1]); err != nil {
@@ -224,13 +225,14 @@ func (o *Onion) Start(srv *Service) (err error) {
 			}
 		}
 	}
-	// get generated service identifier
-	srvId, err := o.ServiceID()
+	// get generated service identifier and compare with
+	// pre-computed identifier
+	srvID, err := o.ServiceID()
 	if err != nil {
 		return
 	}
 	if idList, ok := list["ServiceID"]; ok {
-		if len(idList) != 1 && idList[0] != srvId {
+		if len(idList) != 1 && idList[0] != srvID {
 			return ErrOnionAddFailed
 		}
 	}
@@ -240,6 +242,11 @@ func (o *Onion) Start(srv *Service) (err error) {
 
 // Stop removes a hidden service from the Tor service
 func (o *Onion) Stop(srv *Service) error {
+	// check if hidden serice is running
+	if !o.running {
+		return ErrOnionNotRunning
+	}
+	// stop hidden service
 	id, err := o.ServiceID()
 	if err == nil {
 		cmd := fmt.Sprintf("DEL_ONION %s", id)

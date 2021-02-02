@@ -45,24 +45,26 @@ var (
 // Service instance to communicate commands (and responses) with a
 // running Tor process.
 type Service struct {
+	host string        // Tor service host
 	conn net.Conn      // connection to control port (or socket)
 	rdr  *bufio.Reader // buffered reader for responses
 }
 
 // NewService instantiates a new Tor controller
-func NewService(schema, endp string) (*Service, error) {
+func NewService(schema, endp string) (srv *Service, err error) {
+	// create a new service instance
+	srv = new(Service)
 	// connect to control port or socket
-	conn, err := net.Dial(schema, endp)
-	if err != nil {
-		return nil, err
+	if srv.conn, err = net.Dial(schema, endp); err != nil {
+		return
 	}
-	// instantiate controller object
-	rdr := bufio.NewReader(conn)
-	srv := &Service{
-		conn: conn,
-		rdr:  rdr,
+	srv.rdr = bufio.NewReader(srv.conn)
+	// determine the service host
+	srv.host = "127.0.0.1"
+	if schema != "unix" && strings.LastIndex(endp, ":") != -1 {
+		srv.host, _, err = net.SplitHostPort(endp)
 	}
-	return srv, nil
+	return
 }
 
 // Close connection to Tor process
