@@ -44,11 +44,12 @@ import (
 var (
 	ErrOnionAlreadyRunning = fmt.Errorf("Onion already running")
 	ErrOnionNotRunning     = fmt.Errorf("Onion not running")
-	ErrOnionInvalidKey     = fmt.Errorf("Invalid onion key specification")
+	ErrOnionInvalidKey     = fmt.Errorf("Invalid onion key")
+	ErrOnionInvalidKeyType = fmt.Errorf("Invalid onion key type")
 	ErrOnionKeyInvalidSize = fmt.Errorf("Invalid onion key size")
 	ErrOnionKeyExists      = fmt.Errorf("Onion private key already exists")
 	ErrOnionMissingKey     = fmt.Errorf("Missing private key for onion")
-	ErrOnionInvalidKeySpec = fmt.Errorf("Invalid provate key specification")
+	ErrOnionInvalidKeySpec = fmt.Errorf("Invalid private key specification")
 	ErrOnionAddFailed      = fmt.Errorf("Failed to add hidden service")
 )
 
@@ -136,14 +137,20 @@ func (o *Onion) Start(srv *Service) (err error) {
 	// assemble control command to start hidden service
 	cmd := "ADD_ONION "
 
-	// specify private service key
+	// assemble private service key blob
 	switch prv := o.key.(type) {
 	case *ed25519.PrivateKey:
 		kd := make([]byte, 64)
-		if _, err = rand.Read(kd); err != nil {
+		// fill right half with random data
+		if _, err = rand.Read(kd[32:]); err != nil {
 			return
 		}
-		copy(kd[:32], prv.D.Bytes())
+		// left half is private scalar in little endian order
+		data := prv.D.Bytes()
+		dl := len(data)
+		for i, b := range data {
+			kd[dl-i-1] = b
+		}
 		cmd += fmt.Sprintf("ED25519-V3:%s", base64.StdEncoding.EncodeToString(kd))
 	case *rsa.PrivateKey:
 		if prv.Size() != 128 {
@@ -153,7 +160,7 @@ func (o *Onion) Start(srv *Service) (err error) {
 		cmd += fmt.Sprintf("RSA1024:%s", base64.StdEncoding.EncodeToString(kd))
 	case string:
 		if prv != "ED25519-V3" && prv != "RSA1024" {
-			return ErrOnionInvalidKey
+			return ErrOnionInvalidKeyType
 		}
 		cmd += fmt.Sprintf("NEW:%s", prv)
 	default:
@@ -232,8 +239,11 @@ func (o *Onion) Start(srv *Service) (err error) {
 		return
 	}
 	if idList, ok := list["ServiceID"]; ok {
-		if len(idList) != 1 && idList[0] != srvID {
+		if len(idList) != 1 {
 			return ErrOnionAddFailed
+		}
+		if idList[0] != srvID {
+			return fmt.Errorf("ServiceID mismatch: %s != %s", idList[0], srvID)
 		}
 	}
 	o.running = true
