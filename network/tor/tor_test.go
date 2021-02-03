@@ -35,10 +35,11 @@ import (
 )
 
 var (
-	srv       *Service = nil
-	passwd    string
-	err       error
-	socksPort = make(map[string][]string)
+	srv       *Service                    // service instance
+	passwd    string                      // password for authentication
+	testHost  string                      // host running hidden test server
+	err       error                       // last error code
+	socksPort = make(map[string][]string) // port mappings
 )
 
 //----------------------------------------------------------------------
@@ -60,6 +61,10 @@ func TestMain(m *testing.M) {
 	endp := os.Getenv("TOR_CONTROL_ENDPOINT")
 	if len(endp) == 0 {
 		endp = "127.0.0.1:9051"
+	}
+	testHost = os.Getenv("TOR_TEST_HOST")
+	if len(testHost) == 0 {
+		testHost = "127.0.0.1"
 	}
 	if passwd = os.Getenv("TOR_CONTROL_PASSWORD"); len(passwd) == 0 {
 		fmt.Println("Skipping 'network/tor' tests!")
@@ -198,7 +203,7 @@ func TestOnion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hs.AddPort(80, "172.17.0.1:12345")
+	hs.AddPort(80, testHost+":12345")
 	if err = hs.Start(srv); err != nil {
 		t.Fatal(err)
 	}
