@@ -175,6 +175,9 @@ func TestDialOnion(t *testing.T) {
 //----------------------------------------------------------------------
 
 func TestOnion(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping onion test in short mode.")
+	}
 	// start a simple echo server
 	var echoErr error
 	go func() {
