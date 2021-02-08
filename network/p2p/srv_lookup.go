@@ -48,16 +48,16 @@ type FindNodeMsg struct {
 
 // String returns human-readable message
 func (m *FindNodeMsg) String() string {
-	return fmt.Sprintf("FIND_NODE(%.8s){%.8s -> %.8s, #%d}", m.Addr, m.Sender, m.Receiver, m.TxId)
+	return fmt.Sprintf("FIND_NODE(%.8s){%.8s -> %.8s, #%d}", m.Addr, m.Sender, m.Receiver, m.TxID)
 }
 
 // NewFindNodeMsg creates an empty FIND_NODE message
 func NewFindNodeMsg() Message {
 	return &FindNodeMsg{
 		MsgHeader: MsgHeader{
-			Size:     uint16(HDR_SIZE + ADDR_SIZE),
-			TxId:     0,
-			Type:     FIND_NODE,
+			Size:     uint16(HdrSize + AddrSize),
+			TxID:     0,
+			Type:     ReqNODE,
 			Flags:    0,
 			Sender:   nil,
 			Receiver: nil,
@@ -86,16 +86,16 @@ type FindNodeRespMsg struct {
 
 // String returns human-readable message
 func (m *FindNodeRespMsg) String() string {
-	return fmt.Sprintf("FIND_NODE_RESP{%.8s -> %.8s, #%d}[%d]", m.Sender, m.Receiver, m.TxId, len(m.List))
+	return fmt.Sprintf("FIND_NODE_RESP{%.8s -> %.8s, #%d}[%d]", m.Sender, m.Receiver, m.TxID, len(m.List))
 }
 
 // NewFindNodeRespMsg creates an empty FIND_NODE response
 func NewFindNodeRespMsg() Message {
 	return &FindNodeRespMsg{
 		MsgHeader: MsgHeader{
-			Size:     HDR_SIZE,
-			TxId:     0,
-			Type:     FIND_NODE_RESP,
+			Size:     HdrSize,
+			TxID:     0,
+			Type:     RespNODE,
 			Flags:    0,
 			Sender:   nil,
 			Receiver: nil,
@@ -125,12 +125,12 @@ func NewLookupService() *LookupService {
 		ServiceImpl: *NewServiceImpl(),
 	}
 	// defined message instantiators
-	srv.factories[FIND_NODE] = NewFindNodeMsg
-	srv.factories[FIND_NODE_RESP] = NewFindNodeRespMsg
+	srv.factories[ReqNODE] = NewFindNodeMsg
+	srv.factories[RespNODE] = NewFindNodeRespMsg
 
 	// defined known labels
-	srv.labels[FIND_NODE] = "FIND_NODE"
-	srv.labels[FIND_NODE] = "FIND_NODE_RESP"
+	srv.labels[ReqNODE] = "FIND_NODE"
+	srv.labels[ReqNODE] = "FIND_NODE_RESP"
 	return srv
 }
 
@@ -143,7 +143,7 @@ func (s *LookupService) Name() string {
 func (s *LookupService) Respond(ctx context.Context, m Message) (bool, error) {
 	// check we are responsible for this
 	hdr := m.Header()
-	if hdr.Type != FIND_NODE {
+	if hdr.Type != ReqNODE {
 		return false, nil
 	}
 	// cast will succeed because type of message is checked
@@ -151,7 +151,7 @@ func (s *LookupService) Respond(ctx context.Context, m Message) (bool, error) {
 
 	// assemble FIND_NODE_RESP message
 	resp := NewFindNodeRespMsg().(*FindNodeRespMsg)
-	resp.TxId = hdr.TxId
+	resp.TxID = hdr.TxID
 	resp.Sender = hdr.Receiver
 	resp.Receiver = hdr.Sender
 
@@ -167,7 +167,7 @@ func (s *LookupService) Respond(ctx context.Context, m Message) (bool, error) {
 		})
 	} else {
 		// return closest nodes in our routing table
-		for _, addr := range s.Node().Closest(K_BUCKETS) {
+		for _, addr := range s.Node().Closest(KBuckets) {
 			netw = s.Node().Resolve(addr)
 			resp.Add(&Endpoint{
 				Addr: addr,
@@ -182,9 +182,9 @@ func (s *LookupService) Respond(ctx context.Context, m Message) (bool, error) {
 // NewMessage creates an empty service message of given type
 func (s *LookupService) NewMessage(mt int) Message {
 	switch mt {
-	case FIND_NODE:
+	case ReqNODE:
 		return NewFindNodeMsg()
-	case FIND_NODE_RESP:
+	case RespNODE:
 		return NewFindNodeRespMsg()
 	}
 	return nil
@@ -198,7 +198,7 @@ func (s *LookupService) NewMessage(mt int) Message {
 func (s *LookupService) Request(ctx context.Context, rcv, addr *Address, timeout time.Duration) (res []*Endpoint, err error) {
 	// assemble request
 	req := NewFindNodeMsg().(*FindNodeMsg)
-	req.TxId = s.node.NextId()
+	req.TxID = s.node.NextID()
 	req.Sender = s.node.Address()
 	req.Receiver = rcv
 	req.Addr = addr
@@ -278,8 +278,8 @@ func (s *LookupService) Lookup(ctx context.Context, addr *Address, resolver Quer
 	var query func(peer, addr *Address, ch chan interface{})
 	queryPeers := func(peers []*Address, addr *Address, ch chan interface{}) {
 		// query only limited number of peers
-		if len(peers) > ALPHA {
-			peers = peers[:ALPHA]
+		if len(peers) > Alpha {
+			peers = peers[:Alpha]
 		}
 		// start query for all of them
 		for _, peer := range peers {
@@ -306,7 +306,7 @@ func (s *LookupService) Lookup(ctx context.Context, addr *Address, resolver Quer
 		}
 	}
 	// start resolver with closest nodes
-	closest := s.Node().Closest(K_BUCKETS)
+	closest := s.Node().Closest(KBuckets)
 	out := make(chan interface{})
 	defer close(out)
 	for {
@@ -337,8 +337,8 @@ func (s *LookupService) Lookup(ctx context.Context, addr *Address, resolver Quer
 					running = false
 					return nil, ErrLookupFailed
 				}
-				if pending > ALPHA {
-					closest = closest[:ALPHA]
+				if pending > Alpha {
+					closest = closest[:Alpha]
 				}
 				continue
 			// leave with final lookup result
@@ -354,5 +354,4 @@ func (s *LookupService) Lookup(ctx context.Context, addr *Address, resolver Quer
 			return nil, ErrNodeTimeout
 		}
 	}
-	return nil, ErrLookupFailed
 }

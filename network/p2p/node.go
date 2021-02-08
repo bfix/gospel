@@ -33,7 +33,7 @@ import (
 
 // Error codes
 var (
-	ErrNodeTimeout        = fmt.Errorf("Operation timed out...")
+	ErrNodeTimeout        = fmt.Errorf("Operation timed out")
 	ErrNodeRemote         = fmt.Errorf("No remote nodes allowed")
 	ErrNodeConnectorSet   = fmt.Errorf("Connector for node already set")
 	ErrNodeSendNoReceiver = fmt.Errorf("Send has no recipient")
@@ -42,7 +42,7 @@ var (
 
 // constants
 var (
-	NODE_TICK = 1 * time.Minute
+	NodeTick = 1 * time.Minute
 )
 
 //======================================================================
@@ -170,17 +170,17 @@ func (n *Node) RelayedMessage(msg Message, peers []*Address) (Message, error) {
 			return nil, err
 		}
 		// assemble relay message
-		wrp := n.relay.NewMessage(RELAY).(*RelayMsg)
+		wrp := n.relay.NewMessage(ReqRELAY).(*RelayMsg)
 		wrp.Set(endp, pkt)
-		wrp.TxId = n.NextId()
-		wrp.Flags = MSGF_RELAY
+		wrp.TxID = n.NextID()
+		wrp.Flags = MsgfRelay
 		wrp.Sender = n.Address()
 		wrp.Receiver = peer
 		return wrp, nil
 	}
 	// prepare original message
 	hdr := msg.Header()
-	hdr.Flags |= MSGF_RELAY
+	hdr.Flags |= MsgfRelay
 	// create self-relayed message to announce network address
 	m, err := envelope(msg, hdr.Receiver, n.Address())
 	if err != nil {
@@ -341,7 +341,7 @@ func (n *Node) Run(ctx context.Context) {
 	// we do periodic jobs once every minute
 	// and remember the epoch we are in
 	epoch := 0
-	period := time.Tick(NODE_TICK)
+	period := time.Tick(NodeTick)
 
 	// run bucket list processor
 	n.buckets.Run(ctx)
@@ -394,8 +394,8 @@ func (n *Node) Closest(num int) []*Address {
 	return n.buckets.Closest(num)
 }
 
-// NextId returns the next unique identifier for this node context
-func (n *Node) NextId() uint64 {
+// NextID returns the next unique identifier for this node context
+func (n *Node) NextID() uint64 {
 	n.lastID++
 	return n.lastID
 

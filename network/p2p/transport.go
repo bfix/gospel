@@ -26,11 +26,26 @@ import (
 	"net"
 )
 
+// Internal constants
+const (
+	SampleCache = 100
+	MaxSample   = 5
+)
+
 // Error codes
 var (
+	ErrTransSenderMismatch  = fmt.Errorf("Sender mismatch")
+	ErrTransUnknownSender   = fmt.Errorf("Unknown sender")
+	ErrTransPackaging       = fmt.Errorf("Failed to create packet")
+	ErrTransMarshalling     = fmt.Errorf("Failed to marshal message")
+	ErrTransOpened          = fmt.Errorf("Transport is opened")
+	ErrTransClosed          = fmt.Errorf("Transport is closed")
+	ErrTransWrite           = fmt.Errorf("Failed write to remote")
+	ErrTransWriteShort      = fmt.Errorf("Short write to remote")
 	ErrTransAddressDup      = fmt.Errorf("Address already registered")
 	ErrTransUnknownReceiver = fmt.Errorf("Unknown receiver")
-	ErrTransAddressInvalid  = fmt.Errorf("Invalid etwork address")
+	ErrTransAddressInvalid  = fmt.Errorf("Invalid network address")
+	ErrTransInvalidConfig   = fmt.Errorf("Invalid configuration type")
 )
 
 //======================================================================
@@ -59,11 +74,20 @@ type Connector interface {
 	Sample(int, *Address) []*Address
 }
 
+// TransportConfig is used for transport-specific configurations
+type TransportConfig interface {
+	TransportType() string // return type of associated transport
+}
+
 // Transport abstraction: Every endpoint (on a local machine) registers
 // with its address and receives channels for communication (incoming
 // and outgoing messages). The transfer process needs to be started
 // with the 'Run()' method for its message pump to work.
 type Transport interface {
+	// Open transport based on configuration
+	Open(TransportConfig) error
 	// Register a node for participation in this transport
 	Register(context.Context, *Node, string) error
+	// Close transport
+	Close() error
 }

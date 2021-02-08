@@ -47,9 +47,9 @@ func (m *RelayMsg) String() string {
 func NewRelayMsg() Message {
 	return &RelayMsg{
 		MsgHeader: MsgHeader{
-			Size:     HDR_SIZE,
-			TxId:     0,
-			Type:     RELAY,
+			Size:     HdrSize,
+			TxID:     0,
+			Type:     ReqRELAY,
 			Flags:    0,
 			Sender:   nil,
 			Receiver: nil,
@@ -81,10 +81,10 @@ func NewRelayService() *RelayService {
 		ServiceImpl: *NewServiceImpl(),
 	}
 	// defined message instantiators
-	srv.factories[RELAY] = NewRelayMsg
+	srv.factories[ReqRELAY] = NewRelayMsg
 
 	// defined known labels
-	srv.labels[RELAY] = "RELAY"
+	srv.labels[ReqRELAY] = "RELAY"
 	return srv
 }
 
@@ -103,7 +103,7 @@ func (s *RelayService) Relay(ctx context.Context, msg *RelayMsg) error {
 func (s *RelayService) Respond(ctx context.Context, m Message) (bool, error) {
 	// check we are responsible for this
 	hdr := m.Header()
-	if hdr.Type != RELAY {
+	if hdr.Type != ReqRELAY {
 		return false, nil
 	}
 	// cast will succeed because type of message is checked
@@ -142,7 +142,7 @@ func (s *RelayService) Respond(ctx context.Context, m Message) (bool, error) {
 // NewMessage creates an empty service message of given type
 func (s *RelayService) NewMessage(mt int) Message {
 	switch mt {
-	case RELAY:
+	case ReqRELAY:
 		return NewRelayMsg()
 	}
 	return nil

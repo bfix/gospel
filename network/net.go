@@ -21,9 +21,13 @@ package network
 //----------------------------------------------------------------------
 
 import (
-	"github.com/bfix/gospel/logger"
+	"fmt"
 	"net"
+	"os"
+	"strings"
 	"time"
+
+	"github.com/bfix/gospel/logger"
 )
 
 var (
@@ -112,4 +116,27 @@ func RecvData(conn net.Conn, data []byte, srv string) (int, bool) {
 	// retries failed
 	logger.Printf(logger.ERROR, "[%s] Read failed after retries...\n", srv)
 	return 0, false
+}
+
+// SplitNetworkEndpoint splits a string like "tcp:127.0.0.1:80" or
+// "unix:/run/app/app.sock" into components.
+func SplitNetworkEndpoint(networkendp string) (network string, endp string, err error) {
+	pos := strings.Index(networkendp, ":")
+	if pos == -1 {
+		err = fmt.Errorf("Invalid network endpoint")
+		return
+	}
+	network = endp[:pos]
+	endp = networkendp[pos+1:]
+	switch network {
+	// local Unix domain socket
+	case "unix":
+		_, err = os.Stat(endp)
+		return
+	// IP-based transport
+	case "tcp", "tcp4", "tcp6", "udp", "udp4", "udp6":
+		return
+	}
+	err = fmt.Errorf("Invalid network")
+	return
 }

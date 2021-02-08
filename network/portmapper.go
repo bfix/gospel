@@ -29,10 +29,10 @@ import (
 
 // Port mapping modes
 const (
-	PM_NONE = iota
-	PM_DIRECT
-	PM_UPNP
-	PM_STUN
+	PmNONE = iota
+	PmDIRECT
+	PmUPNP
+	PmSTUN
 )
 
 // Error messages
@@ -59,7 +59,7 @@ type PortMapper struct {
 	lclIP      net.IP                 // local listener address
 	server     net.IP                 // involved server (gateway, stun)
 	upnpClient *upnp.WANIPConnection2 // UPNP client connection
-	lastId     int                    // last id used
+	lastID     int                    // last identifier used
 	assigns    map[string]*Mapping    // port mappings
 }
 
@@ -114,7 +114,7 @@ func NewPortMapper(name string) (*PortMapper, error) {
 	}
 	for _, addr := range addrs {
 		if ip, ok := addr.(*net.IPNet); ok && isRoutable(addr) {
-			pm.mode = PM_DIRECT
+			pm.mode = PmDIRECT
 			pm.extIP = ip.IP
 			pm.lclIP = nil
 			return pm, nil
@@ -144,7 +144,7 @@ func NewPortMapper(name string) (*PortMapper, error) {
 					if ipn, ok := addr.(*net.IPNet); ok {
 						if ipn.Contains(pm.server) {
 							pm.lclIP = ipn.IP
-							pm.mode = PM_UPNP
+							pm.mode = PmUPNP
 							return pm, nil
 						}
 					}
@@ -159,7 +159,7 @@ func NewPortMapper(name string) (*PortMapper, error) {
 // Returns the mapping identifier, external and internal service addresses
 // and an optional error code.
 func (pm *PortMapper) Assign(network string, port int) (string, string, string, error) {
-	if pm.mode == PM_NONE {
+	if pm.mode == PmNONE {
 		return "", "", "", ErrPortMapperNoInit
 	}
 	concat := func(ip net.IP, port int) string {
@@ -168,12 +168,12 @@ func (pm *PortMapper) Assign(network string, port int) (string, string, string, 
 		}
 		return fmt.Sprintf("%s:%d", ip.String(), port)
 	}
-	if pm.mode == PM_DIRECT {
+	if pm.mode == PmDIRECT {
 		ext := concat(pm.extIP, port)
 		return "", ext, ext, nil
 	}
-	pm.lastId++
-	descr := fmt.Sprintf("%s:%d", pm.name, pm.lastId)
+	pm.lastID++
+	descr := fmt.Sprintf("%s:%d", pm.name, pm.lastID)
 	err := pm.upnpClient.AddPortMapping("", uint16(port), network, uint16(port), pm.lclIP.String(), true, descr, 0)
 	ext := concat(pm.extIP, port)
 	lcl := concat(pm.lclIP, port)
@@ -186,10 +186,10 @@ func (pm *PortMapper) Assign(network string, port int) (string, string, string, 
 
 // Unassign removes a port mapping
 func (pm *PortMapper) Unassign(id string) error {
-	if pm.mode == PM_NONE {
+	if pm.mode == PmNONE {
 		return ErrPortMapperNoInit
 	}
-	if pm.mode == PM_DIRECT {
+	if pm.mode == PmDIRECT {
 		return nil
 	}
 	if m, ok := pm.assigns[id]; ok {
@@ -204,16 +204,16 @@ func (pm *PortMapper) Unassign(id string) error {
 
 // Close port mapper
 func (pm *PortMapper) Close() error {
-	if pm.mode == PM_NONE {
+	if pm.mode == PmNONE {
 		return ErrPortMapperNoInit
 	}
-	if pm.mode == PM_UPNP {
+	if pm.mode == PmUPNP {
 		for id := range pm.assigns {
 			if err := pm.Unassign(id); err != nil {
 				return err
 			}
 		}
 	}
-	pm.mode = PM_NONE
+	pm.mode = PmNONE
 	return nil
 }

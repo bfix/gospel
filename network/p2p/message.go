@@ -29,8 +29,8 @@ import (
 )
 
 const (
-	// MAX_MSGSIZE defines the maximum message size
-	MAX_MSGSIZE = 65530
+	// MaxMsgSize defines the maximum message size
+	MaxMsgSize = 65530
 )
 
 //----------------------------------------------------------------------
@@ -44,17 +44,17 @@ const (
 	// (If you have multiple responses for a single request, leave out
 	// odd numbers from sequence)
 	//==================================================================
-	PING           = 1 // PING to check if a node is alive
-	PONG           = 2 // response to PING
-	FIND_NODE      = 3 // FIND NODE returns a list of nodes "near" the requested one
-	FIND_NODE_RESP = 4 // response to FIND_NODE
-	RELAY          = 5 // relay message to another node (response-less)
+	ReqPING  = 1 // PING to check if a node is alive
+	RespPING = 2 // response to PING
+	ReqNODE  = 3 // FIND_NODE returns a list of nodes "near" the requested one
+	RespNODE = 4 // response to FIND_NODE
+	ReqRELAY = 5 // relay message to another node (response-less)
 )
 
 // message flags
 const (
-	MSGF_RELAY = 1 // Message was forwarded (sender != originator)
-	MSGF_DROP  = 2 // Drop message without processing (cover traffic)
+	MsgfRelay = 1 // Message was forwarded (sender != originator)
+	MsgfDrop  = 2 // Drop message without processing (cover traffic)
 )
 
 var (
@@ -111,15 +111,15 @@ type Message interface {
 // Message header (shared by all message types)
 //----------------------------------------------------------------------
 
-// HDR_SIZE is the size of the message header in bytes.
-const HDR_SIZE = 80
+// HdrSize is the size of the message header in bytes.
+const HdrSize = 80
 
 // MsgHeader (common header for requests and responses, 80 bytes)
 type MsgHeader struct {
 	Size     uint16 `order:"big"` // Size of message (including size)
 	Type     uint16 `order:"big"` // Message type (see constants)
 	Flags    uint32 `order:"big"` // Message flags (see constants)
-	TxId     uint64 `order:"big"` // transaction identifier
+	TxID     uint64 `order:"big"` // transaction identifier
 	Sender   *Address
 	Receiver *Address
 }

@@ -22,7 +22,6 @@ package p2p
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"net"
 	"sync"
@@ -36,27 +35,6 @@ import (
 //======================================================================
 // Internet-based transport: send and receive packets as UDP datagrams
 //======================================================================
-
-// Internal constants
-const (
-	SAMPLE_CACHE = 100
-	MAX_SAMPLE   = 5
-)
-
-// Error codes
-var (
-	ErrTransSenderMismatch = fmt.Errorf("Sender mismatch")
-	ErrTransUnknownSender  = fmt.Errorf("Unknown sender")
-	ErrTransPackaging      = fmt.Errorf("Failed to create packet")
-	ErrTransMarshalling    = fmt.Errorf("Failed to marshal message")
-	ErrTransClosed         = fmt.Errorf("Can't send on closed UDP connection")
-	ErrTransWrite          = fmt.Errorf("Failed write to remote")
-	ErrTransWriteShort     = fmt.Errorf("Short write to remote")
-)
-
-//----------------------------------------------------------------------
-// Internet-based, routable packet transport (UDP based)
-//----------------------------------------------------------------------
 
 //----------------------------------------------------------------------
 // UDP-based connector implementation
@@ -86,7 +64,7 @@ func NewUDPConnector(trans *UDPTransport, node *Node, addr *net.UDPAddr) *UDPCon
 		conn:    nil,
 		running: false,
 		cache:   make(map[string]*net.UDPAddr),
-		sample:  make([]*Address, SAMPLE_CACHE),
+		sample:  make([]*Address, SampleCache),
 		pos:     0,
 	}
 	// register our own node
@@ -103,8 +81,8 @@ func (c *UDPConnector) NewAddress(endp string) (net.Addr, error) {
 // has learned during up-time.
 func (c *UDPConnector) Sample(num int, skip *Address) []*Address {
 	// limit number of hops
-	if num > MAX_SAMPLE {
-		num = MAX_SAMPLE
+	if num > MaxSample {
+		num = MaxSample
 	}
 	// check if request can be satisfied
 	if num > len(c.cache)-2 {
@@ -115,7 +93,7 @@ func (c *UDPConnector) Sample(num int, skip *Address) []*Address {
 	res := make([]*Address, num)
 loop:
 	for i := 0; i < num; {
-		pos := rand.Intn(SAMPLE_CACHE)
+		pos := rand.Intn(SampleCache)
 		addr := c.sample[pos]
 		if addr == nil || addr.Equals(c.node.addr) || addr.Equals(skip) {
 			continue
@@ -159,7 +137,7 @@ func (c *UDPConnector) Send(ctx context.Context, dst net.Addr, pkt *Packet) erro
 func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 
 	// allocate buffer space
-	buffer := make([]byte, MAX_MSGSIZE)
+	buffer := make([]byte, MaxMsgSize)
 	nodeAddr := c.node.Address()
 
 	// assemble listener configuration
@@ -200,13 +178,13 @@ func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 				}
 				hdr := msg.Header()
 				// is packet for this node?
-				if !hdr.Receiver.Equals(c.node.Address()) || (hdr.Flags&MSGF_DROP != 0) {
+				if !hdr.Receiver.Equals(c.node.Address()) || (hdr.Flags&MsgfDrop != 0) {
 					// no: drop packet and continue
 					logger.Printf(logger.WARN, "[%.8s] Dropping packet from '%.8s'\n", nodeAddr, hdr.Receiver)
 					continue
 				}
 				// tell transport and node about the sender (in case it is unknown and not forwarded)
-				if hdr.Flags&MSGF_RELAY == 0 {
+				if hdr.Flags&MsgfRelay == 0 {
 					c.Learn(hdr.Sender, addr)
 					c.node.Learn(hdr.Sender, "")
 				}
@@ -232,7 +210,7 @@ func (c *UDPConnector) Learn(addr *Address, endp net.Addr) error {
 	case *net.UDPAddr:
 		c.cache[addr.String()] = x
 		c.sample[c.pos] = addr
-		c.pos = (c.pos + 1) % SAMPLE_CACHE
+		c.pos = (c.pos + 1) % SampleCache
 		//log.Printf("[connectr] Learned network address '%s' for node '%.8s'\n", x, addr)
 	default:
 		//log.Printf("[connectr] Can't learn network address '%s' for node '%.8s'\n", x, addr)
@@ -266,11 +244,17 @@ type UDPTransport struct {
 
 // NewUDPTransport instantiates a new UDP transport layer where the
 // listening socket is bound to the specified address (host:port).
-func NewUDPTransport() Transport {
+func NewUDPTransport() *UDPTransport {
 	// instantiate transport
 	return &UDPTransport{
 		registry: make(map[string]bool),
 	}
+}
+
+// Open transport based on configuration
+func (t *UDPTransport) Open(cfg TransportConfig) error {
+	// nothing to setup...
+	return nil
 }
 
 // Register a node for participation in the transport layer.
@@ -288,5 +272,10 @@ func (t *UDPTransport) Register(ctx context.Context, n *Node, endp string) error
 	// connect to suitable connector
 	n.Connect(NewUDPConnector(t, n, netwAddr))
 	logger.Printf(logger.DBG, "[%.8s] Registered with transport at %s\n", addr, netwAddr)
+	return nil
+}
+
+// Close transport
+func (t *UDPTransport) Close() error {
 	return nil
 }

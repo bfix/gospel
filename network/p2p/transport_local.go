@@ -47,7 +47,7 @@ func (a *LocalAddress) Network() string {
 	return "local"
 }
 
-// String returns the human-rwadable network address
+// String returns the human-readable network address
 func (a *LocalAddress) String() string {
 	return a.Name
 }
@@ -147,10 +147,16 @@ type LocalTransport struct {
 }
 
 // NewLocalTransport instantiates a local transport implementation
-func NewLocalTransport() LocalTransport {
-	return LocalTransport{
+func NewLocalTransport() *LocalTransport {
+	return &LocalTransport{
 		nodes: make(map[string]*Node),
 	}
+}
+
+// Open transport based on configuration
+func (t *LocalTransport) Open(cfg TransportConfig) error {
+	// nothing to setup...
+	return nil
 }
 
 // Register a node for participation in the transport layer.
@@ -173,6 +179,11 @@ func (t *LocalTransport) Register(ctx context.Context, n *Node, endp string) err
 		cache: make(map[string]string),
 	}
 	n.Connect(conn)
+	return nil
+}
+
+// Close transport
+func (t *LocalTransport) Close() error {
 	return nil
 }
 

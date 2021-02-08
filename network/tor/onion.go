@@ -89,25 +89,11 @@ func NewOnion(key interface{}) (o *Onion, err error) {
 func (o *Onion) ServiceID() (id string, err error) {
 	switch prv := o.key.(type) {
 	case *ed25519.PrivateKey:
-		keyData := prv.Public().Bytes()
-		hsh := sha3.New256()
-		hsh.Write([]byte(".onion checksum"))
-		hsh.Write(keyData)
-		hsh.Write([]byte{0x03})
-		sum := hsh.Sum(nil)
-		sum[2] = 0x03
-		id = base32.StdEncoding.EncodeToString(append(keyData, sum[:3]...))
+		return ServiceID(prv.Public())
 	case *rsa.PrivateKey:
-		pub := prv.Public().(*rsa.PublicKey)
-		var data []byte
-		if data, err = asn1.Marshal(*pub); err != nil {
-			return
-		}
-		sum := sha1.Sum(data)
-		id = base32.StdEncoding.EncodeToString(sum[:len(sum)/2])
+		return ServiceID(prv.Public().(*rsa.PublicKey))
 	}
-	id = strings.ToLower(id)
-	return
+	return "", ErrOnionInvalidKey
 }
 
 // AddFlag adds service flags
@@ -263,4 +249,35 @@ func (o *Onion) Stop(srv *Service) error {
 		_, err = srv.execute(cmd)
 	}
 	return err
+}
+
+//----------------------------------------------------------------------
+// Helper functions
+//----------------------------------------------------------------------
+
+// ServiceID returns the "onion name" of the hidden service (without the
+// trailing ".onion") based on a public key
+func ServiceID(key interface{}) (id string, err error) {
+	switch pub := key.(type) {
+	case *ed25519.PublicKey:
+		keyData := pub.Bytes()
+		hsh := sha3.New256()
+		hsh.Write([]byte(".onion checksum"))
+		hsh.Write(keyData)
+		hsh.Write([]byte{0x03})
+		sum := hsh.Sum(nil)
+		sum[2] = 0x03
+		id = base32.StdEncoding.EncodeToString(append(keyData, sum[:3]...))
+	case *rsa.PublicKey:
+		var data []byte
+		if data, err = asn1.Marshal(*pub); err != nil {
+			return
+		}
+		sum := sha1.Sum(data)
+		id = base32.StdEncoding.EncodeToString(sum[:len(sum)/2])
+	default:
+		err = ErrOnionInvalidKey
+	}
+	id = strings.ToLower(id)
+	return
 }

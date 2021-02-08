@@ -33,14 +33,14 @@ import (
 )
 
 const (
-	// ALPHA is the concurrency parameter
-	ALPHA = 3
+	// Alpha is the concurrency parameter
+	Alpha = 3
 
-	// BUCKET_TTL_SECS is the lifetime of a drop in a bucket (in seconds)
-	BUCKET_TTL_SECS = 300
+	// BucketTTLSecs is the lifetime of a drop in a bucket (in seconds)
+	BucketTTLSecs = 300
 
-	// PING_TIMEOUT is the grace period for "still-alive" checks
-	PING_TIMEOUT = 10 * time.Second
+	// PingTimeout is the grace period for "still-alive" checks
+	PingTimeout = 10 * time.Second
 )
 
 //----------------------------------------------------------------------
@@ -49,8 +49,8 @@ const (
 //----------------------------------------------------------------------
 
 var (
-	// ADDR_SIZE is the size of an address in bytes
-	ADDR_SIZE uint16 = 32
+	// AddrSize is the size of an address in bytes
+	AddrSize uint16 = 32
 
 	// ErrAddressInvalid error message for malformed addresses
 	ErrAddressInvalid = fmt.Errorf("Invalid address")
@@ -139,7 +139,7 @@ func NewEndpoint(addr *Address, endp string) *Endpoint {
 
 // Size of binary representation
 func (e *Endpoint) Size() uint16 {
-	return ADDR_SIZE + e.Endp.Size()
+	return AddrSize + e.Endp.Size()
 }
 
 // String returns human-readable endpoint description
@@ -172,7 +172,7 @@ func (d *drop) update() {
 
 // check if a drop has expired
 func (d *drop) expired() bool {
-	return time.Now().Sub(d.seen).Seconds() > BUCKET_TTL_SECS
+	return time.Now().Sub(d.seen).Seconds() > BucketTTLSecs
 }
 
 //----------------------------------------------------------------------
@@ -180,8 +180,8 @@ func (d *drop) expired() bool {
 //----------------------------------------------------------------------
 
 var (
-	// K_BUCKETS is the number of entries in a bucket per address bit.
-	K_BUCKETS int = 20
+	// KBuckets is the number of entries in a bucket per address bit.
+	KBuckets int = 20
 )
 
 // Bucket is used to store nodes depending on their distance to a
@@ -200,14 +200,14 @@ type Bucket struct {
 func NewBucket(n int) *Bucket {
 	return &Bucket{
 		num:   n,
-		addrs: make([]*drop, K_BUCKETS),
+		addrs: make([]*drop, KBuckets),
 		count: 0,
 	}
 }
 
 // Add address to bucket. Returns false if the bucket is full.
 func (b *Bucket) Add(addr *Address) bool {
-	if b.count < K_BUCKETS {
+	if b.count < KBuckets {
 		b.lock.Lock()
 		b.addrs[b.count] = newDrop(addr)
 		b.count++
@@ -390,7 +390,7 @@ func (bl *BucketList) Run(ctx context.Context) {
 					drop := buck.addrs[0]
 					if drop.expired() {
 						// ping address with short timeout
-						if err := bl.ping.Ping(ctx, task.addr, PING_TIMEOUT, 0); err != nil {
+						if err := bl.ping.Ping(ctx, task.addr, PingTimeout, 0); err != nil {
 							// ping failed: use new address drop
 							drop = newDrop(task.addr)
 							// update bucket

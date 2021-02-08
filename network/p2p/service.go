@@ -105,7 +105,6 @@ func NewServiceImpl() *ServiceImpl {
 		factories:  make(map[int]NewMessage),
 		labels:     make(map[int]string),
 	}
-	return nil
 }
 
 // Respond to a service request
@@ -115,7 +114,7 @@ func (s *ServiceImpl) Respond(ctx context.Context, msg Message) (bool, error) {
 
 // Listen to response message
 func (s *ServiceImpl) Listen(ctx context.Context, msg Message) (bool, error) {
-	return s.listeners.Handle(ctx, int(msg.Header().TxId), msg)
+	return s.listeners.Handle(ctx, int(msg.Header().TxID), msg)
 }
 
 // Send a message from this node to the network
@@ -167,7 +166,7 @@ type TaskHandler struct {
 func (s *ServiceImpl) Task(ctx context.Context, m Message, f *TaskHandler) (err error) {
 	// register for responses
 	ctrl := make(chan int)
-	txid := int(m.Header().TxId)
+	txid := int(m.Header().TxID)
 	s.listeners.Add(txid, func(ctx context.Context, m Message) (bool, error) {
 		// call the "real" handler
 		rc, err := f.msgHdlr(ctx, m)
@@ -294,6 +293,6 @@ func (sl *ServiceList) Listen(ctx context.Context, msg Message) (bool, error) {
 			return true, nil
 		}
 	}
-	logger.Printf(logger.WARN, "[%.8s] Unknown response for txId '%d'...\n", rcv, hdr.TxId)
+	logger.Printf(logger.WARN, "[%.8s] Unknown response for txId '%d'...\n", rcv, hdr.TxID)
 	return false, ErrServiceResponseUnknown
 }

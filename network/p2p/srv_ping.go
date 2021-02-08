@@ -37,16 +37,16 @@ type PingMsg struct {
 
 // String returns human-readable message
 func (m *PingMsg) String() string {
-	return fmt.Sprintf("PING{%.8s -> %.8s, #%d}", m.Sender, m.Receiver, m.TxId)
+	return fmt.Sprintf("PING{%.8s -> %.8s, #%d}", m.Sender, m.Receiver, m.TxID)
 }
 
 // NewPingMsg creates an empty PING request
 func NewPingMsg() Message {
 	return &PingMsg{
 		MsgHeader: MsgHeader{
-			Size:     HDR_SIZE,
-			TxId:     0,
-			Type:     PING,
+			Size:     HdrSize,
+			TxID:     0,
+			Type:     ReqPING,
 			Flags:    0,
 			Sender:   nil,
 			Receiver: nil,
@@ -65,16 +65,16 @@ type PongMsg struct {
 
 // String returns human-readable message
 func (m *PongMsg) String() string {
-	return fmt.Sprintf("PONG{%.8s -> %.8s, #%d}", m.Sender, m.Receiver, m.TxId)
+	return fmt.Sprintf("PONG{%.8s -> %.8s, #%d}", m.Sender, m.Receiver, m.TxID)
 }
 
 // NewPongMsg creates an empty PONG response
 func NewPongMsg() Message {
 	return &PongMsg{
 		MsgHeader: MsgHeader{
-			Size:     HDR_SIZE,
-			TxId:     0,
-			Type:     PONG,
+			Size:     HdrSize,
+			TxID:     0,
+			Type:     RespPING,
 			Flags:    0,
 			Sender:   nil,
 			Receiver: nil,
@@ -97,12 +97,12 @@ func NewPingService() *PingService {
 		ServiceImpl: *NewServiceImpl(),
 	}
 	// defined message instantiators
-	srv.factories[PING] = NewPingMsg
-	srv.factories[PONG] = NewPongMsg
+	srv.factories[ReqPING] = NewPingMsg
+	srv.factories[RespPING] = NewPongMsg
 
 	// defined known labels
-	srv.labels[PING] = "PING"
-	srv.labels[PONG] = "PONG"
+	srv.labels[ReqPING] = "PING"
+	srv.labels[RespPING] = "PONG"
 	return srv
 }
 
@@ -115,12 +115,12 @@ func (s *PingService) Name() string {
 func (s *PingService) Respond(ctx context.Context, m Message) (bool, error) {
 	// check we are responsible for this
 	hdr := m.Header()
-	if hdr.Type != PING {
+	if hdr.Type != ReqPING {
 		return false, nil
 	}
 	// assemble PONG as response to PING
 	resp := NewPongMsg().(*PongMsg)
-	resp.TxId = hdr.TxId
+	resp.TxID = hdr.TxID
 	resp.Sender = hdr.Receiver
 	resp.Receiver = hdr.Sender
 
@@ -131,9 +131,9 @@ func (s *PingService) Respond(ctx context.Context, m Message) (bool, error) {
 // NewMessage creates an empty service message of given type
 func (s *PingService) NewMessage(mt int) Message {
 	switch mt {
-	case PING:
+	case ReqPING:
 		return NewPingMsg()
-	case PONG:
+	case RespPING:
 		return NewPongMsg()
 	}
 	return nil
@@ -147,7 +147,7 @@ func (s *PingService) NewMessage(mt int) Message {
 func (s *PingService) Ping(ctx context.Context, rcv *Address, timeout time.Duration, relays int) error {
 	// assemble request
 	req := NewPingMsg().(*PingMsg)
-	req.TxId = s.node.NextId()
+	req.TxID = s.node.NextID()
 	req.Sender = s.node.Address()
 	req.Receiver = rcv
 
@@ -163,7 +163,7 @@ func (s *PingService) Ping(ctx context.Context, rcv *Address, timeout time.Durat
 				return err
 			}
 			// set transaction id of final request in outer relay message
-			msg.Header().TxId = req.TxId
+			msg.Header().TxID = req.TxID
 		}
 	}
 

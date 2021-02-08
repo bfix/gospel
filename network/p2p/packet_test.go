@@ -62,9 +62,9 @@ func TestPacket(t *testing.T) {
 	// data to be transferred
 	msgOut := &TestMsg{
 		MsgHeader: MsgHeader{
-			Size:     HDR_SIZE,
-			TxId:     23,
-			Type:     PING,
+			Size:     HdrSize,
+			TxID:     23,
+			Type:     ReqPING,
 			Receiver: addrR,
 			Sender:   addrS,
 		},
