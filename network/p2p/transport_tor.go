@@ -30,6 +30,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/bfix/gospel/data"
 	"github.com/bfix/gospel/logger"
 	"github.com/bfix/gospel/network"
 	"github.com/bfix/gospel/network/tor"
@@ -101,6 +102,8 @@ type TorTransportConfig struct {
 	// (only applicable for local Tor service instances), the value is
 	// set dynamically (and not in a persistent configuration file).
 	Auth string `json:"auth"`
+	// HSHost refers to the host running hidden service endpoints
+	HSHost string `json:"hshost"`
 }
 
 // TransportType returns the kind of transport implementation targeted
@@ -120,6 +123,7 @@ type TorConnector struct {
 	node    *Node
 	addr    net.Addr
 	port    int
+	hshost  string
 	conn    net.Listener
 	running bool
 
@@ -139,6 +143,7 @@ func NewTorConnector(trans *TorTransport, node *Node, port int) (*TorConnector, 
 		node:    node,
 		addr:    addr,
 		port:    port,
+		hshost:  trans.host,
 		conn:    nil,
 		running: false,
 		sample:  make([]*Address, SampleCache),
@@ -192,12 +197,17 @@ loop:
 func (c *TorConnector) Send(ctx context.Context, dst net.Addr, pkt *Packet) error {
 	// connect to peer
 	endp := fmt.Sprintf("%s:14235", dst.String())
+	logger.Printf(logger.DBG, "[%.8s] Send to hidden service %s", c.node.Address(), endp)
 	conn, err := c.trans.ctrl.DialTimeout("tcp", endp, time.Minute)
 	if err != nil {
 		return err
 	}
 	// send packet
-	if _, err = conn.Write(pkt.Body); err != nil {
+	buf, err := data.Marshal(pkt)
+	if err != nil {
+		return err
+	}
+	if _, err = conn.Write(buf); err != nil {
 		return err
 	}
 	// close connection
@@ -222,10 +232,13 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 
 	// connector up and running
 	c.running = true
-	endp := fmt.Sprintf("0.0.0.0:%d", c.port)
+	// connector up and running
+	c.running = true
 	go func() {
 		var err error
 		for c.running {
+			// start listener
+			endp := fmt.Sprintf("0.0.0.0:%d", c.port)
 			if c.conn, err = cfg.Listen(ctx, "tcp", endp); err != nil {
 				logger.Printf(logger.ERROR, "[%.8s] ERROR: Failed to (re-)start TCP listener", nodeAddr)
 				logger.Printf(logger.ERROR, "       %s", err.Error())
@@ -235,6 +248,24 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 			}
 			if c.port == 0 {
 				c.port = c.conn.Addr().(*net.TCPAddr).Port
+				logger.Printf(logger.DBG, "[%.8s] Local onion port is %d", nodeAddr, c.port)
+			}
+			// start hidden service
+			hs, err := tor.NewOnion(c.node.prvKey)
+			if err != nil {
+				logger.Printf(logger.ERROR, "[%.8s] Failed to create Tor onion", nodeAddr)
+				logger.Printf(logger.ERROR, "       %s", err.Error())
+				// wait some time, then retry
+				time.Sleep(3 * time.Second)
+				continue
+			}
+			hs.AddPort(14235, fmt.Sprintf("%s:%d", c.hshost, c.port))
+			if err = hs.Start(c.trans.ctrl); err != nil {
+				logger.Printf(logger.ERROR, "[%.8s] Failed to start Tor onion", nodeAddr)
+				logger.Printf(logger.ERROR, "       %s", err.Error())
+				// wait some time, then retry
+				time.Sleep(3 * time.Second)
+				continue
 			}
 			for c.running {
 				// wait for incoming data
@@ -250,6 +281,7 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 						logger.Printf(logger.ERROR, "[%.8s] Reading packet failed: %s", nodeAddr, err.Error())
 						return
 					}
+					logger.Printf(logger.DBG, "[%.8s] Got %d packet bytes", nodeAddr, n)
 					defer cn.Close()
 
 					// convert to message
@@ -276,25 +308,14 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 				}(conn)
 			}
 			// close the listener
-			logger.Printf(logger.WARN, "[%.8s] Closing listener", nodeAddr)
+			logger.Printf(logger.WARN, "[%.8s] Closing listener and hidden service", nodeAddr)
+			hs.Stop(c.trans.ctrl)
 			c.conn.Close()
 			c.conn = nil
 			// wait before retrying
 			time.Sleep(10 * time.Second)
 		}
 	}()
-
-	// start a hidden service
-	hs, err := tor.NewOnion(c.node.prvKey)
-	if err != nil {
-		logger.Printf(logger.ERROR, "[%.8s] Failed to create Tor onion", nodeAddr)
-		return
-	}
-	hs.AddPort(14235, fmt.Sprintf("127.0.0.1:%d", c.port))
-	if err = hs.Start(c.trans.ctrl); err != nil {
-		logger.Printf(logger.ERROR, "[%.8s] Failed to start Tor onion", nodeAddr)
-		return
-	}
 }
 
 // Learn network address of node address is obsolete if Tor transport
@@ -329,6 +350,8 @@ type TorTransport struct {
 	registry map[string]bool
 	// transport initialized (opened)?
 	active bool
+	// host that runs hidden services
+	host string
 }
 
 // NewTorTransport instantiates a new Tor transport layer where the
@@ -339,6 +362,7 @@ func NewTorTransport() *TorTransport {
 		ctrl:     nil,
 		registry: make(map[string]bool),
 		active:   false,
+		host:     "localhost",
 	}
 }
 
@@ -356,6 +380,8 @@ func (t *TorTransport) Open(cfg TransportConfig) (err error) {
 	if !ok {
 		return ErrTransInvalidConfig
 	}
+	// set onion host
+	t.host = torCfg.HSHost
 	// connect to the Tor service through the control port
 	netw, endp, err := network.SplitNetworkEndpoint(torCfg.Ctrl)
 	t.ctrl, err = tor.NewService(netw, endp)
