@@ -27,6 +27,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/bfix/gospel/logger"
 )
@@ -48,6 +49,7 @@ type Service struct {
 	host string        // Tor service host
 	conn net.Conn      // connection to control port (or socket)
 	rdr  *bufio.Reader // buffered reader for responses
+	lock sync.Mutex    // request serializer
 }
 
 // NewService instantiates a new Tor controller
@@ -216,6 +218,10 @@ func (s *Service) GetInfo(keys []string) (map[string][]string, error) {
 // If "cont" is "-", more response lines will follow.
 // The method returns a list of response texts (without a final "OK").
 func (s *Service) execute(cmd string) (list map[string][]string, err error) {
+	// only one at a time...
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	// send command
 	logger.Printf(logger.DBG, "[TorService] <<< %s\n", cmd)
 	if _, err = s.conn.Write([]byte(cmd + "\n")); err != nil {
