@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -118,6 +119,7 @@ type TorConnector struct {
 	trans   *TorTransport
 	node    *Node
 	addr    net.Addr
+	port    int
 	conn    net.Listener
 	running bool
 
@@ -127,7 +129,7 @@ type TorConnector struct {
 }
 
 // NewTorConnector creates a connector on transport for a given node
-func NewTorConnector(trans *TorTransport, node *Node) (*TorConnector, error) {
+func NewTorConnector(trans *TorTransport, node *Node, port int) (*TorConnector, error) {
 	addr, err := NewTorAddress(node.Address())
 	if err != nil {
 		return nil, err
@@ -136,6 +138,7 @@ func NewTorConnector(trans *TorTransport, node *Node) (*TorConnector, error) {
 		trans:   trans,
 		node:    node,
 		addr:    addr,
+		port:    port,
 		conn:    nil,
 		running: false,
 		sample:  make([]*Address, SampleCache),
@@ -219,15 +222,19 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 
 	// connector up and running
 	c.running = true
+	endp := fmt.Sprintf("0.0.0.0:%d", c.port)
 	go func() {
 		var err error
 		for c.running {
-			if c.conn, err = cfg.Listen(ctx, "tcp", "0.0.0.0:14235"); err != nil {
+			if c.conn, err = cfg.Listen(ctx, "tcp", endp); err != nil {
 				logger.Printf(logger.ERROR, "[%.8s] ERROR: Failed to (re-)start TCP listener", nodeAddr)
 				logger.Printf(logger.ERROR, "       %s", err.Error())
 				// wait some time, then retry
 				time.Sleep(3 * time.Second)
 				continue
+			}
+			if c.port == 0 {
+				c.port = c.conn.Addr().(*net.TCPAddr).Port
 			}
 			for c.running {
 				// wait for incoming data
@@ -283,7 +290,7 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 		logger.Printf(logger.ERROR, "[%.8s] Failed to create Tor onion", nodeAddr)
 		return
 	}
-	hs.AddPort(14235, "127.0.0.1:12345")
+	hs.AddPort(14235, fmt.Sprintf("127.0.0.1:%d", c.port))
 	if err = hs.Start(c.trans.ctrl); err != nil {
 		logger.Printf(logger.ERROR, "[%.8s] Failed to start Tor onion", nodeAddr)
 		return
@@ -365,7 +372,7 @@ func (t *TorTransport) Open(cfg TransportConfig) (err error) {
 // Register a node for participation in the transport layer. The 'endp'
 // argument is ignored as the network address of the node is computed
 // from the P2P address of the node.
-func (t *TorTransport) Register(ctx context.Context, n *Node, endp string) error {
+func (t *TorTransport) Register(ctx context.Context, n *Node, endp string) (err error) {
 	// check for opened transport
 	if !t.active {
 		return ErrTransClosed
@@ -375,8 +382,17 @@ func (t *TorTransport) Register(ctx context.Context, n *Node, endp string) error
 	if _, ok := t.registry[addr]; ok {
 		return ErrTransAddressDup
 	}
+	// 'endp' specifies an available local port; if not set or 0, a random
+	// available port is used.
+	port := 0
+	if len(endp) > 0 {
+		port, err = strconv.Atoi(endp)
+		if err != nil {
+			port = 0
+		}
+	}
 	// connect to suitable connector
-	conn, err := NewTorConnector(t, n)
+	conn, err := NewTorConnector(t, n, port)
 	if err != nil {
 		return err
 	}
