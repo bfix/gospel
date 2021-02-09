@@ -22,13 +22,13 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"net"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/bfix/gospel/data"
 	"github.com/bfix/gospel/logger"
 	"github.com/bfix/gospel/network"
 	"github.com/bfix/gospel/network/tor"
@@ -118,7 +118,7 @@ type TorConnector struct {
 	trans   *TorTransport
 	node    *Node
 	addr    net.Addr
-	conn    net.PacketConn
+	conn    net.Listener
 	running bool
 
 	sample []*Address
@@ -187,23 +187,18 @@ loop:
 
 // Send message from node to the UDP network.
 func (c *TorConnector) Send(ctx context.Context, dst net.Addr, pkt *Packet) error {
-	// check if we have an UDP connection
-	if c.conn == nil {
-		return ErrTransClosed
-	}
-	buf, err := data.Marshal(pkt)
+	// connect to peer
+	endp := fmt.Sprintf("%s:14235", dst.String())
+	conn, err := c.trans.ctrl.DialTimeout("tcp", endp, time.Minute)
 	if err != nil {
 		return err
 	}
-	// do the UDP transfer
-	n, err := c.conn.WriteTo(buf, dst)
-	if err != nil {
-		return ErrTransWrite
+	// send packet
+	if _, err = conn.Write(pkt.Body); err != nil {
+		return err
 	}
-	if n != len(buf) {
-		return ErrTransWriteShort
-	}
-	return nil
+	// close connection
+	return conn.Close()
 }
 
 // Listen on an UDP address/port for incoming packets
@@ -216,7 +211,7 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 	// assemble listener configuration
 	cfg := &net.ListenConfig{
 		Control: func(netw string, addr string, raw syscall.RawConn) error {
-			logger.Printf(logger.DBG, "[%.8s] Starting listener at %s:%s...\n", nodeAddr, netw, addr)
+			logger.Printf(logger.DBG, "[%.8s] Starting listener at %s:%s...", nodeAddr, netw, addr)
 			return nil
 		},
 		KeepAlive: 0,
@@ -227,51 +222,72 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 	go func() {
 		var err error
 		for c.running {
-			if c.conn, err = cfg.ListenPacket(ctx, "udp", c.addr.String()); err != nil {
-				logger.Printf(logger.ERROR, "[%.8s] ERROR: Failed to (re-start) UDP connection", nodeAddr)
-				logger.Printf(logger.ERROR, "       %s\n", err.Error())
+			if c.conn, err = cfg.Listen(ctx, "tcp", "0.0.0.0:14235"); err != nil {
+				logger.Printf(logger.ERROR, "[%.8s] ERROR: Failed to (re-)start TCP listener", nodeAddr)
+				logger.Printf(logger.ERROR, "       %s", err.Error())
 				// wait some time, then retry
 				time.Sleep(3 * time.Second)
 				continue
 			}
 			for c.running {
-				// read single UDP packet
-				n, addr, err := c.conn.ReadFrom(buffer)
+				// wait for incoming data
+				conn, err := c.conn.Accept()
 				if err != nil {
-					logger.Printf(logger.ERROR, "[%.8s] Listener failed: %s\n", nodeAddr, err.Error())
+					logger.Printf(logger.ERROR, "[%.8s] Listener failed: %s", nodeAddr, err.Error())
 					break
 				}
-				//log.Printf("[%.8s] Packet received from %s\n", nodeAddr, addr)
+				go func(cn net.Conn) {
+					// read packet
+					n, err := cn.Read(buffer)
+					if err != nil {
+						logger.Printf(logger.ERROR, "[%.8s] Reading packet failed: %s", nodeAddr, err.Error())
+						return
+					}
+					defer cn.Close()
 
-				// convert to message
-				msg, err := c.node.Unpack(buffer, n)
-				if err != nil {
-					logger.Printf(logger.ERROR, "[%.8s] Unwrapping packet failed: %s\n", nodeAddr, err.Error())
-					continue
-				}
-				hdr := msg.Header()
-				// is packet for this node?
-				if !hdr.Receiver.Equals(c.node.Address()) || (hdr.Flags&MsgfDrop != 0) {
-					// no: drop packet and continue
-					logger.Printf(logger.WARN, "[%.8s] Dropping packet from '%.8s'\n", nodeAddr, hdr.Receiver)
-					continue
-				}
-				// tell transport and node about the sender (in case it is unknown and not forwarded)
-				if hdr.Flags&MsgfRelay == 0 {
-					c.Learn(hdr.Sender, addr)
-					c.node.Learn(hdr.Sender, "")
-				}
-				// let the node handle the message
-				ch <- msg
+					// convert to message
+					msg, err := c.node.Unpack(buffer, n)
+					if err != nil {
+						logger.Printf(logger.ERROR, "[%.8s] Unwrapping packet failed: %s", nodeAddr, err.Error())
+						return
+					}
+					hdr := msg.Header()
+					// is packet for this node?
+					if !hdr.Receiver.Equals(c.node.Address()) || (hdr.Flags&MsgfDrop != 0) {
+						// no: drop packet and continue
+						logger.Printf(logger.WARN, "[%.8s] Dropping packet from '%.8s'", nodeAddr, hdr.Receiver)
+						return
+					}
+					// tell transport and node about the sender (in case it is unknown and not forwarded)
+					if hdr.Flags&MsgfRelay == 0 {
+						c.Learn(hdr.Sender, nil)
+						c.node.Learn(hdr.Sender, "")
+					}
+					// let the node handle the message
+					ch <- msg
+
+				}(conn)
 			}
 			// close the listener
-			logger.Printf(logger.WARN, "[%.8s] Closing listener\n", nodeAddr)
+			logger.Printf(logger.WARN, "[%.8s] Closing listener", nodeAddr)
 			c.conn.Close()
 			c.conn = nil
 			// wait before retrying
 			time.Sleep(10 * time.Second)
 		}
 	}()
+
+	// start a hidden service
+	hs, err := tor.NewOnion(c.node.prvKey)
+	if err != nil {
+		logger.Printf(logger.ERROR, "[%.8s] Failed to create Tor onion", nodeAddr)
+		return
+	}
+	hs.AddPort(14235, "127.0.0.1:12345")
+	if err = hs.Start(c.trans.ctrl); err != nil {
+		logger.Printf(logger.ERROR, "[%.8s] Failed to start Tor onion", nodeAddr)
+		return
+	}
 }
 
 // Learn network address of node address is obsolete if Tor transport
