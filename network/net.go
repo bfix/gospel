@@ -126,7 +126,7 @@ func SplitNetworkEndpoint(networkendp string) (network string, endp string, err 
 		err = fmt.Errorf("Invalid network endpoint")
 		return
 	}
-	network = endp[:pos]
+	network = networkendp[:pos]
 	endp = networkendp[pos+1:]
 	switch network {
 	// local Unix domain socket
