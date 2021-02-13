@@ -133,6 +133,10 @@ func (c *LocalConnector) Resolve(addr *Address) net.Addr {
 	return NewLocalAddress(netw)
 }
 
+// Epoch step: perform periodic tasks
+func (c *LocalConnector) Epoch(epoch int) {
+}
+
 //----------------------------------------------------------------------
 // Transport implementation
 //----------------------------------------------------------------------

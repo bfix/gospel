@@ -377,6 +377,7 @@ func (n *Node) Run(ctx context.Context) {
 		// periodic jobs
 		case <-period:
 			epoch++
+			n.conn.Epoch(epoch)
 
 		// externally cancelled
 		case <-ctx.Done():

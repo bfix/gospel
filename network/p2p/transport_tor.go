@@ -23,6 +23,7 @@ package p2p
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"strconv"
@@ -50,6 +51,13 @@ import (
 // service" is usually not called to find nodes; the routing table
 // (buckets) is only filled when DHT-related lookups are performed
 // (not part of the base P2P package).
+//
+// Every node is running a hidden service for incoming packets
+// (requests); responses are sent on another TCP connection back to the
+// hidden service of the requester. So Tor-based message exchange is
+// happening on separate one-way connections. The message sender is
+// responsible to managing open connections to peers based on keep-alive
+// settings for each peer.
 //======================================================================
 
 //----------------------------------------------------------------------
@@ -104,6 +112,9 @@ type TorTransportConfig struct {
 	Auth string `json:"auth"`
 	// HSHost refers to the host running hidden service endpoints
 	HSHost string `json:"hshost"`
+	// PeerTTL defines (in seconds) how long connections are kept-alive
+	// after a message has been send.
+	PeerTTL int `json:"peerTTL"`
 }
 
 // TransportType returns the kind of transport implementation targeted
@@ -116,20 +127,38 @@ func (c *TorTransportConfig) TransportType() string {
 // Tor-based connector implementation
 //----------------------------------------------------------------------
 
+// TorConnection is an open TCP connection to a hidden servoice of a peer
+type TorConnection struct {
+	conn net.Conn      // hidden service connection
+	last time.Time     // last used
+	ttl  time.Duration // time-to-live after last send
+}
+
+// Expired connection?
+func (c *TorConnection) Expired() bool {
+	return time.Now().After(c.last.Add(c.ttl))
+}
+
 // TorConnector is a stub between a node and the Tor-based transport
 // implementation.
 type TorConnector struct {
-	trans   *TorTransport
-	node    *Node
-	addr    net.Addr
-	port    int
-	hshost  string
-	conn    net.Listener
-	running bool
+	trans   *TorTransport // reference to underlaying transport
+	node    *Node         // reference to node using the connector
+	addr    net.Addr      // address of the node (onion address)
+	port    int           // hidden service listener port
+	hshost  string        // host running the node hodden service
+	conn    net.Listener  // hidden service listener
+	running bool          // connector running?
 
-	sample []*Address
-	pos    int
-	lock   sync.Mutex
+	// map of open connections
+	openList map[string]*TorConnection
+	openLock sync.Mutex
+	ttlConn  int
+
+	// list of last-seen peer addresses
+	sample     []*Address
+	pos        int
+	sampleLock sync.Mutex
 }
 
 // NewTorConnector creates a connector on transport for a given node
@@ -139,16 +168,36 @@ func NewTorConnector(trans *TorTransport, node *Node, port int) (*TorConnector, 
 		return nil, err
 	}
 	return &TorConnector{
-		trans:   trans,
-		node:    node,
-		addr:    addr,
-		port:    port,
-		hshost:  trans.host,
-		conn:    nil,
-		running: false,
-		sample:  make([]*Address, SampleCache),
-		pos:     0,
+		trans:    trans,
+		node:     node,
+		addr:     addr,
+		port:     port,
+		hshost:   trans.host,
+		conn:     nil,
+		running:  false,
+		openList: make(map[string]*TorConnection),
+		ttlConn:  trans.peerTTL,
+		sample:   make([]*Address, SampleCache),
+		pos:      0,
 	}, nil
+}
+
+// closeExpired closes all open connections if they have expired
+// (and remove them from the mapping).
+func (c *TorConnector) closeExpired() {
+	c.openLock.Lock()
+	defer c.openLock.Unlock()
+
+	newList := make(map[string]*TorConnection)
+	for addr, tc := range c.openList {
+		if tc.Expired() {
+			logger.Printf(logger.INFO, "[%.8s] Closing expired connection to %s", c.node.Address(), addr)
+			tc.conn.Close()
+		} else {
+			newList[addr] = tc
+		}
+	}
+	c.openList = newList
 }
 
 // NewAddress returns a new onion address for an endpoint
@@ -194,24 +243,37 @@ loop:
 }
 
 // Send message from node to the UDP network.
-func (c *TorConnector) Send(ctx context.Context, dst net.Addr, pkt *Packet) error {
-	// connect to peer
-	endp := fmt.Sprintf("%s:14235", dst.String())
-	logger.Printf(logger.DBG, "[%.8s] Send to hidden service %s", c.node.Address(), endp)
-	conn, err := c.trans.ctrl.DialTimeout("tcp", endp, time.Minute)
-	if err != nil {
-		return err
+func (c *TorConnector) Send(ctx context.Context, dst net.Addr, pkt *Packet) (err error) {
+	c.openLock.Lock()
+	defer c.openLock.Unlock()
+
+	// check if we have an open connection to the destination
+	var conn net.Conn
+	tc, ok := c.openList[dst.String()]
+	if ok {
+		// re-use existing connection
+		conn = tc.conn
+		tc.last = time.Now()
+	} else {
+		// connect to peer
+		endp := fmt.Sprintf("%s:14235", dst.String())
+		logger.Printf(logger.DBG, "[%.8s] Connecting to hidden service %s", c.node.Address(), endp)
+		if conn, err = c.trans.ctrl.DialTimeout("tcp", endp, time.Minute); err != nil {
+			return err
+		}
+		c.openList[dst.String()] = &TorConnection{
+			conn: conn,
+			last: time.Now(),
+			ttl:  time.Duration(c.ttlConn) * time.Second,
+		}
 	}
 	// send packet
-	buf, err := data.Marshal(pkt)
-	if err != nil {
-		return err
+	var buf []byte
+	if buf, err = data.Marshal(pkt); err != nil {
+		return
 	}
-	if _, err = conn.Write(buf); err != nil {
-		return err
-	}
-	// close connection
-	return conn.Close()
+	_, err = conn.Write(buf)
+	return
 }
 
 // Listen on an UDP address/port for incoming packets
@@ -227,11 +289,9 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 			logger.Printf(logger.DBG, "[%.8s] Starting listener at %s:%s...", nodeAddr, netw, addr)
 			return nil
 		},
-		KeepAlive: 0,
+		KeepAlive: time.Duration(c.ttlConn) * time.Second,
 	}
 
-	// connector up and running
-	c.running = true
 	// connector up and running
 	c.running = true
 	go func() {
@@ -278,11 +338,15 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 					// read packet
 					n, err := cn.Read(buffer)
 					if err != nil {
-						logger.Printf(logger.ERROR, "[%.8s] Reading packet failed: %s", nodeAddr, err.Error())
+						if err != io.EOF {
+							logger.Printf(logger.ERROR, "[%.8s] Reading packet failed: %s", nodeAddr, err.Error())
+						} else {
+							logger.Printf(logger.INFO, "[%.8s] Connection expired: %s", nodeAddr, endp)
+						}
+						cn.Close()
 						return
 					}
 					logger.Printf(logger.DBG, "[%.8s] Got %d packet bytes", nodeAddr, n)
-					defer cn.Close()
 
 					// convert to message
 					msg, err := c.node.Unpack(buffer, n)
@@ -337,6 +401,12 @@ func (c *TorConnector) Resolve(addr *Address) net.Addr {
 	return netw
 }
 
+// Epoch step: perform periodic tasks
+func (c *TorConnector) Epoch(epoch int) {
+	// close expired connections
+	c.closeExpired()
+}
+
 //----------------------------------------------------------------------
 // Tor-based transport layer
 //----------------------------------------------------------------------
@@ -352,6 +422,8 @@ type TorTransport struct {
 	active bool
 	// host that runs hidden services
 	host string
+	// keep-alive time for peer connections
+	peerTTL int
 }
 
 // NewTorTransport instantiates a new Tor transport layer where the
@@ -363,6 +435,7 @@ func NewTorTransport() *TorTransport {
 		registry: make(map[string]bool),
 		active:   false,
 		host:     "localhost",
+		peerTTL:  600, // default TTL is 10 minutes
 	}
 }
 
@@ -380,8 +453,11 @@ func (t *TorTransport) Open(cfg TransportConfig) (err error) {
 	if !ok {
 		return ErrTransInvalidConfig
 	}
-	// set onion host
+	// set onion host and peer TTL
 	t.host = torCfg.HSHost
+	if torCfg.PeerTTL > 0 {
+		t.peerTTL = torCfg.PeerTTL
+	}
 	// connect to the Tor service through the control port
 	netw, endp, err := network.SplitNetworkEndpoint(torCfg.Ctrl)
 	t.ctrl, err = tor.NewService(netw, endp)

@@ -231,6 +231,10 @@ func (c *UDPConnector) Resolve(addr *Address) net.Addr {
 	return endp
 }
 
+// Epoch step: perform periodic tasks
+func (c *UDPConnector) Epoch(epoch int) {
+}
+
 //----------------------------------------------------------------------
 // Internet-based transport layer
 //----------------------------------------------------------------------

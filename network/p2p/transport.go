@@ -72,6 +72,9 @@ type Connector interface {
 	// Sample given number of nodes with network addresses
 	// stored in cache.
 	Sample(int, *Address) []*Address
+
+	// Epoch step: perform periodic tasks
+	Epoch(int)
 }
 
 // TransportConfig is used for transport-specific configurations
