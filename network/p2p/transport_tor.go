@@ -335,40 +335,41 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 					break
 				}
 				go func(cn net.Conn) {
-					// read packet
-					n, err := cn.Read(buffer)
-					if err != nil {
-						if err != io.EOF {
-							logger.Printf(logger.ERROR, "[%.8s] Reading packet failed: %s", nodeAddr, err.Error())
-						} else {
-							logger.Printf(logger.INFO, "[%.8s] Connection expired: %s", nodeAddr, endp)
+					for {
+						// read packet
+						n, err := cn.Read(buffer)
+						if err != nil {
+							if err != io.EOF {
+								logger.Printf(logger.ERROR, "[%.8s] Reading packet failed: %s", nodeAddr, err.Error())
+							} else {
+								logger.Printf(logger.INFO, "[%.8s] Connection expired: %s", nodeAddr, endp)
+							}
+							cn.Close()
+							return
 						}
-						cn.Close()
-						return
-					}
-					logger.Printf(logger.DBG, "[%.8s] Got %d packet bytes", nodeAddr, n)
+						logger.Printf(logger.DBG, "[%.8s] Got %d packet bytes", nodeAddr, n)
 
-					// convert to message
-					msg, err := c.node.Unpack(buffer, n)
-					if err != nil {
-						logger.Printf(logger.ERROR, "[%.8s] Unwrapping packet failed: %s", nodeAddr, err.Error())
-						return
+						// convert to message
+						msg, err := c.node.Unpack(buffer, n)
+						if err != nil {
+							logger.Printf(logger.ERROR, "[%.8s] Unwrapping packet failed: %s", nodeAddr, err.Error())
+							return
+						}
+						hdr := msg.Header()
+						// is packet for this node?
+						if !hdr.Receiver.Equals(c.node.Address()) || (hdr.Flags&MsgfDrop != 0) {
+							// no: drop packet and continue
+							logger.Printf(logger.WARN, "[%.8s] Dropping packet from '%.8s'", nodeAddr, hdr.Receiver)
+							return
+						}
+						// tell transport and node about the sender (in case it is unknown and not forwarded)
+						if hdr.Flags&MsgfRelay == 0 {
+							c.Learn(hdr.Sender, nil)
+							c.node.Learn(hdr.Sender, "")
+						}
+						// let the node handle the message
+						ch <- msg
 					}
-					hdr := msg.Header()
-					// is packet for this node?
-					if !hdr.Receiver.Equals(c.node.Address()) || (hdr.Flags&MsgfDrop != 0) {
-						// no: drop packet and continue
-						logger.Printf(logger.WARN, "[%.8s] Dropping packet from '%.8s'", nodeAddr, hdr.Receiver)
-						return
-					}
-					// tell transport and node about the sender (in case it is unknown and not forwarded)
-					if hdr.Flags&MsgfRelay == 0 {
-						c.Learn(hdr.Sender, nil)
-						c.node.Learn(hdr.Sender, "")
-					}
-					// let the node handle the message
-					ch <- msg
-
 				}(conn)
 			}
 			// close the listener
