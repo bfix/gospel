@@ -154,7 +154,8 @@ func Socks5ConnectTimeout(proto string, addr string, port int, proxy string, tim
 		conn.Close()
 		return nil, err
 	}
-
-	//return connection
+	// remove timeout from connection
+	conn.SetDeadline(0)
+	// return connection
 	return conn, nil
 }
