@@ -38,6 +38,8 @@ Packages
     * Tor controller
     * hidden services (onion handling)
     * Tor utilities
+- gospel/network/tor/tools:
+    * TorAuthCookie
 - gospel/bitcoin:
     * Elliptic curve crypto (Secp256k1)
     * Bitcoin addresses
