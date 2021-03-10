@@ -53,7 +53,7 @@ func main() {
 	start := time.Now()
 	for i := 0; ; i++ {
 		priv := bitcoin.GenerateKeys(true)
-		addr := bitcoin.MakeAddress(&priv.PublicKey)
+		addr := bitcoin.MakeAddress(&priv.PublicKey, bitcoin.P2PKH)
 		test := string(addr)
 		if !caseSensitive {
 			test = strings.ToLower(test)

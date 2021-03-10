@@ -270,7 +270,7 @@ func TestImportAddress(t *testing.T) {
 		t.Skip("skipping test: session not available")
 	}
 	k := bitcoin.GenerateKeys(true)
-	a := bitcoin.MakeTestAddress(&k.PublicKey)
+	a := bitcoin.MakeTestAddress(&k.PublicKey, bitcoin.P2PKH)
 	if err := sess.ImportAddress(a, "", false); err != nil {
 		t.Fatal(err)
 	}
