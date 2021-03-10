@@ -50,7 +50,7 @@ func main() {
 	fmt.Printf("<<<    Entropy: %s\n", hex.EncodeToString(ent[:]))
 	fmt.Printf("<<<       Seed: %s\n", hex.EncodeToString(seed))
 	fmt.Println("<<< Seed words:")
-	n := len(words)/2
+	n := len(words) / 2
 	for i := 0; i < n; i++ {
 		fmt.Printf("<<<    %2d: %-20s %2d: %-20s\n", i+1, words[i], i+n+1, words[i+n])
 	}
