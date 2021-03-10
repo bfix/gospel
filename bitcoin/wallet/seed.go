@@ -55,11 +55,11 @@ func toNFKD(s string) []byte {
 }
 
 // EntropyToWords converts an entropy into a sequence of words
-func EntropyToWords(ent []byte) (s string, err error) {
+func EntropyToWords(ent []byte) (words []string, err error) {
 	// check for valid entropy (128-256 bits in 32 bit steps)
 	k := len(ent)
 	if k < 16 || k > 32 || k%4 != 0 {
-		return "", ErrInvalidEntropy
+		return nil, ErrInvalidEntropy
 	}
 	// compute checksum bits
 	cs := uint(k / 4)
@@ -78,8 +78,8 @@ func EntropyToWords(ent []byte) (s string, err error) {
 		w[n-1-j] = wordList[p]
 		i = i.Rsh(11)
 	}
-	// return words as a string
-	return strings.Join(w, " "), nil
+	// return words
+	return w, nil
 }
 
 // WordsToEntropy converts a sequence of words into an entropy.
