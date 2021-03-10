@@ -49,6 +49,7 @@ var (
 const (
 	xpubVersion = 0x0488b21e
 	xprvVersion = 0x0488ade4
+	ypubVersion = 0x049d7cb2
 )
 
 // ExtendedData is the data structure representing ExtendedKeys
@@ -114,8 +115,11 @@ func ParseExtendedPublicKey(s string) (k *ExtendedPublicKey, err error) {
 	if err != nil {
 		return nil, err
 	}
+	// check for valid public key version field
 	if k.data.Version != xpubVersion {
-		return nil, ErrHDVersion
+		if k.data.Version != ypubVersion {
+			return nil, ErrHDVersion
+		}
 	}
 	k.key, _, err = bitcoin.NewPointFromBytes(k.data.Keydata)
 	if err != nil {
@@ -229,6 +233,11 @@ func NewHD(seed []byte) *HD {
 	hd.m.data.Depth = 0
 	hd.m.data.ParentFP = 0
 	return hd
+}
+
+// MasterPublic returns the master public key.
+func (hd *HD) MasterPublic() *ExtendedPublicKey {
+	return hd.m.Public()
 }
 
 // Private returns an extended private key for a given path (BIP32,BIP44)
