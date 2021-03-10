@@ -2,7 +2,7 @@ package main
 
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2021 Bernd Fix
+// Copyright (C) 2011-2021 Bernd Fix  >Y<
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -23,6 +23,7 @@ package main
 import (
 	"bufio"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 
@@ -31,19 +32,24 @@ import (
 
 func main() {
 
-	fmt.Printf("Passphrase: ")
+	fmt.Printf(">>> Passphrase: ")
 	rdr := bufio.NewReader(os.Stdin)
 	in, _, err := rdr.ReadLine()
 	if err != nil {
-		fmt.Println("ERROR: " + err.Error())
+		fmt.Println("<<< ERROR: " + err.Error())
 		return
 	}
 	ent := sha256.Sum256(in)
+	fmt.Printf("<<< Entropy: %s\n", hex.EncodeToString(ent[:]))
 
-	seed, err := wallet.EntropyToWords(ent[:])
+	words, err := wallet.EntropyToWords(ent[:])
 	if err != nil {
-		fmt.Println("ERROR: " + err.Error())
+		fmt.Println("<<< ERROR: " + err.Error())
 		return
 	}
-	fmt.Println("Seed: " + seed)
+	fmt.Println("<<< Seed words:")
+	n := len(words)/2
+	for i := 0; i < n; i++ {
+		fmt.Printf("<<<    %2d: %-20s %2d: %-20s\n", i+1, words[i], i+n+1, words[i+n])
+	}
 }
