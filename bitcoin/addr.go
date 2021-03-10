@@ -20,14 +20,28 @@ package bitcoin
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
+const (
+	// P2PKH is " Pay-to-PubKeyHash" scheme
+	P2PKH = 0
+	// P2SH is "Pay-to-ScriptHash" scheme
+	P2SH = 1
+)
+
+var (
+	addrVersion = [][2]byte{
+		{0, 111}, // P2PKH
+		{5, 196}, // P2SH
+	}
+)
+
 // MakeAddress computes an address from public key for the "real" Bitcoin network
-func MakeAddress(key *PublicKey) string {
-	return buildAddr(key, 0)
+func MakeAddress(key *PublicKey, version int) string {
+	return buildAddr(key, addrVersion[version][0])
 }
 
 // MakeTestAddress computes an address from public key for the test network
-func MakeTestAddress(key *PublicKey) string {
-	return buildAddr(key, 111)
+func MakeTestAddress(key *PublicKey, version int) string {
+	return buildAddr(key, addrVersion[version][1])
 }
 
 // helper: compute address from public key using different (nested)

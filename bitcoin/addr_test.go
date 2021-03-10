@@ -104,7 +104,7 @@ func TestAddress(t *testing.T) {
 			t.Fatal("public point not on curve")
 		}
 
-		addr := MakeAddress(pubkey)
+		addr := MakeAddress(pubkey, P2PKH)
 		if string(addr) != d.IDaddr {
 			t.Fatal("makeaddress failed")
 		}
@@ -177,7 +177,7 @@ func TestPrivKeyAddress(t *testing.T) {
 	if err != nil {
 		t.Fatal("PrivateKeyFromBytes failed: " + err.Error())
 	}
-	addr := MakeAddress(&prv.PublicKey)
+	addr := MakeAddress(&prv.PublicKey, P2PKH)
 	if addr != tAddr {
 		t.Fatal("address mismatch")
 	}
