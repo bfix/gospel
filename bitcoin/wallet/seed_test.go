@@ -25,6 +25,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -37,9 +38,10 @@ func TestEntropy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if words != s[1] {
+		line := strings.Join(words, " ")
+		if line != s[1] {
 			fmt.Printf("< %s\n", s[1])
-			fmt.Printf("> %s\n", words)
+			fmt.Printf("> %s\n", line)
 			t.Fatalf("Failed entropy: %s", s[0])
 		}
 	}
@@ -60,7 +62,8 @@ func TestLookup(t *testing.T) {
 func TestWords(t *testing.T) {
 	for _, s := range seedData {
 		ent, _ := hex.DecodeString(s[0])
-		d, fail := WordsToEntropy(s[1])
+		words := strings.Split(s[1], " ")
+		d, fail := WordsToEntropy(words)
 		if len(fail) > 0 {
 			t.Fatalf("Failed word(s): '%s'", fail)
 		}
@@ -73,7 +76,8 @@ func TestWords(t *testing.T) {
 func TestSeed(t *testing.T) {
 	for _, s := range seedData {
 		seed, _ := hex.DecodeString(s[2])
-		d, fail := WordsToSeed(s[1], "TREZOR")
+		words := strings.Split(s[1], " ")
+		d, fail := WordsToSeed(words, "TREZOR")
 		if len(fail) > 0 {
 			t.Fatalf("failed word(s): '%s'", fail)
 		}
