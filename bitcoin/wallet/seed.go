@@ -37,13 +37,13 @@ var (
 )
 
 // WordsToSeed computes a seed value for a given word list
-func WordsToSeed(words, password string) ([]byte, string) {
+func WordsToSeed(words []string, password string) ([]byte, string) {
 	// check word list
 	if check := checkWords(words); len(check) > 0 {
 		return nil, check
 	}
 	// assemble input for key derivation function
-	pw := toNFKD(words)
+	pw := toNFKD(strings.Join(words, " "))
 	salt := toNFKD("mnemonic" + password)
 	// compute and return seed value
 	return pbkdf2.Key(pw, salt, 2048, 64, sha512.New), ""
@@ -85,13 +85,12 @@ func EntropyToWords(ent []byte) (words []string, err error) {
 // WordsToEntropy converts a sequence of words into an entropy.
 // Returns the entropy OR the words where the conversion failed.
 // If the number of words are incorrect, "#" is returned.
-func WordsToEntropy(s string) ([]byte, string) {
+func WordsToEntropy(words []string) ([]byte, string) {
 	// check word list
-	if check := checkWords(s); len(check) > 0 {
+	if check := checkWords(words); len(check) > 0 {
 		return nil, check
 	}
 	// reconstruct bit array from words
-	words := strings.Split(s, " ")
 	wl := len(words)
 	i := math.ZERO
 	for _, w := range words {
@@ -125,8 +124,7 @@ func WordsToEntropy(s string) ([]byte, string) {
 // CheckWords check if a word list complies with BIP39. It returns
 // an empty string on success, "#" if the number of words is wrong
 // or the list of words not in the word list
-func checkWords(s string) string {
-	words := strings.Split(s, " ")
+func checkWords(words []string) string {
 	wl := len(words)
 	if wl < 12 || wl > 24 || wl%3 != 0 {
 		return "#"
