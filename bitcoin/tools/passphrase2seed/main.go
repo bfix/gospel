@@ -40,13 +40,15 @@ func main() {
 		return
 	}
 	ent := sha256.Sum256(in)
-	fmt.Printf("<<< Entropy: %s\n", hex.EncodeToString(ent[:]))
-
 	words, err := wallet.EntropyToWords(ent[:])
 	if err != nil {
 		fmt.Println("<<< ERROR: " + err.Error())
 		return
 	}
+	seed, _ := wallet.WordsToSeed(words, "")
+
+	fmt.Printf("<<<    Entropy: %s\n", hex.EncodeToString(ent[:]))
+	fmt.Printf("<<<       Seed: %s\n", hex.EncodeToString(seed))
 	fmt.Println("<<< Seed words:")
 	n := len(words)/2
 	for i := 0; i < n; i++ {
