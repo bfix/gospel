@@ -36,20 +36,40 @@ var (
 
 // MakeAddress computes an address from public key for the "real" Bitcoin network
 func MakeAddress(key *PublicKey, version int) string {
-	return buildAddr(key, addrVersion[version][0])
+	data := key.Bytes()
+	if version == P2SH {
+		// build redeem script
+		var redeem []byte
+		redeem = append(redeem, 0)
+		redeem = append(redeem, 0x14)
+		kh := Hash160(data)
+		redeem = append(redeem, kh...)
+		data = redeem
+	}
+	return buildAddr(data, addrVersion[version][0])
 }
 
 // MakeTestAddress computes an address from public key for the test network
 func MakeTestAddress(key *PublicKey, version int) string {
-	return buildAddr(key, addrVersion[version][1])
+	data := key.Bytes()
+	if version == P2SH {
+		// build redeem script
+		var redeem []byte
+		redeem = append(redeem, 0)
+		redeem = append(redeem, 0x14)
+		kh := Hash160(data)
+		redeem = append(redeem, kh...)
+		data = redeem
+	}
+	return buildAddr(data, addrVersion[version][1])
 }
 
 // helper: compute address from public key using different (nested)
 // hashes and identifiers.
-func buildAddr(key *PublicKey, version byte) string {
+func buildAddr(data []byte, version byte) string {
 	var addr []byte
 	addr = append(addr, version)
-	kh := Hash160(key.Bytes())
+	kh := Hash160(data)
 	addr = append(addr, kh...)
 	cs := Hash256(addr)
 	addr = append(addr, cs[:4]...)
