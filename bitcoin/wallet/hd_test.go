@@ -120,7 +120,7 @@ func TestPath(t *testing.T) {
 		}
 		prvS := prv.String()
 		if prvS != p[2] {
-			fmt.Printf("[%d] d=%v\n", i, prv.data)
+			fmt.Printf("[%d] d=%v\n", i, prv.Data)
 			d, _ := ParseExtended(p[2])
 			fmt.Printf("d=%v\n", d)
 			t.Fatalf("prv mismatch: %s\n", prvS)
@@ -132,13 +132,13 @@ func TestPath(t *testing.T) {
 		}
 		pubS := pub.String()
 		if pubS != p[1] {
-			fmt.Printf("[%d] d=%v\n", i, pub.data)
+			fmt.Printf("[%d] d=%v\n", i, pub.Data)
 			d, _ := ParseExtended(p[1])
 			fmt.Printf("d=%v\n", d)
 			t.Fatalf("pub mismatch: %s\n", pubS)
 		}
 
-		if !pub.key.Equals(prv.Public().key) {
+		if !pub.Key.Equals(prv.Public().Key) {
 			t.Fatal("public key mismach")
 		}
 	}

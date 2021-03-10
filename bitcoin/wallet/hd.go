@@ -43,14 +43,38 @@ var (
 
 //----------------------------------------------------------------------
 // ExtendedData objects represent public/private extended keys
-// (MAINNET only!)
 //----------------------------------------------------------------------
 
+// extended data version codes
 const (
-	xpubVersion = 0x0488b21e
-	xprvVersion = 0x0488ade4
-	ypubVersion = 0x049d7cb2
+	XpubVersion = 0x0488b21e
+	XprvVersion = 0x0488ade4
+
+	UpubVersion = 0x043587cf
+	UprvVersion = 0x04358394
+
+	YpubVersion = 0x049d7cb2
+
+	DrkpVersion = 0x02fe52cc
+
+	DgubVersion = 0x02facafd
+
+	MtubVersion = 0x01b26ef6
 )
+
+// CheckVersion returns a status code:
+//    -1 if extended data refers to a public key
+//     1 if extended data refers to a private key
+//     0 if version is unknown
+func CheckVersion(version uint32) int {
+	switch version {
+	case XpubVersion, UpubVersion, YpubVersion, DrkpVersion, DgubVersion, MtubVersion:
+		return -1
+	case XprvVersion, UprvVersion:
+		return 1
+	}
+	return 0
+}
 
 // ExtendedData is the data structure representing ExtendedKeys
 // (both public and private) for exchange purposes.
@@ -63,7 +87,7 @@ type ExtendedData struct {
 	Keydata   []byte `size:"33"`
 }
 
-// NewExtendedData alloctates a new extended data object
+// NewExtendedData allocates a new extended data object
 func NewExtendedData() *ExtendedData {
 	return &ExtendedData{
 		Chaincode: make([]byte, 32),
@@ -104,24 +128,22 @@ func (d *ExtendedData) String() string {
 
 // ExtendedPublicKey represents a public key in a HD tree
 type ExtendedPublicKey struct {
-	data *ExtendedData
-	key  *bitcoin.Point
+	Data *ExtendedData
+	Key  *bitcoin.Point
 }
 
 // ParseExtendedPublicKey converts a xpub string to a public key
 func ParseExtendedPublicKey(s string) (k *ExtendedPublicKey, err error) {
 	k = new(ExtendedPublicKey)
-	k.data, err = ParseExtended(s)
+	k.Data, err = ParseExtended(s)
 	if err != nil {
 		return nil, err
 	}
 	// check for valid public key version field
-	if k.data.Version != xpubVersion {
-		if k.data.Version != ypubVersion {
-			return nil, ErrHDVersion
-		}
+	if CheckVersion(k.Data.Version) != -1 {
+		return nil, ErrHDVersion
 	}
-	k.key, _, err = bitcoin.NewPointFromBytes(k.data.Keydata)
+	k.Key, _, err = bitcoin.NewPointFromBytes(k.Data.Keydata)
 	if err != nil {
 		return nil, err
 	}
@@ -130,12 +152,12 @@ func ParseExtendedPublicKey(s string) (k *ExtendedPublicKey, err error) {
 
 // String returns the string representation of an ExtendedPublicKey
 func (e *ExtendedPublicKey) String() string {
-	return e.data.String()
+	return e.Data.String()
 }
 
 // Fingerprint returns the fingerprint of an ExtendedPublicKey
 func (e *ExtendedPublicKey) Fingerprint() (i uint32) {
-	fp := bitcoin.Hash160(e.key.Bytes(true))
+	fp := bitcoin.Hash160(e.Key.Bytes(true))
 	rdr := bytes.NewBuffer(fp)
 	binary.Read(rdr, binary.BigEndian, &i)
 	return
@@ -144,54 +166,54 @@ func (e *ExtendedPublicKey) Fingerprint() (i uint32) {
 // Clone returns a deep copy of a public key
 func (e *ExtendedPublicKey) Clone() *ExtendedPublicKey {
 	r := new(ExtendedPublicKey)
-	r.key = bitcoin.NewPoint(e.key.X(), e.key.Y())
-	r.data = NewExtendedData()
-	r.data.Version = e.data.Version
-	r.data.Depth = e.data.Depth
-	r.data.Child = e.data.Child
-	r.data.ParentFP = e.data.ParentFP
-	copy(r.data.Chaincode, e.data.Chaincode)
-	copy(r.data.Keydata, e.data.Keydata)
+	r.Key = bitcoin.NewPoint(e.Key.X(), e.Key.Y())
+	r.Data = NewExtendedData()
+	r.Data.Version = e.Data.Version
+	r.Data.Depth = e.Data.Depth
+	r.Data.Child = e.Data.Child
+	r.Data.ParentFP = e.Data.ParentFP
+	copy(r.Data.Chaincode, e.Data.Chaincode)
+	copy(r.Data.Keydata, e.Data.Keydata)
 	return r
 }
 
 // ExtendedPrivateKey represents a private key in a HD tree
 type ExtendedPrivateKey struct {
-	data *ExtendedData
-	key  *math.Int
+	Data *ExtendedData
+	Key  *math.Int
 }
 
 // ParseExtendedPrivateKey converts a xprv string to a private key
 func ParseExtendedPrivateKey(s string) (k *ExtendedPrivateKey, err error) {
 	k = new(ExtendedPrivateKey)
-	k.data, err = ParseExtended(s)
+	k.Data, err = ParseExtended(s)
 	if err != nil {
 		return nil, err
 	}
-	if k.data.Version != xprvVersion {
+	if CheckVersion(k.Data.Version) != 1 {
 		return nil, ErrHDVersion
 	}
-	k.key = math.NewIntFromBytes(k.data.Keydata)
+	k.Key = math.NewIntFromBytes(k.Data.Keydata)
 	return k, nil
 }
 
 // Public returns the associated public key
 func (k *ExtendedPrivateKey) Public() *ExtendedPublicKey {
 	r := new(ExtendedPublicKey)
-	r.key = bitcoin.MultBase(k.key)
-	r.data = NewExtendedData()
-	r.data.Version = xpubVersion
-	r.data.Child = k.data.Child
-	r.data.Depth = k.data.Depth
-	r.data.ParentFP = k.data.ParentFP
-	copy(r.data.Chaincode, k.data.Chaincode)
-	copy(r.data.Keydata, r.key.Bytes(true))
+	r.Key = bitcoin.MultBase(k.Key)
+	r.Data = NewExtendedData()
+	r.Data.Version = XpubVersion
+	r.Data.Child = k.Data.Child
+	r.Data.Depth = k.Data.Depth
+	r.Data.ParentFP = k.Data.ParentFP
+	copy(r.Data.Chaincode, k.Data.Chaincode)
+	copy(r.Data.Keydata, r.Key.Bytes(true))
 	return r
 }
 
 // String returns the string representation of an ExtendedPrivateKey
 func (k *ExtendedPrivateKey) String() string {
-	return k.data.String()
+	return k.Data.String()
 }
 
 //----------------------------------------------------------------------
@@ -224,15 +246,20 @@ func NewHD(seed []byte) *HD {
 
 	hd := new(HD)
 	hd.m = new(ExtendedPrivateKey)
-	hd.m.key = mKey
-	hd.m.data = NewExtendedData()
-	hd.m.data.Version = xprvVersion
-	copy(hd.m.data.Keydata, hd.m.key.FixedBytes(33))
-	copy(hd.m.data.Chaincode, i[32:])
-	hd.m.data.Child = 0
-	hd.m.data.Depth = 0
-	hd.m.data.ParentFP = 0
+	hd.m.Key = mKey
+	hd.m.Data = NewExtendedData()
+	hd.m.Data.Version = XprvVersion
+	copy(hd.m.Data.Keydata, hd.m.Key.FixedBytes(33))
+	copy(hd.m.Data.Chaincode, i[32:])
+	hd.m.Data.Child = 0
+	hd.m.Data.Depth = 0
+	hd.m.Data.ParentFP = 0
 	return hd
+}
+
+// MasterPrivate returns the master private key.
+func (hd *HD) MasterPrivate() *ExtendedPrivateKey {
+	return hd.m
 }
 
 // MasterPublic returns the master public key.
@@ -334,12 +361,12 @@ func (hd *HDPublic) Public(path string) (pub *ExtendedPublicKey, err error) {
 
 // CKDprv is a key derivation function for private keys
 func CKDprv(k *ExtendedPrivateKey, i uint32) (ki *ExtendedPrivateKey) {
-	mac := hmac.New(sha512.New, k.data.Chaincode)
+	mac := hmac.New(sha512.New, k.Data.Chaincode)
 	if i >= 1<<31 {
 		mac.Write([]byte{0})
-		mac.Write(k.key.FixedBytes(32))
+		mac.Write(k.Key.FixedBytes(32))
 	} else {
-		p := bitcoin.MultBase(k.key)
+		p := bitcoin.MultBase(k.Key)
 		mac.Write(p.Bytes(true))
 	}
 
@@ -351,14 +378,14 @@ func CKDprv(k *ExtendedPrivateKey, i uint32) (ki *ExtendedPrivateKey) {
 		return nil
 	}
 	ki = new(ExtendedPrivateKey)
-	ki.key = j.Add(k.key).Mod(c.N)
-	ki.data = NewExtendedData()
-	ki.data.Version = k.data.Version
-	ki.data.Depth = k.data.Depth + 1
-	ki.data.Child = i
-	ki.data.ParentFP = k.Public().Fingerprint()
-	copy(ki.data.Chaincode, x[32:])
-	copy(ki.data.Keydata, ki.key.FixedBytes(33))
+	ki.Key = j.Add(k.Key).Mod(c.N)
+	ki.Data = NewExtendedData()
+	ki.Data.Version = k.Data.Version
+	ki.Data.Depth = k.Data.Depth + 1
+	ki.Data.Child = i
+	ki.Data.ParentFP = k.Public().Fingerprint()
+	copy(ki.Data.Chaincode, x[32:])
+	copy(ki.Data.Keydata, ki.Key.FixedBytes(33))
 	return
 }
 
@@ -367,8 +394,8 @@ func CKDpub(k *ExtendedPublicKey, i uint32) (ki *ExtendedPublicKey) {
 	if i >= 1<<31 {
 		return nil
 	}
-	mac := hmac.New(sha512.New, k.data.Chaincode)
-	mac.Write(k.key.Bytes(true))
+	mac := hmac.New(sha512.New, k.Data.Chaincode)
+	mac.Write(k.Key.Bytes(true))
 	binary.Write(mac, binary.BigEndian, i)
 	x := mac.Sum(nil)
 
@@ -377,13 +404,13 @@ func CKDpub(k *ExtendedPublicKey, i uint32) (ki *ExtendedPublicKey) {
 		return nil
 	}
 	ki = new(ExtendedPublicKey)
-	ki.key = bitcoin.MultBase(j).Add(k.key)
-	ki.data = NewExtendedData()
-	ki.data.Version = k.data.Version
-	ki.data.Depth = k.data.Depth + 1
-	ki.data.Child = i
-	ki.data.ParentFP = k.Fingerprint()
-	copy(ki.data.Chaincode, x[32:])
-	copy(ki.data.Keydata, ki.key.Bytes(true))
+	ki.Key = bitcoin.MultBase(j).Add(k.Key)
+	ki.Data = NewExtendedData()
+	ki.Data.Version = k.Data.Version
+	ki.Data.Depth = k.Data.Depth + 1
+	ki.Data.Child = i
+	ki.Data.ParentFP = k.Fingerprint()
+	copy(ki.Data.Chaincode, x[32:])
+	copy(ki.Data.Keydata, ki.Key.Bytes(true))
 	return
 }
