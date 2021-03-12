@@ -1,8 +1,6 @@
-package bitcoin
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2020 Bernd Fix
+// Copyright (C) 2011-2021 Bernd Fix  >Y<
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -20,12 +18,19 @@ package bitcoin
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
+package wallet
+
 import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"testing"
+
+	"github.com/bfix/gospel/bitcoin"
 )
+
+// Test Bitcoin address functions
+// ==============================
 
 // Serialization format:
 // 	--  4 byte: version bytes (mainnet: 0x0488B21E public, 0x0488ADE4 private; testnet: 0x043587CF public, 0x04358394 private)
@@ -85,7 +90,7 @@ func TestAddress(t *testing.T) {
 		if err != nil {
 			t.Fatal("test data failure")
 		}
-		idaddr, err := Base58Decode(d.IDaddr)
+		idaddr, err := bitcoin.Base58Decode(d.IDaddr)
 		if err != nil {
 			t.Fatal("test data failure")
 		}
@@ -96,7 +101,7 @@ func TestAddress(t *testing.T) {
 		if err != nil {
 			t.Fatal("test data failure")
 		}
-		pubkey, err := PublicKeyFromBytes(pub)
+		pubkey, err := bitcoin.PublicKeyFromBytes(pub)
 		if err != nil {
 			t.Fatal("test data failure")
 		}
@@ -104,9 +109,9 @@ func TestAddress(t *testing.T) {
 			t.Fatal("public point not on curve")
 		}
 
-		addr := MakeAddress(pubkey, P2PKH)
+		addr := MakeAddress(pubkey, 0, AddrP2PKH, AddrMain)
 		if string(addr) != d.IDaddr {
-			t.Fatal("makeaddress failed")
+			t.Fatalf("makeaddress failed: '%s' != '%s'\n", string(addr), d.IDaddr)
 		}
 		pubkeyhex := hex.EncodeToString(pubkey.Bytes())
 		if pubkeyhex != d.SerPubHex[90:] {
@@ -123,7 +128,7 @@ func TestAddress(t *testing.T) {
 			t.Fatal("test data failure")
 		}
 		b = append(b, prefix(b)...)
-		pubser := Base58Encode(b)
+		pubser := bitcoin.Base58Encode(b)
 		if pubser != d.SerPubB58 {
 			t.Fatal("test data failure")
 		}
@@ -137,11 +142,11 @@ func TestAddress(t *testing.T) {
 			}
 			prv = prv[1:]
 		}
-		prvkey, err := PrivateKeyFromBytes(prv)
+		prvkey, err := bitcoin.PrivateKeyFromBytes(prv)
 		if err != nil {
 			t.Fatal("privatekeyfrombytes failed")
 		}
-		q := MultBase(prvkey.D)
+		q := bitcoin.MultBase(prvkey.D)
 		if !q.Equals(pubkey.Q) {
 			t.Fatal("pub/private mismatch")
 		}
@@ -156,7 +161,7 @@ func TestAddress(t *testing.T) {
 			t.Fatal("test data failure")
 		}
 		b = append(b, prefix(b)...)
-		prvser := Base58Encode(b)
+		prvser := bitcoin.Base58Encode(b)
 		if prvser != d.SerPrvB58 {
 			t.Fatal("test data failure")
 		}
@@ -169,17 +174,38 @@ var (
 )
 
 func TestPrivKeyAddress(t *testing.T) {
-	b, err := Base58Decode(tPrivKey)
+	b, err := bitcoin.Base58Decode(tPrivKey)
 	if err != nil {
 		t.Fatal("Base58 decoder failed.: " + err.Error())
 	}
-	prv, err := PrivateKeyFromBytes(b[1:34])
+	prv, err := bitcoin.PrivateKeyFromBytes(b[1:34])
 	if err != nil {
 		t.Fatal("PrivateKeyFromBytes failed: " + err.Error())
 	}
-	addr := MakeAddress(&prv.PublicKey, P2PKH)
+	addr := MakeAddress(&prv.PublicKey, 0, AddrP2PKH, AddrMain)
 	if addr != tAddr {
 		t.Fatal("address mismatch")
+	}
+}
+
+func TestBCHAddress(t *testing.T) {
+	pk := "0316b88b26b842eb141031cb3d29e2bb4ccccf595cfa7bb895cbbaa3f1536223d1"
+	tAddr := "bitcoincash:qpnfc27ttwqky82emu6mvwtqphg94y4ahc957hjwhp"
+
+	pub, err := hex.DecodeString(pk)
+	if err != nil {
+		t.Fatal("test data failure")
+	}
+	pubkey, err := bitcoin.PublicKeyFromBytes(pub)
+	if err != nil {
+		t.Fatal("test data failure")
+	}
+	if !pubkey.Q.IsOnCurve() {
+		t.Fatal("public point not on curve")
+	}
+	addr := MakeAddress(pubkey, 145, AddrP2PKH, AddrMain)
+	if addr != tAddr {
+		t.Fatalf("failed: '%s' != '%s'\n", addr, tAddr)
 	}
 }
 
