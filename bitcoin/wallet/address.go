@@ -56,7 +56,7 @@ func MakeAddress(key *bitcoin.PublicKey, coin, version, network int) string {
 	case AddrP2SH:
 		redeem := append([]byte(nil), 0)
 		redeem = append(redeem, 0x14)
-		kh := bitcoin.Hash160(data)
+		kh := bitcoin.Hash160(key.Bytes())
 		redeem = append(redeem, kh...)
 		data = redeem
 	}
@@ -96,6 +96,25 @@ func MakeAddress(key *bitcoin.PublicKey, coin, version, network int) string {
 	return string(bitcoin.Base58Encode(addr))
 }
 
+// GetXDVersion returns the extended data version for a given coin mode
+func GetXDVersion(coin, mode, network int, pub bool) uint32 {
+	for _, addr := range AddrList {
+		if addr.CoinID == coin {
+			v := addr.Formats[network]
+			if v != nil {
+				w := v.Versions[mode]
+				if w != nil {
+					if pub {
+						return w.PubVersion
+					}
+					return w.PrvVersion
+				}
+			}
+		}
+	}
+	return 0
+}
+
 // AddrVersion defines address version constants
 type AddrVersion struct {
 	Version    uint16 // version byte (address prefix)
@@ -128,7 +147,7 @@ var (
 			// Mainnet
 			{"bc", 0x80, []*AddrVersion{
 				{0x00, 0x0488ade4, 0x0488b21e}, // P2PKH
-				{0x05, 0x0488ade4, 0x0488b21e}, // P2SH
+				{0x05, 0x049d7cb2, 0x049d7878}, // P2SH
 				{0x00, 0x04b24746, 0x04b2430c}, // P2WPKH
 				{0x05, 0x02aa7ed3, 0x02aa7a99}, // P2WSH
 				{0x05, 0x049d7cb2, 0x049d7878}, // P2WPKHinP2SH
@@ -374,7 +393,7 @@ var (
 			// Mainnet
 			{"btg", 0x80, []*AddrVersion{
 				{0x26, 0x0488ade4, 0x0488b21e}, // P2PKH
-				{0x17, 0x0488ade4, 0x0488b21e}, // P2SH
+				{0x17, 0x049d7cb2, 0x049d7878}, // P2SH
 				{0x26, 0x04b24746, 0x04b2430c}, // P2WPKH
 				nil,                            // P2WSH
 				{0x17, 0x049d7cb2, 0x049d7878}, // P2WPKHinP2SH
