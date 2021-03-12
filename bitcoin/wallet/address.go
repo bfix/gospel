@@ -112,7 +112,11 @@ func GetXDVersion(coin, mode, network int, pub bool) uint32 {
 			}
 		}
 	}
-	return 0
+	// return default
+	if pub {
+		return XpubVersion
+	}
+	return XprvVersion
 }
 
 // AddrVersion defines address version constants
