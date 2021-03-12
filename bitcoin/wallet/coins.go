@@ -1,5 +1,3 @@
-package wallet
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2021 Bernd Fix  >Y<
@@ -20,6 +18,12 @@ package wallet
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
+package wallet
+
+import (
+	"strings"
+)
+
 // CoinSpec defines a BIP44 registered coin.
 // see: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
 //      https://github.com/libbitcoin/libbitcoin-system/wiki/Altcoin-Version-Mappings
@@ -27,6 +31,17 @@ type CoinSpec struct {
 	ID     int
 	Symbol string
 	Name   string
+}
+
+// GetCoinID returns the numeric identifier for a given coin symbol.
+func GetCoinID(symb string) int {
+	s := strings.ToUpper(symb)
+	for _, coin := range CoinList {
+		if coin.Symbol == s {
+			return coin.ID
+		}
+	}
+	return -1
 }
 
 var (
