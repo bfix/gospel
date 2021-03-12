@@ -1,8 +1,6 @@
-package wallet
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2020 Bernd Fix
+// Copyright (C) 2011-2021 Bernd Fix  >Y<
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -19,6 +17,8 @@ package wallet
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package wallet
 
 import (
 	"bytes"
@@ -47,19 +47,28 @@ var (
 
 // extended data version codes
 const (
+	// Generic versions (P2PKH)
 	XpubVersion = 0x0488b21e
 	XprvVersion = 0x0488ade4
 
+	// Testnet versions
 	UpubVersion = 0x043587cf
 	UprvVersion = 0x04358394
 
+	// Generic versions (P2SH)
 	YpubVersion = 0x049d7cb2
+	YprvVersion = 0x049d7878
 
+	// Dash
 	DrkpVersion = 0x02fe52cc
 
+	// Dogecoin
 	DgubVersion = 0x02facafd
+	DgpvVersion = 0x02fac398
 
+	// Litecoin
 	MtubVersion = 0x01b26ef6
+	MtpvVersion = 0x01b26792
 )
 
 // CheckVersion returns a status code:
