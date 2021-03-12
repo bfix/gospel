@@ -1,15 +1,3 @@
-package wallet
-
-import (
-	"bytes"
-	"encoding/base32"
-	"encoding/binary"
-	"math/big"
-	"strings"
-
-	"github.com/bfix/gospel/bitcoin"
-)
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2021 Bernd Fix  >Y<
@@ -29,6 +17,18 @@ import (
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package wallet
+
+import (
+	"bytes"
+	"encoding/base32"
+	"encoding/binary"
+	"math/big"
+	"strings"
+
+	"github.com/bfix/gospel/bitcoin"
+)
 
 // Address constants
 const (
@@ -146,7 +146,7 @@ var (
 		{0, []*AddrFormat{
 			// Mainnet
 			{"bc", 0x80, []*AddrVersion{
-				{0x00, 0x0488ade4, 0x0488b21e}, // P2PKH
+				{0x00, 0x0488b21e, 0x0488ade4}, // P2PKH
 				{0x05, 0x049d7cb2, 0x049d7878}, // P2SH
 				{0x00, 0x04b24746, 0x04b2430c}, // P2WPKH
 				{0x05, 0x02aa7ed3, 0x02aa7a99}, // P2WSH
@@ -155,8 +155,8 @@ var (
 			}},
 			// Testnet
 			{"tb", 0xef, []*AddrVersion{
-				{0x6f, 0x0488ade4, 0x0488b21e}, // P2PKH
-				{0xc4, 0x0488ade4, 0x0488b21e}, // P2SH
+				{0x6f, 0x043587cf, 0x04358394}, // P2PKH
+				{0xc4, 0x043587cf, 0x04358394}, // P2SH
 				{0x6f, 0x045f1cf6, 0x045f18bc}, // P2WPKH
 				{0xc4, 0x02575483, 0x02575048}, // P2WSH
 				{0xc4, 0x044a5262, 0x044a4e28}, // P2WPKHinP2SH
@@ -178,8 +178,8 @@ var (
 		{2, []*AddrFormat{
 			// Mainnet
 			{"ltc", 0xb0, []*AddrVersion{
-				{0x30, 0x0488ade4, 0x0488b21e}, // P2PKH
-				{0x32, 0x0488ade4, 0x0488b21e}, // P2SH
+				{0x30, 0x0488b21e, 0x0488ade4}, // P2PKH
+				{0x32, 0x01b26ef6, 0x01b26792}, // P2SH
 				{0x30, 0x04b24746, 0x04b2430c}, // P2WPKH
 				nil,                            // P2WSH
 				{0x32, 0x01b26ef6, 0x01b26792}, // P2WPKHinP2SH
@@ -228,8 +228,8 @@ var (
 		{5, []*AddrFormat{
 			// Mainnet
 			{"", 0xcc, []*AddrVersion{
-				{0x4c, 0x0488ade4, 0x0488b21e}, // P2PKH
-				{0x10, 0x0488ade4, 0x0488b21e}, // P2SH
+				{0x4c, 0x02fe52cc, 0x0488ade4}, // P2PKH
+				{0x10, 0x02fe52cc, 0x0488ade4}, // P2SH
 				nil,                            // P2WPKH
 				nil,                            // P2WSH
 				nil,                            // P2WPKHinP2SH
@@ -253,8 +253,8 @@ var (
 		{7, []*AddrFormat{
 			// Mainnet
 			{"", 0xb4, []*AddrVersion{
-				{0x34, 0x0488ade4, 0x0488b21e}, // P2PKH
-				{0x0d, 0x0488ade4, 0x0488b21e}, // P2SH
+				{0x34, 0x0488b21e, 0x0488ade4}, // P2PKH
+				{0x0d, 0x0488b21e, 0x0488ade4}, // P2SH
 				nil,                            // P2WPKH
 				nil,                            // P2WSH
 				nil,                            // P2WPKHinP2SH
@@ -271,11 +271,29 @@ var (
 		{20, []*AddrFormat{
 			// Mainnet
 			{"dgb", 0x80, []*AddrVersion{
-				{0x1e, 0x0488ade4, 0x0488b21e}, // P2PKH
-				{0x05, 0x0488ade4, 0x0488b21e}, // P2SH
+				{0x1e, 0x0488b21e, 0x0488ade4}, // P2PKH
+				{0x3f, 0x049d7cb2, 0x049d7878}, // P2SH
 				{0x1e, 0x04b24746, 0x04b2430c}, // P2WPKH
 				nil,                            // P2WSH
 				{0x3f, 0x049d7cb2, 0x049d7878}, // P2WPKHinP2SH
+				nil,                            // P2WSHinP2SH
+			}},
+			// Testnet
+			nil,
+			// Regnet
+			nil,
+		}, nil},
+		//--------------------------------------------------------------
+		// VTC (Vertcoin)
+		//--------------------------------------------------------------
+		{28, []*AddrFormat{
+			// Mainnet
+			{"", 0x80, []*AddrVersion{
+				{0x47, 0x0488b21e, 0x0488ade4}, // P2PKH
+				{0x05, 0x049d7cb2, 0x049d7878}, // P2SH
+				{0x47, 0x0488b21e, 0x0488ade4}, // P2WPKH
+				nil,                            // P2WSH
+				{0x47, 0x0488b21e, 0x0488ade4}, // P2WPKHinP2SH
 				nil,                            // P2WSHinP2SH
 			}},
 			// Testnet
@@ -289,8 +307,8 @@ var (
 		{133, []*AddrFormat{
 			// Mainnet
 			{"", 0x80, []*AddrVersion{
-				{0x1cb8, 0x0488ade4, 0x0488b21e}, // P2PKH
-				{0x1cbd, 0x0488ade4, 0x0488b21e}, // P2SH
+				{0x1cb8, 0x0488b21e, 0x0488ade4}, // P2PKH
+				{0x1cbd, 0x0488b21e, 0x0488ade4}, // P2SH
 				nil,                              // P2WPKH
 				nil,                              // P2WSH
 				nil,                              // P2WPKHinP2SH
@@ -307,8 +325,8 @@ var (
 		{145, []*AddrFormat{
 			// Mainnet
 			{"", 0x80, []*AddrVersion{
-				{0x00, 0x0488ade4, 0x0488b21e}, // P2PKH
-				{0x05, 0x0488ade4, 0x0488b21e}, // P2SH
+				{0x00, 0x0488b21e, 0x0488ade4}, // P2PKH
+				{0x05, 0x0488b21e, 0x0488ade4}, // P2SH
 				{0x00, 0x04b24746, 0x04b2430c}, // P2WPKH
 				{0x05, 0x02aa7ed3, 0x02aa7a99}, // P2WSH
 				{0x05, 0x049d7cb2, 0x049d7878}, // P2WPKHinP2SH
@@ -316,8 +334,8 @@ var (
 			}},
 			// Testnet
 			{"", 0xef, []*AddrVersion{
-				{0x6f, 0x0488ade4, 0x0488b21e}, // P2PKH
-				{0xc4, 0x0488ade4, 0x0488b21e}, // P2SH
+				{0x6f, 0x0488b21e, 0x0488ade4}, // P2PKH
+				{0xc4, 0x0488b21e, 0x0488ade4}, // P2SH
 				{0x6f, 0x045f1cf6, 0x045f18bc}, // P2WPKH
 				{0xc4, 0x02575483, 0x02575048}, // P2WSH
 				{0xc4, 0x044a5262, 0x044a4e28}, // P2WPKHinP2SH
@@ -392,7 +410,7 @@ var (
 		{156, []*AddrFormat{
 			// Mainnet
 			{"btg", 0x80, []*AddrVersion{
-				{0x26, 0x0488ade4, 0x0488b21e}, // P2PKH
+				{0x26, 0x0488b21e, 0x0488ade4}, // P2PKH
 				{0x17, 0x049d7cb2, 0x049d7878}, // P2SH
 				{0x26, 0x04b24746, 0x04b2430c}, // P2WPKH
 				nil,                            // P2WSH
