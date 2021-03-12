@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/bfix/gospel/bitcoin"
+	"github.com/bfix/gospel/bitcoin/wallet"
 )
 
 var (
@@ -270,7 +271,7 @@ func TestImportAddress(t *testing.T) {
 		t.Skip("skipping test: session not available")
 	}
 	k := bitcoin.GenerateKeys(true)
-	a := bitcoin.MakeTestAddress(&k.PublicKey, bitcoin.P2PKH)
+	a := wallet.MakeAddress(&k.PublicKey, 0, wallet.AddrP2PKH, wallet.AddrTest)
 	if err := sess.ImportAddress(a, "", false); err != nil {
 		t.Fatal(err)
 	}

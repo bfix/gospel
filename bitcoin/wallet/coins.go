@@ -2,7 +2,7 @@ package wallet
 
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2020 Bernd Fix
+// Copyright (C) 2011-2021 Bernd Fix  >Y<
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -21,7 +21,8 @@ package wallet
 //----------------------------------------------------------------------
 
 // CoinSpec defines a BIP44 registered coin.
-// (see https://github.com/satoshilabs/slips/blob/master/slip-0044.md)
+// see: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+//      https://github.com/libbitcoin/libbitcoin-system/wiki/Altcoin-Version-Mappings
 type CoinSpec struct {
 	ID     int
 	Symbol string
@@ -32,7 +33,6 @@ var (
 	// CoinList of all all available BIP44 coin types
 	CoinList = []*CoinSpec{
 		{0, "BTC", "Bitcoin"},
-		{1, "Testnet", "(all coins)"},
 		{2, "LTC", "Litecoin"},
 		{3, "DOGE", "Dogecoin"},
 		{4, "RDD", "Reddcoin"},
@@ -77,8 +77,6 @@ var (
 		{43, "XEM", "NEM"},
 		{44, "PART", "Particl"},
 		{45, "ARG", "Argentum (dead)"},
-		{46, "Libertas", ""},
-		{47, "Posw", "coin"},
 		{48, "SHR", "Shreeji"},
 		{49, "GCR", "Global Currency Reserve (GCRcoin)"},
 		{50, "NVC", "Novacoin"},
@@ -95,7 +93,6 @@ var (
 		{61, "ETC", "Ether Classic"},
 		{62, "PSB", "Pesobit"},
 		{63, "LDCN", "Landcoin (dead)"},
-		{64, "Open", "Chain"},
 		{65, "XBC", "Bitcoinplus"},
 		{66, "IOP", "Internet of People"},
 		{67, "NXS", "Nexus"},
@@ -169,7 +166,6 @@ var (
 		{135, "STEEM", "Steem"},
 		{136, "XZC", "ZCoin"},
 		{137, "RBTC", "RSK"},
-		{138, "Giftblock", ""},
 		{139, "RPT", "RealPointCoin"},
 		{140, "LBC", "LBRY Credits"},
 		{141, "KMD", "Komodo"},
@@ -641,8 +637,6 @@ var (
 		{667, "PRKL", "Perkle"},
 		{668, "SSC", "SelfSell"},
 		{669, "GC", "GateChain"},
-		{678, "Voken", "Voken"},
-		{680, "Evrynet", "Evrynet"},
 		{686, "KAR", "Karura Network"},
 		{688, "CET", "CoinEx Chain"},
 		{698, "VEIL", "Veil"},
@@ -679,7 +673,6 @@ var (
 		{890, "XSEL", "Seln"},
 		{899, "BCHA", "BCHA"},
 		{900, "LMO", "Lumeneo"},
-		{904, "Helium", ""},
 		{907, "FIS", "StaFi"},
 		{916, "META", "Metadium"},
 		{917, "FRA", "Findora"},
@@ -812,7 +805,6 @@ var (
 		{25252, "BELL", "Bellcoin"},
 		{25718, "CHX", "Own"},
 		{31102, "ESN", "EtherSocial Network"},
-		{31337, "ThePower.io", ""},
 		{33416, "TEO", "Trust Eth reOrigin"},
 		{33878, "BTCS", "Bitcoin Stake"},
 		{34952, "BTT", "ByteTrade"},

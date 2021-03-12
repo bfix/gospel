@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/bfix/gospel/bitcoin"
+	"github.com/bfix/gospel/bitcoin/wallet"
 )
 
 func main() {
@@ -53,7 +54,7 @@ func main() {
 	start := time.Now()
 	for i := 0; ; i++ {
 		priv := bitcoin.GenerateKeys(true)
-		addr := bitcoin.MakeAddress(&priv.PublicKey, bitcoin.P2PKH)
+		addr := wallet.MakeAddress(&priv.PublicKey, 0, wallet.AddrP2PKH, wallet.AddrMain)
 		test := string(addr)
 		if !caseSensitive {
 			test = strings.ToLower(test)
