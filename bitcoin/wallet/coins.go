@@ -33,15 +33,15 @@ type CoinSpec struct {
 	Name   string
 }
 
-// GetCoinID returns the numeric identifier for a given coin symbol.
-func GetCoinID(symb string) int {
+// GetCoinInfo returns information about a given coin by symbol.
+func GetCoinInfo(symb string) (int, string) {
 	s := strings.ToUpper(symb)
 	for _, coin := range CoinList {
 		if coin.Symbol == s {
-			return coin.ID
+			return coin.ID, coin.Name
 		}
 	}
-	return -1
+	return -1, ""
 }
 
 var (
