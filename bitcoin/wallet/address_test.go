@@ -209,6 +209,27 @@ func TestBCHAddress(t *testing.T) {
 	}
 }
 
+func TestETHAddress(t *testing.T) {
+	pk := "034a5823d9d25a434ae893518e121c39fbdcb7ec688974ab23994ddbdb776152d3"
+	tAddr := "0xa5b14fd4d99bd75ae22897fb827d76e3310e36f8"
+
+	pub, err := hex.DecodeString(pk)
+	if err != nil {
+		t.Fatal("test data failure")
+	}
+	pubkey, err := bitcoin.PublicKeyFromBytes(pub)
+	if err != nil {
+		t.Fatal("test data failure")
+	}
+	if !pubkey.Q.IsOnCurve() {
+		t.Fatal("public point not on curve")
+	}
+	addr := MakeAddress(pubkey, 60, AddrP2PKH, AddrMain)
+	if addr != tAddr {
+		t.Fatalf("failed: '%s' != '%s'\n", addr, tAddr)
+	}
+}
+
 func prefix(b []byte) []byte {
 	sha256 := sha256.New()
 	sha256.Write(b)

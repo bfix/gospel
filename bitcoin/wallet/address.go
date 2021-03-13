@@ -24,10 +24,12 @@ import (
 	"bytes"
 	"encoding/base32"
 	"encoding/binary"
+	"encoding/hex"
 	"math/big"
 	"strings"
 
 	"github.com/bfix/gospel/bitcoin"
+	"golang.org/x/crypto/sha3"
 )
 
 // Address constants
@@ -46,8 +48,38 @@ const (
 	AddrP2WSHinP2SH  = 5
 )
 
+// Addresser is a function prototype for address conversion functions
+type Addresser func(pk *bitcoin.PublicKey, coin, version, network, prefix int) string
+
 // MakeAddress computes an address from public key for the "real" Bitcoin network
 func MakeAddress(key *bitcoin.PublicKey, coin, version, network int) string {
+
+	// get info for selected coin/version/network
+	var prefix int = -1
+	var conv Addresser = nil
+	for _, addr := range AddrList {
+		if addr.CoinID == coin {
+			conv = addr.Conv
+			v := addr.Formats[network]
+			if v != nil {
+				w := v.Versions[version]
+				if w != nil {
+					prefix = int(w.Version)
+					break
+				}
+			}
+		}
+	}
+	// call a custom conversion function
+	if conv != nil {
+		return conv(key, coin, version, network, prefix)
+	}
+	// if no prefix is found, we can't create address
+	if prefix == -1 {
+		return ""
+	}
+
+	// Generic address conversion:
 	// get data for address
 	var data []byte
 	switch version {
@@ -60,25 +92,6 @@ func MakeAddress(key *bitcoin.PublicKey, coin, version, network int) string {
 		redeem = append(redeem, kh...)
 		data = redeem
 	}
-	// prefix data with selected version identifier
-	var prefix uint16 = 0xffff
-	var conv func([]byte) string = nil
-	for _, addr := range AddrList {
-		if addr.CoinID == coin {
-			conv = addr.Conv
-			v := addr.Formats[network]
-			if v != nil {
-				w := v.Versions[version]
-				if w != nil {
-					prefix = w.Version
-					break
-				}
-			}
-		}
-	}
-	if prefix == 0xffff {
-		return ""
-	}
 	var addr []byte
 	if prefix > 255 {
 		addr = append(addr, byte((prefix>>8)&0xff))
@@ -86,11 +99,6 @@ func MakeAddress(key *bitcoin.PublicKey, coin, version, network int) string {
 	addr = append(addr, byte(prefix&0xff))
 	kh := bitcoin.Hash160(data)
 	addr = append(addr, kh...)
-
-	// check for custom conversion
-	if conv != nil {
-		return conv(addr)
-	}
 	cs := bitcoin.Hash256(addr)
 	addr = append(addr, cs[:4]...)
 	return string(bitcoin.Base58Encode(addr))
@@ -137,7 +145,7 @@ type AddrFormat struct {
 type AddrSpec struct {
 	CoinID  int
 	Formats []*AddrFormat
-	Conv    func([]byte) string
+	Conv    Addresser
 }
 
 var (
@@ -306,6 +314,28 @@ var (
 			nil,
 		}, nil},
 		//--------------------------------------------------------------
+		// ETH (Ethereum)
+		//--------------------------------------------------------------
+		{60, []*AddrFormat{
+			// Mainnet
+			nil,
+			// Testnet
+			nil,
+			// Regnet
+			nil,
+		}, makeAddressETH},
+		//--------------------------------------------------------------
+		// ETC (Ethereum Classic)
+		//--------------------------------------------------------------
+		{61, []*AddrFormat{
+			// Mainnet
+			nil,
+			// Testnet
+			nil,
+			// Regnet
+			nil,
+		}, makeAddressETH},
+		//--------------------------------------------------------------
 		// ZEC (ZCash)
 		//--------------------------------------------------------------
 		{133, []*AddrFormat{
@@ -354,60 +384,7 @@ var (
 				{0xc4, 0x044a5262, 0x044a4e28}, // P2WPKHinP2SH
 				{0xc4, 0x024289ef, 0x024285b5}, // P2WSHinP2SH
 			}},
-		}, func(data []byte) string {
-
-			// bit5 splits a byte array into 5-bit chunks
-			bit5 := func(data []byte) []byte {
-				size := len(data) * 8
-				v := new(big.Int).SetBytes(data)
-				pad := size % 5
-				if pad != 0 {
-					v = new(big.Int).Lsh(v, uint(5-pad))
-				}
-				num := (size + 4) / 5
-				res := make([]byte, num)
-				for i := num - 1; i >= 0; i-- {
-					res[i] = byte(v.Int64() & 31)
-					v = new(big.Int).Rsh(v, 5)
-				}
-				return res
-			}
-
-			// polymod computes a CRC for 5-bit sequences
-			polymod := func(values []byte) uint64 {
-				var c uint64 = 1
-				for _, d := range values {
-					c0 := c >> 35
-					c = ((c & 0x07ffffffff) << 5) ^ uint64(d)
-					if c0&0x01 != 0 {
-						c ^= 0x98f2bc8e61
-					}
-					if c0&0x02 != 0 {
-						c ^= 0x79b76d99e2
-					}
-					if c0&0x04 != 0 {
-						c ^= 0xf33e5fb3c4
-					}
-					if c0&0x08 != 0 {
-						c ^= 0xae2eabe2a8
-					}
-					if c0&0x10 != 0 {
-						c ^= 0x1e4f43e470
-					}
-				}
-				return c ^ 1
-			}
-
-			b32 := base32.NewEncoding("qpzry9x8gf2tvdw0s3jn54khce6mua7l")
-			addr := strings.Trim("bitcoincash:"+b32.EncodeToString(data), "=")
-			values := make([]byte, 54)
-			copy(values, []byte{2, 9, 20, 3, 15, 9, 14, 3, 1, 19, 8, 0})
-			copy(values[12:], bit5(data))
-			crc := polymod(values)
-			buf := new(bytes.Buffer)
-			binary.Write(buf, binary.BigEndian, crc)
-			return addr + strings.Trim(b32.EncodeToString(buf.Bytes()[3:]), "=")
-		}},
+		}, makeAddressBCH},
 		//--------------------------------------------------------------
 		// BTG
 		//--------------------------------------------------------------
@@ -428,3 +405,92 @@ var (
 		}, nil},
 	}
 )
+
+//======================================================================
+// custom address conversion functions
+//======================================================================
+
+// ETH (Ethereum) address
+func makeAddressETH(key *bitcoin.PublicKey, coin, version, network, prefix int) string {
+	pkData := key.Q.Bytes(false)
+	hsh := sha3.NewLegacyKeccak256()
+	hsh.Write(pkData[1:])
+	val := hsh.Sum(nil)
+	return "0x" + hex.EncodeToString(val[12:])
+}
+
+// BCH (Bitcoin Cash) address
+func makeAddressBCH(key *bitcoin.PublicKey, coin, version, network, prefix int) string {
+
+	// bit5 splits a byte array into 5-bit chunks
+	bit5 := func(data []byte) []byte {
+		size := len(data) * 8
+		v := new(big.Int).SetBytes(data)
+		pad := size % 5
+		if pad != 0 {
+			v = new(big.Int).Lsh(v, uint(5-pad))
+		}
+		num := (size + 4) / 5
+		res := make([]byte, num)
+		for i := num - 1; i >= 0; i-- {
+			res[i] = byte(v.Int64() & 31)
+			v = new(big.Int).Rsh(v, 5)
+		}
+		return res
+	}
+
+	// polymod computes a CRC for 5-bit sequences
+	polymod := func(values []byte) uint64 {
+		var c uint64 = 1
+		for _, d := range values {
+			c0 := c >> 35
+			c = ((c & 0x07ffffffff) << 5) ^ uint64(d)
+			if c0&0x01 != 0 {
+				c ^= 0x98f2bc8e61
+			}
+			if c0&0x02 != 0 {
+				c ^= 0x79b76d99e2
+			}
+			if c0&0x04 != 0 {
+				c ^= 0xf33e5fb3c4
+			}
+			if c0&0x08 != 0 {
+				c ^= 0xae2eabe2a8
+			}
+			if c0&0x10 != 0 {
+				c ^= 0x1e4f43e470
+			}
+		}
+		return c ^ 1
+	}
+
+	// get data for address
+	var data []byte
+	switch version {
+	case AddrP2PKH:
+		data = key.Bytes()
+	case AddrP2SH:
+		redeem := append([]byte(nil), 0)
+		redeem = append(redeem, 0x14)
+		kh := bitcoin.Hash160(key.Bytes())
+		redeem = append(redeem, kh...)
+		data = redeem
+	}
+	var buf []byte
+	if prefix > 255 {
+		buf = append(buf, byte((prefix>>8)&0xff))
+	}
+	buf = append(buf, byte(prefix&0xff))
+	kh := bitcoin.Hash160(data)
+	buf = append(buf, kh...)
+
+	b32 := base32.NewEncoding("qpzry9x8gf2tvdw0s3jn54khce6mua7l")
+	addr := strings.Trim("bitcoincash:"+b32.EncodeToString(buf), "=")
+	values := make([]byte, 54)
+	copy(values, []byte{2, 9, 20, 3, 15, 9, 14, 3, 1, 19, 8, 0})
+	copy(values[12:], bit5(buf))
+	crc := polymod(values)
+	res := new(bytes.Buffer)
+	binary.Write(res, binary.BigEndian, crc)
+	return addr + strings.Trim(b32.EncodeToString(res.Bytes()[3:]), "=")
+}
