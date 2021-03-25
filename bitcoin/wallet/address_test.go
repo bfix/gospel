@@ -190,7 +190,7 @@ func TestPrivKeyAddress(t *testing.T) {
 
 func TestBCHAddress(t *testing.T) {
 	pk := "0316b88b26b842eb141031cb3d29e2bb4ccccf595cfa7bb895cbbaa3f1536223d1"
-	tAddr := "bitcoincash:qpnfc27ttwqky82emu6mvwtqphg94y4ahc957hjwhp"
+	tAddr := "qpnfc27ttwqky82emu6mvwtqphg94y4ahc957hjwhp"
 
 	pub, err := hex.DecodeString(pk)
 	if err != nil {
