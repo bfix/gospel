@@ -485,7 +485,7 @@ func makeAddressBCH(key *bitcoin.PublicKey, coin, version, network, prefix int) 
 	buf = append(buf, kh...)
 
 	b32 := base32.NewEncoding("qpzry9x8gf2tvdw0s3jn54khce6mua7l")
-	addr := strings.Trim("bitcoincash:"+b32.EncodeToString(buf), "=")
+	addr := strings.Trim(b32.EncodeToString(buf), "=")
 	values := make([]byte, 54)
 	copy(values, []byte{2, 9, 20, 3, 15, 9, 14, 3, 1, 19, 8, 0})
 	copy(values[12:], bit5(buf))
