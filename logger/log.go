@@ -160,7 +160,7 @@ func LogToFile(filename string) bool {
 		logInst.logfile = os.Stdout
 	}
 	Println(INFO, "[log] file-based logging to '"+filename+"'")
-	if f, err := os.Create(filename); err == nil {
+	if f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
 		logInst.logfile = f
 		logInst.started = time.Now()
 		return true
