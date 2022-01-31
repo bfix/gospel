@@ -57,16 +57,24 @@ type MthStruct struct {
 	B []byte `size:"(BSize)"`
 }
 
-func (x *MthStruct) BSize() uint16 {
+func (x *MthStruct) BSize() uint {
 	if x.A == 1 {
 		return 4
 	}
 	return 16
 }
 
+func (x *MthStruct) CSize() uint {
+	if x.A == 1 {
+		return 9
+	}
+	return 7
+}
+
 type EnvelopeStruct struct {
 	A string
 	B *MthStruct
+	C []byte `size:"(B.CSize)"`
 }
 
 func TestNested(t *testing.T) {
@@ -134,13 +142,13 @@ func TestMethod(t *testing.T) {
 }
 
 func TestMethod2(t *testing.T) {
-
 	a := &EnvelopeStruct{
 		A: "test",
 		B: &MthStruct{
 			A: 1,
 			B: make([]byte, 4),
 		},
+		C: make([]byte, 9),
 	}
 
 	ad, err := Marshal(a)

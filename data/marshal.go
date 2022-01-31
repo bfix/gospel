@@ -494,9 +494,18 @@ func Unmarshal(obj interface{}, data []byte) error {
 	return fmt.Errorf("Unmarshal: Unknown (field) type: %v", inst.Type())
 }
 
-// Helper method to get a method from an instance
+// Helper method to get a method from an instance during unmarshalling.
+// 'inst' refers to the enclosing struct instance that "owns" the field
+// being unmarshalled. 'name' either refers to the name of a method of
+// the instance ("mthname") or a method of a field (or its subfields)
+// previously unmarshalled ("field.mthname", "field.sub. ... .mthdname").
+// 'field' must be part of the enclosing instance (sibling of the unmarshalled
+// field).
 func getMethod(inst reflect.Value, name string) (mth reflect.Value, err error) {
-	// method call
+	parts := strings.SplitN(name, ".", 2)
+	if len(parts) == 2 {
+		return getMethod(inst.FieldByName(parts[0]), parts[1])
+	}
 	if mth = inst.MethodByName(name); !mth.IsValid() {
 		if mth = inst.Addr().MethodByName(name); !mth.IsValid() {
 			err = errors.New("missing method for array size")
