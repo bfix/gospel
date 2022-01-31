@@ -52,6 +52,23 @@ type MainStruct struct {
 	H []uint32        `size:"5" order:"big"`
 }
 
+type MthStruct struct {
+	A uint16 `order:"big"`
+	B []byte `size:"(BSize)"`
+}
+
+func (x *MthStruct) BSize() uint16 {
+	if x.A == 1 {
+		return 4
+	}
+	return 16
+}
+
+type EnvelopeStruct struct {
+	A string
+	B *MthStruct
+}
+
 func TestNested(t *testing.T) {
 	r := new(MainStruct)
 	r.C = 19031962
@@ -75,12 +92,65 @@ func TestNested(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Printf("<<< %v\n", r)
-	fmt.Printf("    [%s]\n", hex.EncodeToString(data))
+	t.Logf("<<< %v\n", r)
+	t.Logf("    [%s]\n", hex.EncodeToString(data))
 
 	s := new(MainStruct)
 	if err = Unmarshal(s, data); err != nil {
 		t.Fatal(err)
 	}
-	fmt.Printf(">>> %v\n", s)
+	t.Logf(">>> %v\n", s)
+}
+
+func TestMethod(t *testing.T) {
+	a := new(MthStruct)
+	a.A = 1
+	a.B = make([]byte, 4)
+
+	ad, err := Marshal(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("    [%s]\n", hex.EncodeToString(ad))
+
+	b := new(MthStruct)
+	if err = Unmarshal(b, ad); err != nil {
+		t.Fatal(err)
+	}
+
+	a = new(MthStruct)
+	a.A = 2
+	a.B = make([]byte, 16)
+
+	if ad, err = Marshal(a); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("    [%s]\n", hex.EncodeToString(ad))
+
+	b = new(MthStruct)
+	if err = Unmarshal(b, ad); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMethod2(t *testing.T) {
+
+	a := &EnvelopeStruct{
+		A: "test",
+		B: &MthStruct{
+			A: 1,
+			B: make([]byte, 4),
+		},
+	}
+
+	ad, err := Marshal(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("    [%s]\n", hex.EncodeToString(ad))
+
+	b := new(EnvelopeStruct)
+	if err = Unmarshal(b, ad); err != nil {
+		t.Fatal(err)
+	}
 }

@@ -2,7 +2,7 @@ package data
 
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2020 Bernd Fix
+// Copyright (C) 2011-2022 Bernd Fix
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 //######################################################################
@@ -50,11 +51,21 @@ import (
 // Unmarshal function to figure out the number of slice elements to
 // process. The values can be "*" for greedy (as many elements as
 // possible before running out of data), "<num>" a decimal number specifying
-// the fixed size or "<name>" referring to a previous unsigned integer field
-// in the struct object:
+// the fixed size or two dynamic/variable approaches:
+//
+// (1) A "<name>" referring to a previous unsigned integer field in the
+//     struct object:
 //
 //     ListSize uint16
 //     List     []*Entry `size:"ListSize"`
+//
+// (2) A "(<name>)" referring to a struct object method, that takes no
+//     arguments and returns an unsigned integer for length:
+//
+//     List     []*Entry `size:"(CalcSize)"`
+//
+//     The "ValcSize" method works on an incompletely initialized object
+//     instance and can only consider data that has already been read.
 //
 //######################################################################
 
@@ -188,6 +199,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 
 // Unmarshal reads a byte array to fill an object pointed to by 'obj'.
 func Unmarshal(obj interface{}, data []byte) error {
+	var inst reflect.Value
 	buf := bytes.NewBuffer(data)
 	var unmarshal func(x reflect.Value) error
 	unmarshal = func(x reflect.Value) error {
@@ -264,9 +276,9 @@ func Unmarshal(obj interface{}, data []byte) error {
 					sizeTag := ft.Tag.Get("size")
 					stl := len(sizeTag)
 					if stl == 0 {
-						return errors.New("Missing size tag on field")
+						return errors.New("missing size tag on field")
 					}
-					if sizeTag[0] == '*' {
+					if sizeTag == "*" {
 						size = buf.Len()
 						if stl > 1 {
 							off, err := strconv.ParseInt(sizeTag[1:], 10, 16)
@@ -275,12 +287,26 @@ func Unmarshal(obj interface{}, data []byte) error {
 							}
 							size += int(off)
 						}
+					} else if sizeTag[0] == '(' {
+						// method call
+						mthName := strings.Trim(sizeTag, "()")
+						mth, err := getMethod(x, mthName)
+						if err != nil {
+							if mth, err = getMethod(inst, mthName); err != nil {
+								return err
+							}
+						}
+						res := mth.Call(nil)
+						if res == nil {
+							return errors.New("missing return value from method for array size")
+						}
+						size = int(res[0].Uint())
 					} else {
 						n, err := strconv.ParseInt(sizeTag, 10, 16)
 						if err == nil {
 							size = int(n)
-						}
-						if size == 0 {
+						} else {
+							// previous field value
 							size = int(x.FieldByName(sizeTag).Uint())
 						}
 					}
@@ -333,18 +359,30 @@ func Unmarshal(obj interface{}, data []byte) error {
 						// process "size" tag for slice
 						sizeTag := ft.Tag.Get("size")
 						stl := len(sizeTag)
+						if stl == 0 {
+							return errors.New("missing size tag on field")
+						}
 						if sizeTag == "*" {
 							count = -1
-						} else if stl > 0 {
+						} else if sizeTag[0] == '(' {
+							// method call
+							mthName := strings.Trim(sizeTag, "()")
+							mth, err := getMethod(x, mthName)
+							if err != nil {
+								if mth, err = getMethod(inst, mthName); err != nil {
+									return err
+								}
+							}
+							res := mth.Call(nil)
+							count = int(res[0].Uint())
+						} else {
 							n, err := strconv.ParseInt(sizeTag, 10, 16)
 							if err == nil {
 								count = int(n)
-							}
-							if count == 0 {
+							} else {
+								// previous field value
 								count = int(x.FieldByName(sizeTag).Uint())
 							}
-						} else {
-							return errors.New("Missing size tag on field")
 						}
 					}
 					// If the element type is a pointer, get the type of the
@@ -447,11 +485,22 @@ func Unmarshal(obj interface{}, data []byte) error {
 		return nil
 	}
 	// check if object is a '*struct{}'
-	a := reflect.ValueOf(obj)
-	if a.Kind() == reflect.Ptr {
-		if e := a.Elem(); e.Kind() == reflect.Struct {
+	inst = reflect.ValueOf(obj)
+	if inst.Kind() == reflect.Ptr {
+		if e := inst.Elem(); e.Kind() == reflect.Struct {
 			return unmarshal(e)
 		}
 	}
-	return fmt.Errorf("Unmarshal: Unknown (field) type: %v", a.Type())
+	return fmt.Errorf("Unmarshal: Unknown (field) type: %v", inst.Type())
+}
+
+// Helper method to get a method from an instance
+func getMethod(inst reflect.Value, name string) (mth reflect.Value, err error) {
+	// method call
+	if mth = inst.MethodByName(name); !mth.IsValid() {
+		if mth = inst.Addr().MethodByName(name); !mth.IsValid() {
+			err = errors.New("missing method for array size")
+		}
+	}
+	return
 }
