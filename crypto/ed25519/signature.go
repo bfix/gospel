@@ -31,11 +31,11 @@ import (
 
 // Error codes for signing / verifying
 var (
-	ErrSigInvalidPrvKey = fmt.Errorf("Private key not suitable for EdDSA")
-	ErrSigNotEdDSA      = fmt.Errorf("Not a EdDSA signature")
-	ErrSigNotEcDSA      = fmt.Errorf("Not a EcDSA signature")
-	ErrSigInvalidEcDSA  = fmt.Errorf("Invalid EcDSA signature")
-	ErrSigHashTooSmall  = fmt.Errorf("Hash value to small")
+	ErrSigInvalidPrvKey = fmt.Errorf("private key not suitable for EdDSA")
+	ErrSigNotEdDSA      = fmt.Errorf("not a EdDSA signature")
+	ErrSigNotEcDSA      = fmt.Errorf("not a EcDSA signature")
+	ErrSigInvalidEcDSA  = fmt.Errorf("invalid EcDSA signature")
+	ErrSigHashTooSmall  = fmt.Errorf("hash value to small")
 )
 
 //----------------------------------------------------------------------
@@ -78,12 +78,8 @@ func (s *EdSignature) Bytes() []byte {
 
 // EdSign creates an EdDSA signature (R,S) for a message
 func (prv *PrivateKey) EdSign(msg []byte) (*EdSignature, error) {
-	if prv.Seed == nil {
-		return nil, ErrSigInvalidPrvKey
-	}
 	// hash the private seed and derive R, S
-	md := sha512.Sum512(prv.Seed)
-	r := h2i(md[32:], msg, nil)
+	r := h2i(prv.Nonce, msg, nil)
 	R := c.MultBase(r)
 	S := r.Add(h2i(R.Bytes(), prv.Public().Bytes(), msg).Mul(prv.D)).Mod(c.N)
 
@@ -322,7 +318,7 @@ func (pub *PublicKey) EcVerify(msg []byte, sig *EcSignature) (bool, error) {
 	// compute u1, u2
 	si := sig.S.ModInverse(c.N)
 	if si == nil {
-		return false, fmt.Errorf("Invalid signature")
+		return false, fmt.Errorf("invalid signature")
 	}
 	u1 := si.Mul(z).Mod(c.N)
 	u2 := si.Mul(sig.R).Mod(c.N)

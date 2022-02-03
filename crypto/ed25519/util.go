@@ -26,18 +26,13 @@ import (
 	"github.com/bfix/gospel/math"
 )
 
+// reverse a byte array
 func reverse(b []byte) []byte {
 	bl := len(b)
 	r := make([]byte, bl)
 	for i := 0; i < bl; i++ {
 		r[bl-i-1] = b[i]
 	}
-	return r
-}
-
-func clone(d []byte) []byte {
-	r := make([]byte, len(d))
-	copy(r, d)
 	return r
 }
 
@@ -59,14 +54,14 @@ func copyBlock(out, in []byte) {
 	copy(out[to:], in[from:])
 }
 
-// h2u hashes successive blocks and converts the resulting SHA512 value
+// h2i hashes successive blocks and converts the resulting SHA512 value
 // to integer (from little endian representation)
-func h2i(m1, m2, m3 []byte) *math.Int {
+func h2i(blks ...[]byte) *math.Int {
 	hsh := sha512.New()
-	hsh.Write(m1)
-	hsh.Write(m2)
-	if m3 != nil {
-		hsh.Write(m3)
+	for _, b := range blks {
+		if b != nil {
+			hsh.Write(b)
+		}
 	}
 	md := hsh.Sum(nil)
 	return math.NewIntFromBytes(reverse(md))

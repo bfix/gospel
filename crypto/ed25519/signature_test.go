@@ -82,7 +82,7 @@ func TestEdDSA(t *testing.T) {
 	sigX := sigT.Bytes()
 
 	// signature is deterministic, so we can check the computed signature
-	if bytes.Compare(sigX, sigEd) != 0 {
+	if !bytes.Equal(sigX, sigEd) {
 		t.Logf("SIG(computed): %s\n", hex.EncodeToString(sigX))
 		t.Logf("SIG(expected): %s\n", hex.EncodeToString(sigEd))
 		t.Fatal("Signature mismatch")
@@ -128,7 +128,7 @@ func TestEcDSA(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Compare(sigT.Bytes(), sigU.Bytes()) != 0 {
+	if !bytes.Equal(sigT.Bytes(), sigU.Bytes()) {
 		t.Fatal("Signatures not deterministic")
 	}
 
@@ -138,7 +138,7 @@ func TestEcDSA(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Compare(sigData, sigT.Bytes()) != 0 {
+	if !bytes.Equal(sigData, sigT.Bytes()) {
 		t.Fatal("Signature serialization failed")
 	}
 
@@ -201,7 +201,7 @@ func TestEdDSAVector(t *testing.T) {
 	for i, test := range tests {
 		prv := NewPrivateKeyFromSeed(hex2bin(test.Pk[:64]))
 		pub := prv.Public()
-		if bytes.Compare(hex2bin(test.Pk[64:]), pub.Bytes()) != 0 {
+		if !bytes.Equal(hex2bin(test.Pk[64:]), pub.Bytes()) {
 			t.Logf("pub(expected): %s\n", test.Pk[64:])
 			t.Logf("pub(computed): %s\n", hex.EncodeToString(pub.Bytes()))
 			t.Fatal("public key mismatch")
