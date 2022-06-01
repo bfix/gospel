@@ -113,12 +113,27 @@ func Marshal(obj interface{}) ([]byte, error) {
 			default:
 				switch f.Kind() {
 				//------------------------------------------------------
+				// Interfaces
+				//------------------------------------------------------
+				case reflect.Interface:
+					e := f.Elem()
+					if e.Kind() == reflect.Ptr {
+						e = e.Elem()
+					}
+					if e.IsValid() {
+						sub, err := marshal(e)
+						if err != nil {
+							return nil, err
+						}
+						data.Write(sub)
+					}
+				//------------------------------------------------------
 				// Pointers
 				//------------------------------------------------------
 				case reflect.Ptr:
 					e := f.Elem()
 					if e.IsValid() {
-						sub, err := marshal(f.Elem())
+						sub, err := marshal(e)
 						if err != nil {
 							return nil, err
 						}
@@ -140,6 +155,19 @@ func Marshal(obj interface{}) ([]byte, error) {
 					for i := 0; i < f.Len(); i++ {
 						e := f.Index(i)
 						switch e.Kind() {
+						//----------------------------------------------
+						// Interface elements
+						//----------------------------------------------
+						case reflect.Interface:
+							e = e.Elem()
+							if e.Kind() == reflect.Ptr {
+								e = e.Elem()
+							}
+							sub, err := marshal(e)
+							if err != nil {
+								return nil, err
+							}
+							data.Write(sub)
 						//----------------------------------------------
 						// Pointer elements
 						//----------------------------------------------
@@ -182,9 +210,15 @@ func Marshal(obj interface{}) ([]byte, error) {
 		}
 		return data.Bytes(), nil
 	}
-	// process if object is a '*struct{}' or a 'struct{}'
+	// process if object is a '*struct{}', a 'struct{}' or an interface
 	a := reflect.ValueOf(obj)
 	switch a.Kind() {
+	case reflect.Interface:
+		e := a.Elem()
+		if e.Kind() == reflect.Ptr {
+			e = e.Elem()
+		}
+		return marshal(e)
 	case reflect.Ptr:
 		e := a.Elem()
 		if e.IsValid() {
@@ -194,7 +228,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 	case reflect.Struct:
 		return marshal(a)
 	}
-	return nil, errors.New("Marshal: object is not a 'struct{}'")
+	return nil, errors.New("Marshal: invalid object type")
 }
 
 // Unmarshal reads a byte array to fill an object pointed to by 'obj'.
@@ -324,6 +358,17 @@ func Unmarshal(obj interface{}, data []byte) error {
 			default:
 				switch f.Kind() {
 				//------------------------------------------------------
+				// Interfaces
+				//------------------------------------------------------
+				case reflect.Interface:
+					e := f.Elem()
+					if !e.IsValid() {
+						return fmt.Errorf("cant handle empty interface")
+					}
+					if err := unmarshal(e); err != nil {
+						return err
+					}
+				//------------------------------------------------------
 				// Pointers
 				//------------------------------------------------------
 				case reflect.Ptr:
@@ -416,6 +461,17 @@ func Unmarshal(obj interface{}, data []byte) error {
 						e = f.Index(i)
 
 						switch e.Kind() {
+						//----------------------------------------------
+						// Interface elements
+						//----------------------------------------------
+						case reflect.Interface:
+							e = e.Elem()
+							if !e.IsValid() {
+								return fmt.Errorf("cant handle empty interface")
+							}
+							if err := unmarshal(e); err != nil {
+								return err
+							}
 						//----------------------------------------------
 						// Pointer elements
 						//----------------------------------------------
