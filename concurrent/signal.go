@@ -129,7 +129,7 @@ func NewSignaller() *Signaller {
 				}
 				go func() {
 					for _, listener := range active {
-						done := make(chan interface{})
+						done := make(chan struct{})
 						go func() {
 							defer func() {
 								// decrease pending count on listener
@@ -139,7 +139,7 @@ func NewSignaller() *Signaller {
 							close(done)
 						}()
 						select {
-						case <-time.After(time.Second):
+						case <-time.After(s.maxLatency):
 							// listener not responding: drop it
 							s.Drop(listener)
 
