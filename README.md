@@ -6,7 +6,7 @@
 Gospel: GO SPEcial Library
 ==========================
 
-(c) 2010-2021 Bernd Fix <brf@hoi-polloi.org>   >Y<
+(c) 2010-2022 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
 Gospel is free software: you can redistribute it and/or modify it
 under the terms of the GNU Affero General Public License as published
@@ -26,7 +26,6 @@ SPDX-License-Identifier: AGPL3.0-or-later
 Packages
 --------
 
-- gospel/parser: Read/access/write nested data structures
 - gospel/network: Network-related functionality
     * services
     * packet handling
@@ -67,22 +66,32 @@ Packages
 - gospel/crypto/ed25519:
     * general purpose Ed25519 crypto
 - gospel/logger: logging facilities
-- gospel/data: useful data structures like
-    * stacks
-    * vectors
+- gospel/concurrent:
+    * Signaller (signal dispatcher)
+- gospel/data:
     * Marshal/Unmarshal Golang objects
     * Bloom filter
+- gospel/parser: Read/access/write nested data structures
 
 Install
 -------
 
-This version is designed for the Go1.11+ release.
+This version (`v1.2.13`) is designed for the Go1.11+ release. One of the next
+version will require Go1.18+ to make use of new language features.
 
-Make sure that your Go environment - especially ${GOPATH} - is set up and
-enter the following command:
+If you only want to use the library in your projects, you don't have to
+install anything. Just include `github.com/bfix/gospel v1.2.13` in your
+`go.mod` file and do a `go mod tidy`.
 
-    $ go get github.com/bfix/gospel/...
-    
+You can install Gospel locally if desired. Make sure that your Go environment
+- especially ${GOPATH} - is set up and enter the following commands:
+
+```bash
+git clone get https://github.com/bfix/gospel
+cd gospel
+go mod tidy
+```
+
 Test notes
 ----------
 
