@@ -21,83 +21,143 @@ package concurrent
 //----------------------------------------------------------------------
 
 import (
-	"fmt"
+	"errors"
+	"time"
 )
 
 // Error codes
 var (
-	ErrSignallerRetired = fmt.Errorf("Signaller retiered")
-	ErrUnknownListener  = fmt.Errorf("Unknown signal listener")
+	ErrSigInactive   = errors.New("signaller inactive")
+	ErrSigNoListener = errors.New("no signal listener")
 )
+
+//----------------------------------------------------------------------
 
 // Signal can be any object (intrinsic or custom); it is the responsibility of
 // the senders and receivers of signals to handle them accordingly.
 type Signal interface{}
 
-// ListenerOp codes
-var (
-	LISTENER_ADD  = 0
-	LISTENER_DROP = 1
-)
+//----------------------------------------------------------------------
 
-// ListenerOp represents an operation on the listener list:
-type ListenerOp struct {
-	ch chan Signal // listener channel
-	op int         // 0=add, 1=delete
+// Listener for signals managed by Signaller
+type Listener struct {
+	ch   chan Signal // channel to receive on
+	refs int         // number of pending dispatches
 }
 
-// Signaller manages signals send by senders for multiple listeners.
-type Signaller struct {
-	inCh   chan Signal          // channel for incoming signals
-	outChs map[chan Signal]bool // channels for out-going signals
+// Signal returns the channel from which to read the signal.
+func (l *Listener) Signal() <-chan Signal {
+	return l.ch
+}
 
-	cmdCh  chan *ListenerOp // internal channel to synchronize maintenance
-	resCh  chan interface{} // channel for command results
-	active bool             // is the signaller dispatching signals?
+//----------------------------------------------------------------------
+// Signaller (signal dispatcher to listeners)
+//----------------------------------------------------------------------
+
+// Signaller dispatches signals to multiple concurrent listeners. The sequence
+// in which listeners are served is stochastic.
+//
+// In highly concurrent environments with a lot of messages the sequence of
+// signals seen by a listener can vary. This is due to the fact that a signal
+// gets dispatched in a Go routine, so the next signal can be dispatched
+// before a listener got the first one if the second Go routine handles the
+// listener earlier. It is therefore mandatory that received signals from
+// a listener get handled in a Go routine as well to keep latency low. If
+// a listener violates that promise, it got removed from the list.
+type Signaller struct {
+	inCh   chan Signal        // channel for incoming signals
+	outChs map[*Listener]bool // channels for out-going signals
+
+	cmdCh      chan *listenerOp // internal channel to synchronize maintenance
+	resCh      chan interface{} // channel for command results
+	active     bool             // is the signaller dispatching signals?
+	maxLatency time.Duration    // max time for listener to respond
 }
 
 // NewSignaller instantiates a new signal manager:
 func NewSignaller() *Signaller {
 	// create a new instance and initialize it.
 	s := &Signaller{
-		inCh:   make(chan Signal),
-		outChs: make(map[chan Signal]bool),
-		cmdCh:  make(chan *ListenerOp),
-		resCh:  make(chan interface{}),
-		active: true,
+		inCh:       make(chan Signal),
+		outChs:     make(map[*Listener]bool),
+		cmdCh:      make(chan *listenerOp),
+		resCh:      make(chan interface{}),
+		active:     true,
+		maxLatency: time.Second,
 	}
 	// run the dispatch loop as long as the signaller is active.
 	go func() {
 		for s.active {
 			select {
+			// handle listener list operation
 			case cmd := <-s.cmdCh:
-				// handle listener list operation
 				switch cmd.op {
-				case LISTENER_ADD:
-					// create a new listener channel
-					out := make(chan Signal)
-					s.outChs[out] = true
-					s.resCh <- out
-				case LISTENER_DROP:
+				// create a new listener channel
+				case sigListenerAdd:
+					listener := &Listener{
+						ch:   make(chan Signal),
+						refs: 0,
+					}
+					s.outChs[listener] = true
+					s.resCh <- listener
+
+				// remove listener from list
+				case sigListenerDrop:
 					var err error
-					if _, ok := s.outChs[cmd.ch]; !ok {
-						err = ErrUnknownListener
+					if _, ok := s.outChs[cmd.lst]; !ok {
+						err = ErrSigNoListener
 					} else {
-						delete(s.outChs, cmd.ch)
+						// remove from list
+						delete(s.outChs, cmd.lst)
+						// close unreferenced channels
+						if cmd.lst.refs == 0 {
+							close(cmd.lst.ch)
+						}
 					}
 					s.resCh <- err
 				}
-			case x := <-s.inCh:
-				// dispatch received signals
-				for out, active := range s.outChs {
-					if active {
-						out <- x
-					}
+
+			// dispatch received signals
+			case sig := <-s.inCh:
+				// create a list of currently active listeners
+				// so we can serve them in a Go routine.
+				active := make([]*Listener, 0)
+				for lst := range s.outChs {
+					active = append(active, lst)
+					// increment pending count on listener
+					lst.refs++
 				}
+				go func() {
+					for _, listener := range active {
+						done := make(chan interface{})
+						go func() {
+							defer func() {
+								// decrease pending count on listener
+								listener.refs--
+							}()
+							listener.ch <- sig
+							close(done)
+						}()
+						select {
+						case <-time.After(time.Second):
+							// listener not responding: drop it
+							s.Drop(listener)
+
+						// message sent
+						case <-done:
+						}
+					}
+				}()
 			}
 		}
 	}()
 	return s
+}
+
+// SetLatency sets the max latency for listener. A listener is removed from
+// the list if it violates this policy.
+func (s *Signaller) SetLatency(d time.Duration) {
+	s.maxLatency = d
 }
 
 // Retire a signaller: This will terminate the dispatch loop for signals; no
@@ -107,37 +167,46 @@ func (s *Signaller) Retire() {
 	s.active = false
 }
 
+//----------------------------------------------------------------------
+
 // Send a signal to be dispatched to all listeners.
 func (s *Signaller) Send(sig Signal) error {
 	// check for active signaller
 	if !s.active {
-		return ErrSignallerRetired
+		return ErrSigInactive
 	}
 	s.inCh <- sig
 	return nil
 }
 
-// Listen returns a channel to listen on
-func (s *Signaller) Listen() chan Signal {
+//----------------------------------------------------------------------
+
+// Listener returns a new channel to listen on each time it is called.
+// Function interested in listening should get the channel, start the
+// for/select loop and drop the channel if the loop terminates.
+// Requesting an listener and than not reading from it will block all
+// other listeners of the signaller.
+func (s *Signaller) Listener() (*Listener, error) {
 	// check for active signaller
 	if !s.active {
-		return nil
+		return nil, ErrSigInactive
 	}
 	// trigger add operation.
-	s.cmdCh <- &ListenerOp{op: LISTENER_ADD}
-	return (<-s.resCh).(chan Signal)
+	s.cmdCh <- &listenerOp{op: sigListenerAdd}
+	return (<-s.resCh).(*Listener), nil
 }
 
-// Drop removes a listener from the list.
-func (s *Signaller) Drop(out chan Signal) error {
+// Drop removes a listener from the list. Failing to drop or close a
+// listener will result in hanging go routines.
+func (s *Signaller) Drop(listener *Listener) error {
 	// check for active signaller
 	if !s.active {
-		return ErrSignallerRetired
+		return ErrSigInactive
 	}
 	// trigger delete operation
-	s.cmdCh <- &ListenerOp{
-		ch: out,
-		op: LISTENER_DROP,
+	s.cmdCh <- &listenerOp{
+		lst: listener,
+		op:  sigListenerDrop,
 	}
 	// handle error return for command.
 	var err error
@@ -146,4 +215,20 @@ func (s *Signaller) Drop(out chan Signal) error {
 		err = res.(error)
 	}
 	return err
+}
+
+//----------------------------------------------------------------------
+
+// ListenerOp codes
+const (
+	sigListenerAdd = iota
+	sigListenerDrop
+	sigListenerRef
+	sigListenerUnref
+)
+
+// listenerOp represents an operation on the listener list:
+type listenerOp struct {
+	op  int       // sigListener????
+	lst *Listener // listener reference
 }

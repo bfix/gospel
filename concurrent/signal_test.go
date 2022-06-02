@@ -21,7 +21,6 @@ package concurrent
 //----------------------------------------------------------------------
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -32,10 +31,10 @@ import (
 func TestSginallerEmpty(t *testing.T) {
 	s := NewSignaller()
 	if err := s.Send(true); err != nil {
-		t.Fail()
+		t.Fatal(err)
 	}
 	s.Retire()
-	if s.Send(false) != ErrSignallerRetired {
+	if s.Send(false) != ErrSigInactive {
 		t.Fail()
 	}
 }
@@ -49,28 +48,80 @@ func TestSginallerGroup(t *testing.T) {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			if testing.Verbose() {
-				fmt.Printf("Listener #%d started...\n", id)
+			t.Logf("Listener #%d started...\n", id)
+			listener, err := s.Listener()
+			if err != nil {
+				t.Error(err)
+				return
 			}
-			listener := s.Listen()
-			if listener == nil {
-				t.Fail()
-			}
-		loop:
-			for {
-				select {
-				case sig := <-listener:
-					if testing.Verbose() {
-						fmt.Printf("Listener #%d received signal '%v'\n", id, sig)
-					}
-					break loop
-				default:
-				}
+			select {
+			case sig := <-listener.Signal():
+				t.Logf("Listener #%d received signal '%v'\n", id, sig)
 			}
 			s.Drop(listener)
 		}(i + 1)
 	}
-	time.Sleep(2 * time.Second)
+	time.Sleep(time.Second)
 	s.Send(true)
 	wg.Wait()
+}
+
+func TestSginallerHanging(t *testing.T) {
+	s := NewSignaller()
+	// create listener routine
+	var (
+		listener *Listener
+		err      error
+	)
+	ready := make(chan bool)
+	quit := false
+	go func() {
+		t.Log("Listener started...")
+		if listener, err = s.Listener(); err != nil {
+			return
+		}
+		ready <- true
+	loop:
+		for {
+			select {
+			case sig := <-listener.Signal():
+				switch x := sig.(type) {
+				case nil:
+					t.Log("Listener closed")
+					break loop
+				case bool:
+					t.Log("Listener received 'quit' signal")
+					quit = true
+					break loop
+				case int:
+					t.Logf("Listener received number '%d'\n", x)
+					// now waste time
+					time.Sleep(2 * time.Second)
+				default:
+					t.Logf("Listener received signal '%v'\n", x)
+				}
+			}
+		}
+		s.Drop(listener)
+	}()
+
+	// wait for listener ready
+	<-ready
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// number signal
+	s.Send(23)
+	time.Sleep(time.Second)
+	s.Send(42)
+	time.Sleep(time.Second)
+
+	// 'quit' signal
+	// (not be seen as listener should have been dropped earlier)
+	s.Send(true)
+	time.Sleep(time.Second)
+	if quit {
+		t.Fatal("'quit' signal received")
+	}
 }
