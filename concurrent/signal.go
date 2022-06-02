@@ -223,8 +223,6 @@ func (s *Signaller) Drop(listener *Listener) error {
 const (
 	sigListenerAdd = iota
 	sigListenerDrop
-	sigListenerRef
-	sigListenerUnref
 )
 
 // listenerOp represents an operation on the listener list:
