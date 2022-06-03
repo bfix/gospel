@@ -57,14 +57,18 @@ Packages
     * Marshal/Unmarshal Golang objects
     * Bloom filter
 
+N.B. The Bitcoin package (and subpackages) have been removed in version 2.
+The maintenance of changes in the Bitcoin protocol is too tidious and better
+Go libraries for handling the Bitcoin protocol exist today.
+
 Install
 -------
 
 This version (`v2.0.0-alpha.1`) is designed for the Go1.18+ release.
 
 If you only want to use the library in your projects, you don't have to
-install anything. Just include `github.com/bfix/gospel/v2 v2.0.0-alpha.1` in your
-`go.mod` file and do a `go mod tidy`.
+install anything. Just import the version 2 packages in your source code (like
+`import "github.com/bfix/gospel/v2/logger`) and run `go mod tidy`.
 
 You can install Gospel locally if desired. Make sure that your Go environment
 - especially ${GOPATH} - is set up and enter the following commands:
