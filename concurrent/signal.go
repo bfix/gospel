@@ -34,20 +34,38 @@ var (
 //----------------------------------------------------------------------
 
 // Signal can be any object (intrinsic or custom); it is the responsibility of
-// the senders and receivers of signals to handle them accordingly.
+// the sender and the receiver of signals to handle them accordingly.
+//
+// A signal in this context is a stand-alone unit of information. Its "meaning"
+// does neither depend on other signals nor on their sequence. Its only purpose
+// is to communicate state changes to listeners instead of sharing the state
+// globally via memory reference ("Do not communicate by sharing memory; instead,
+// share memory by communicating." -- https://go.dev/doc/effective_go.html)
+//
 type Signal interface{}
 
 //----------------------------------------------------------------------
 
 // Listener for signals managed by Signaller
 type Listener struct {
-	ch   chan Signal // channel to receive on
-	refs int         // number of pending dispatches
+	ch     chan Signal // channel to receive on
+	refs   int         // number of pending dispatches
+	mngr   *Signaller  // back-ref to signaller instance
+	active bool        // is listener active?
 }
 
-// Signal returns the channel from which to read the signal.
+// Signal returns the channel from which to read the signal. If the
+// returned signal is nil, no further signals will be received on this
+// listener and the select-loop MUST terminate.
 func (l *Listener) Signal() <-chan Signal {
 	return l.ch
+}
+
+// Close listener: This more an announcement than an operation as the
+// channel is not closed immediately. It is possible for the listener
+// to receive some more signals before it actually closes.
+func (l *Listener) Close() {
+	l.mngr.drop(l)
 }
 
 //----------------------------------------------------------------------
@@ -57,13 +75,14 @@ func (l *Listener) Signal() <-chan Signal {
 // Signaller dispatches signals to multiple concurrent listeners. The sequence
 // in which listeners are served is stochastic.
 //
-// In highly concurrent environments with a lot of messages the sequence of
+// In highly concurrent environments with a lot of signals the sequence of
 // signals seen by a listener can vary. This is due to the fact that a signal
 // gets dispatched in a Go routine, so the next signal can be dispatched
 // before a listener got the first one if the second Go routine handles the
 // listener earlier. It is therefore mandatory that received signals from
 // a listener get handled in a Go routine as well to keep latency low. If
 // a listener violates that promise, it got removed from the list.
+//
 type Signaller struct {
 	inCh   chan Signal        // channel for incoming signals
 	outChs map[*Listener]bool // channels for out-going signals
@@ -95,8 +114,10 @@ func NewSignaller() *Signaller {
 				// create a new listener channel
 				case sigListenerAdd:
 					listener := &Listener{
-						ch:   make(chan Signal),
-						refs: 0,
+						ch:     make(chan Signal),
+						refs:   0,
+						mngr:   s,
+						active: true,
 					}
 					s.outChs[listener] = true
 					s.resCh <- listener
@@ -123,7 +144,9 @@ func NewSignaller() *Signaller {
 				// so we can serve them in a Go routine.
 				active := make([]*Listener, 0)
 				for lst := range s.outChs {
-					active = append(active, lst)
+					if lst.active {
+						active = append(active, lst)
+					}
 					// increment pending count on listener
 					lst.refs++
 				}
@@ -141,9 +164,9 @@ func NewSignaller() *Signaller {
 						select {
 						case <-time.After(s.maxLatency):
 							// listener not responding: drop it
-							s.Drop(listener)
+							s.drop(listener)
 
-						// message sent
+						// signal sent
 						case <-done:
 						}
 					}
@@ -161,8 +184,8 @@ func (s *Signaller) SetLatency(d time.Duration) {
 }
 
 // Retire a signaller: This will terminate the dispatch loop for signals; no
-// further send or listen operations are supported. A retired signaller cannot
-// be re-activated.
+// further send operations are supported. A retired signaller cannot be
+// re-activated. Running dispatches will not be interrupted.
 func (s *Signaller) Retire() {
 	s.active = false
 }
@@ -175,6 +198,7 @@ func (s *Signaller) Send(sig Signal) error {
 	if !s.active {
 		return ErrSigInactive
 	}
+	// send to dispatcher
 	s.inCh <- sig
 	return nil
 }
@@ -196,13 +220,16 @@ func (s *Signaller) Listener() (*Listener, error) {
 	return (<-s.resCh).(*Listener), nil
 }
 
-// Drop removes a listener from the list. Failing to drop or close a
+// drop removes a listener from the list. Failing to drop or close a
 // listener will result in hanging go routines.
-func (s *Signaller) Drop(listener *Listener) error {
+func (s *Signaller) drop(listener *Listener) error {
 	// check for active signaller
 	if !s.active {
 		return ErrSigInactive
 	}
+	// tag the listener unavailable immediately
+	listener.active = false
+
 	// trigger delete operation
 	s.cmdCh <- &listenerOp{
 		lst: listener,

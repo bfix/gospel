@@ -58,7 +58,7 @@ func TestSginallerGroup(t *testing.T) {
 			case sig := <-listener.Signal():
 				t.Logf("Listener #%d received signal '%v'\n", id, sig)
 			}
-			s.Drop(listener)
+			listener.Close()
 		}(i + 1)
 	}
 	time.Sleep(time.Second)
@@ -102,7 +102,7 @@ func TestSginallerHanging(t *testing.T) {
 				}
 			}
 		}
-		s.Drop(listener)
+		listener.Close()
 	}()
 
 	// wait for listener ready
