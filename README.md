@@ -3,8 +3,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/bfix/gospel)](https://goreportcard.com/report/github.com/bfix/gospel)
 [![GoDoc](https://godoc.org/github.com/bfix/gospel?status.svg)](https://godoc.org/github.com/bfix/gospel)
 
-Gospel: GO SPEcial Library
-==========================
+Gospel: GO SPEcial Library (v1.2.13)
+====================================
 
 (c) 2010-2022 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
