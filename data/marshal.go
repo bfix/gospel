@@ -68,6 +68,8 @@ import (
 //     instance and can only consider data that has already been read.
 //     Its possible argument is a string (name of the annotated field).
 //
+// N.B.: You can't do math in the size expression (like "*-2"); you need
+//       to out-source the calculation to a method if required.
 //######################################################################
 
 //======================================================================
@@ -254,8 +256,8 @@ func Unmarshal(obj interface{}, data []byte) error {
 					binary.Read(buf, binary.LittleEndian, a)
 				}
 			}
-			// parse elements of field (if it is a slice)
-			parseSize := func() (count int, err error) {
+			// parse number elements of slice elements
+			parseSize := func(asByte bool) (count int, err error) {
 				// process "size" tag for slice
 				sizeTag := ft.Tag.Get("size")
 				stl := len(sizeTag)
@@ -263,7 +265,11 @@ func Unmarshal(obj interface{}, data []byte) error {
 					return 0, errors.New("missing size tag on field")
 				}
 				if sizeTag == "*" {
-					count = -1
+					if asByte {
+						count = buf.Len()
+					} else {
+						count = -1
+					}
 				} else if sizeTag[0] == '(' {
 					// method call
 					mthName := strings.Trim(sizeTag, "()")
@@ -362,7 +368,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 				size := f.Len()
 				if size == 0 {
 					var err error
-					if size, err = parseSize(); err != nil {
+					if size, err = parseSize(true); err != nil {
 						return err
 					}
 				}
@@ -424,7 +430,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 						add = true
 						// process "size" tag for slice
 						var err error
-						if count, err = parseSize(); err != nil {
+						if count, err = parseSize(false); err != nil {
 							return err
 						}
 					}

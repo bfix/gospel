@@ -82,6 +82,7 @@ type VarStruct struct {
 	A uint16
 	B []byte `size:"(CalcSize)"`
 	C []byte `size:"(CalcSize)"`
+	D []byte `size:"*"`
 }
 
 func (x *VarStruct) CalcSize(field string) uint {
@@ -192,6 +193,7 @@ func TestVar(t *testing.T) {
 		A: 0,
 		B: make([]byte, 7),
 		C: make([]byte, 9),
+		D: make([]byte, 7),
 	}
 	ad, err := Marshal(a)
 	if err != nil {
