@@ -37,7 +37,7 @@ import (
 //
 //    int{8,16,32,64}       -- Signed integer of given size
 //    uint{8,16,32,64}      -- Unsigned integer of given size (little-endian)
-//    []uint8               -- variable length byte array
+//    []uint8,[]byte        -- variable length byte array
 //    string                -- variable length string
 //    *struct{}, struct{}   -- nested structure
 //    []*struct{}, []struct -- list of structures with allowed fields
@@ -60,12 +60,13 @@ import (
 //     List     []*Entry `size:"ListSize"`
 //
 // (2) A "(<name>)" referring to a struct object method, that takes no
-//     arguments and returns an unsigned integer for length:
+//     or one argument and returns an unsigned integer for length:
 //
 //     List     []*Entry `size:"(CalcSize)"`
 //
-//     The "ValcSize" method works on an incompletely initialized object
+//     The "CalcSize" method works on an incompletely initialized object
 //     instance and can only consider data that has already been read.
+//     Its possible argument is a string (name of the annotated field).
 //
 //######################################################################
 
@@ -95,7 +96,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 			//----------------------------------------------------------
 			// Integers
 			//----------------------------------------------------------
-			case uint8, int8, uint16, int16, uint32, int32, uint64, int64:
+			case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
 				if ft.Tag.Get("order") == "big" {
 					binary.Write(data, binary.BigEndian, v)
 				} else {
@@ -194,7 +195,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 							case string:
 								data.Write([]byte(v))
 								data.Write([]byte{0})
-							case uint8, int8, uint16, int16, uint32, int32, uint64, int64:
+							case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
 								if ft.Tag.Get("order") == "big" {
 									binary.Write(data, binary.BigEndian, v)
 								} else {
@@ -244,6 +245,8 @@ func Unmarshal(obj interface{}, data []byte) error {
 				continue
 			}
 			ft := x.Type().Field(i)
+
+			// read integer based on given endianess
 			readInt := func(a interface{}) {
 				if ft.Tag.Get("order") == "big" {
 					binary.Read(buf, binary.BigEndian, a)
@@ -251,6 +254,57 @@ func Unmarshal(obj interface{}, data []byte) error {
 					binary.Read(buf, binary.LittleEndian, a)
 				}
 			}
+			// parse elements of field (if it is a slice)
+			parseSize := func() (count int, err error) {
+				// process "size" tag for slice
+				sizeTag := ft.Tag.Get("size")
+				stl := len(sizeTag)
+				if stl == 0 {
+					return 0, errors.New("missing size tag on field")
+				}
+				if sizeTag == "*" {
+					count = -1
+				} else if sizeTag[0] == '(' {
+					// method call
+					mthName := strings.Trim(sizeTag, "()")
+					mth, err := getMethod(x, mthName)
+					if err != nil {
+						if mth, err = getMethod(inst, mthName); err != nil {
+							return 0, err
+						}
+					}
+					// check for string argument
+					var args []reflect.Value
+					numArgs := mth.Type().NumIn()
+					if numArgs > 1 {
+						// invalid number of arguments (none or just one string)
+						return 0, errors.New("size function has more than one argument")
+					} else if numArgs == 1 {
+						// check for string argument
+						arg0 := mth.Type().In(0)
+						if arg0.Kind() != reflect.String {
+							return 0, errors.New("size function argument not a string")
+						}
+						// set argument
+						fname := reflect.New(reflect.TypeOf("")).Elem()
+						fname.SetString(ft.Name)
+						args = append(args, fname)
+					}
+					// call method
+					res := mth.Call(args)
+					count = int(res[0].Uint())
+				} else {
+					n, err := strconv.ParseInt(sizeTag, 10, 16)
+					if err == nil {
+						count = int(n)
+					} else {
+						// previous field value
+						count = int(x.FieldByName(sizeTag).Uint())
+					}
+				}
+				return
+			}
+
 			switch f.Interface().(type) {
 			//----------------------------------------------------------
 			// Strings
@@ -289,7 +343,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 				var a uint32
 				readInt(&a)
 				f.SetUint(uint64(a))
-			case int32:
+			case int32, int:
 				var a int32
 				readInt(&a)
 				f.SetInt(int64(a))
@@ -307,48 +361,15 @@ func Unmarshal(obj interface{}, data []byte) error {
 			case []uint8:
 				size := f.Len()
 				if size == 0 {
-					sizeTag := ft.Tag.Get("size")
-					stl := len(sizeTag)
-					if stl == 0 {
-						return errors.New("missing size tag on field")
-					}
-					if sizeTag == "*" {
-						size = buf.Len()
-						if stl > 1 {
-							off, err := strconv.ParseInt(sizeTag[1:], 10, 16)
-							if err != nil {
-								return err
-							}
-							size += int(off)
-						}
-					} else if sizeTag[0] == '(' {
-						// method call
-						mthName := strings.Trim(sizeTag, "()")
-						mth, err := getMethod(x, mthName)
-						if err != nil {
-							if mth, err = getMethod(inst, mthName); err != nil {
-								return err
-							}
-						}
-						res := mth.Call(nil)
-						if res == nil {
-							return errors.New("missing return value from method for array size")
-						}
-						size = int(res[0].Uint())
-					} else {
-						n, err := strconv.ParseInt(sizeTag, 10, 16)
-						if err == nil {
-							size = int(n)
-						} else {
-							// previous field value
-							size = int(x.FieldByName(sizeTag).Uint())
-						}
+					var err error
+					if size, err = parseSize(); err != nil {
+						return err
 					}
 				}
 				a := make([]byte, size)
 				n, _ := buf.Read(a)
 				if n != size {
-					return fmt.Errorf("Unmarshal: size mismatch - have %d, got %d", size, n)
+					return fmt.Errorf("unmarshal: size mismatch - have %d, got %d", size, n)
 				}
 				f.SetBytes(a)
 
@@ -402,32 +423,9 @@ func Unmarshal(obj interface{}, data []byte) error {
 					if count == 0 {
 						add = true
 						// process "size" tag for slice
-						sizeTag := ft.Tag.Get("size")
-						stl := len(sizeTag)
-						if stl == 0 {
-							return errors.New("missing size tag on field")
-						}
-						if sizeTag == "*" {
-							count = -1
-						} else if sizeTag[0] == '(' {
-							// method call
-							mthName := strings.Trim(sizeTag, "()")
-							mth, err := getMethod(x, mthName)
-							if err != nil {
-								if mth, err = getMethod(inst, mthName); err != nil {
-									return err
-								}
-							}
-							res := mth.Call(nil)
-							count = int(res[0].Uint())
-						} else {
-							n, err := strconv.ParseInt(sizeTag, 10, 16)
-							if err == nil {
-								count = int(n)
-							} else {
-								// previous field value
-								count = int(x.FieldByName(sizeTag).Uint())
-							}
+						var err error
+						if count, err = parseSize(); err != nil {
+							return err
 						}
 					}
 					// If the element type is a pointer, get the type of the
@@ -519,7 +517,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 							var a uint32
 							readInt(&a)
 							e.SetUint(uint64(a))
-						case reflect.Int32:
+						case reflect.Int32, reflect.Int:
 							var a int32
 							readInt(&a)
 							e.SetInt(int64(a))

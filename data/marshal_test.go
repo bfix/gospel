@@ -21,6 +21,7 @@ package data
 //----------------------------------------------------------------------
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"testing"
@@ -75,6 +76,29 @@ type EnvelopeStruct struct {
 	A string
 	B *MthStruct
 	C []byte `size:"(B.CSize)"`
+}
+
+type VarStruct struct {
+	A uint16
+	B []byte `size:"(CalcSize)"`
+	C []byte `size:"(CalcSize)"`
+}
+
+func (x *VarStruct) CalcSize(field string) uint {
+	fmt.Printf("Handling field '%s'\n", field)
+	if x.A > 0 {
+		return 3
+	} else if x.A < 0 {
+		return 5
+	} else {
+		switch field {
+		case "B":
+			return 7
+		case "C":
+			return 9
+		}
+	}
+	return 1
 }
 
 func TestNested(t *testing.T) {
@@ -160,5 +184,31 @@ func TestMethod2(t *testing.T) {
 	b := new(EnvelopeStruct)
 	if err = Unmarshal(b, ad); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestVar(t *testing.T) {
+	a := &VarStruct{
+		A: 0,
+		B: make([]byte, 7),
+		C: make([]byte, 9),
+	}
+	ad, err := Marshal(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("    [%s]\n", hex.EncodeToString(ad))
+
+	b := new(VarStruct)
+	if err = Unmarshal(b, ad); err != nil {
+		t.Fatal(err)
+	}
+	bd, err := Marshal(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("    [%s]\n", hex.EncodeToString(bd))
+	if !bytes.Equal(ad, bd) {
+		t.Fatal("serialization mismatch")
 	}
 }
