@@ -38,7 +38,7 @@ import (
 //    int{8,16,32,64}       -- Signed integer of given size
 //    uint{8,16,32,64}      -- Unsigned integer of given size (little-endian)
 //    []uint8,[]byte        -- variable length byte array
-//    string                -- variable length string
+//    string                -- variable length string (\0 -terminated)
 //    *struct{}, struct{}   -- nested structure
 //    []*struct{}, []struct -- list of structures with allowed fields
 //
