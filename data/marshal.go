@@ -68,8 +68,9 @@ import (
 //     instance and can only consider data that has already been read.
 //     Its possible argument is a string (name of the annotated field).
 //
-// N.B.: You can't do math in the size expression (like "*-2"); you need
-//       to out-source the calculation to a method if required.
+// N.B.: You can't do math in the size expression (except for the greedy
+//       expression like "*-16"); you need to out-source the calculation
+//       to a method if required.
 //######################################################################
 
 //======================================================================
@@ -267,6 +268,13 @@ func Unmarshal(obj interface{}, data []byte) error {
 				if sizeTag == "*" {
 					if asByte {
 						count = buf.Len()
+						if stl > 1 && sizeTag[1] == '-' {
+							off, err := strconv.ParseInt(sizeTag[2:], 10, 16)
+							if err != nil {
+								return 0, err
+							}
+							count -= int(off)
+						}
 					} else {
 						count = -1
 					}
