@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -86,14 +87,22 @@ var (
 )
 
 //======================================================================
-// Marshal/unmarshal Golang objects to/from byte arrays.
+// Marshal Golang objects to byte arrays.
 //======================================================================
 
 // Marshal creates a byte array from a (reference to an) object.
 func Marshal(obj interface{}) ([]byte, error) {
-	var marshal func(x reflect.Value) ([]byte, error)
-	marshal = func(x reflect.Value) ([]byte, error) {
-		data := new(bytes.Buffer)
+	wrt := new(bytes.Buffer)
+	if err := MarshalStream(wrt, obj); err != nil {
+		return nil, err
+	}
+	return wrt.Bytes(), nil
+}
+
+// MarshalStream writes an object instance to stream
+func MarshalStream(wrt io.Writer, obj interface{}) error {
+	var marshal func(x reflect.Value) error
+	marshal = func(x reflect.Value) error {
 		for i := 0; i < x.NumField(); i++ {
 			f := x.Field(i)
 			// do not serialize unexported fields
@@ -106,22 +115,22 @@ func Marshal(obj interface{}) ([]byte, error) {
 			// Strings
 			//----------------------------------------------------------
 			case string:
-				data.Write([]byte(v))
-				data.Write([]byte{0})
+				wrt.Write([]byte(v))
+				wrt.Write([]byte{0})
 			//----------------------------------------------------------
 			// Integers
 			//----------------------------------------------------------
 			case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
 				if ft.Tag.Get("order") == "big" {
-					binary.Write(data, binary.BigEndian, v)
+					binary.Write(wrt, binary.BigEndian, v)
 				} else {
-					binary.Write(data, binary.LittleEndian, v)
+					binary.Write(wrt, binary.LittleEndian, v)
 				}
 			//----------------------------------------------------------
 			// Byte arrays
 			//----------------------------------------------------------
 			case []uint8:
-				data.Write(v)
+				wrt.Write(v)
 
 			//----------------------------------------------------------
 			// Handle other complex types...
@@ -137,11 +146,9 @@ func Marshal(obj interface{}) ([]byte, error) {
 						e = e.Elem()
 					}
 					if e.IsValid() {
-						sub, err := marshal(e)
-						if err != nil {
-							return nil, err
+						if err := marshal(e); err != nil {
+							return err
 						}
-						data.Write(sub)
 					}
 				//------------------------------------------------------
 				// Pointers
@@ -149,21 +156,17 @@ func Marshal(obj interface{}) ([]byte, error) {
 				case reflect.Ptr:
 					e := f.Elem()
 					if e.IsValid() {
-						sub, err := marshal(e)
-						if err != nil {
-							return nil, err
+						if err := marshal(e); err != nil {
+							return err
 						}
-						data.Write(sub)
 					}
 				//------------------------------------------------------
 				// Structs
 				//------------------------------------------------------
 				case reflect.Struct:
-					sub, err := marshal(f)
-					if err != nil {
-						return nil, err
+					if err := marshal(f); err != nil {
+						return err
 					}
-					data.Write(sub)
 				//------------------------------------------------------
 				// Slices
 				//------------------------------------------------------
@@ -179,52 +182,46 @@ func Marshal(obj interface{}) ([]byte, error) {
 							if e.Kind() == reflect.Ptr {
 								e = e.Elem()
 							}
-							sub, err := marshal(e)
-							if err != nil {
-								return nil, err
+							if err := marshal(e); err != nil {
+								return err
 							}
-							data.Write(sub)
 						//----------------------------------------------
 						// Pointer elements
 						//----------------------------------------------
 						case reflect.Ptr:
-							sub, err := marshal(e.Elem())
-							if err != nil {
-								return nil, err
+							if err := marshal(e.Elem()); err != nil {
+								return err
 							}
-							data.Write(sub)
 						//----------------------------------------------
 						// Struct elements
 						//----------------------------------------------
 						case reflect.Struct:
-							sub, err := marshal(e)
-							if err != nil {
-								return nil, err
+							if err := marshal(e); err != nil {
+								return err
 							}
-							data.Write(sub)
 						//----------------------------------------------
 						// Intrinsics (strings, integers)
 						//----------------------------------------------
 						default:
 							switch v := e.Interface().(type) {
 							case string:
-								data.Write([]byte(v))
-								data.Write([]byte{0})
+								wrt.Write([]byte(v))
+								wrt.Write([]byte{0})
 							case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
 								if ft.Tag.Get("order") == "big" {
-									binary.Write(data, binary.BigEndian, v)
+									binary.Write(wrt, binary.BigEndian, v)
 								} else {
-									binary.Write(data, binary.LittleEndian, v)
+									binary.Write(wrt, binary.LittleEndian, v)
 								}
 							}
 						}
 					}
 				default:
-					return nil, ErrMarshalUnknownType
+					return ErrMarshalUnknownType
 				}
 			}
 		}
-		return data.Bytes(), nil
+		return nil
 	}
 	// process if object is a '*struct{}', a 'struct{}' or an interface
 	a := reflect.ValueOf(obj)
@@ -240,17 +237,26 @@ func Marshal(obj interface{}) ([]byte, error) {
 		if e.IsValid() {
 			return marshal(e)
 		}
-		return nil, ErrMarshalNil
+		return ErrMarshalNil
 	case reflect.Struct:
 		return marshal(a)
 	}
-	return nil, ErrMarshalType
+	return ErrMarshalType
 }
+
+//======================================================================
+// Unmarshal Golang objects from byte arrays.
+//======================================================================
 
 // Unmarshal reads a byte array to fill an object pointed to by 'obj'.
 func Unmarshal(obj interface{}, data []byte) error {
-	var inst reflect.Value
 	buf := bytes.NewBuffer(data)
+	return UnmarshalStream(buf, obj, len(data))
+}
+
+// UnmarshalStream reads an object from strean.
+func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
+	var inst reflect.Value
 	var unmarshal func(x reflect.Value) error
 	unmarshal = func(x reflect.Value) error {
 		for i := 0; i < x.NumField(); i++ {
@@ -264,9 +270,9 @@ func Unmarshal(obj interface{}, data []byte) error {
 			// read integer based on given endianess
 			readInt := func(a interface{}) {
 				if ft.Tag.Get("order") == "big" {
-					binary.Read(buf, binary.BigEndian, a)
+					binary.Read(rdr, binary.BigEndian, a)
 				} else {
-					binary.Read(buf, binary.LittleEndian, a)
+					binary.Read(rdr, binary.LittleEndian, a)
 				}
 			}
 			// parse number elements of slice elements
@@ -279,7 +285,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 				}
 				if sizeTag == "*" {
 					if asByte {
-						count = buf.Len()
+						count = pending
 						if stl > 1 && sizeTag[1] == '-' {
 							off, err := strconv.ParseInt(sizeTag[2:], 10, 16)
 							if err != nil {
@@ -339,48 +345,58 @@ func Unmarshal(obj interface{}, data []byte) error {
 				s := ""
 				b := make([]byte, 1)
 				for {
-					buf.Read(b)
+					rdr.Read(b)
 					if b[0] == 0 {
 						break
 					}
 					s += string(b)
 				}
 				f.SetString(s)
+				pending -= len(s) + 1
 			//----------------------------------------------------------
 			// Integers
 			//----------------------------------------------------------
 			case uint8:
 				var a uint8
-				binary.Read(buf, binary.LittleEndian, &a)
+				binary.Read(rdr, binary.LittleEndian, &a)
 				f.SetUint(uint64(a))
+				pending--
 			case int8:
 				var a int8
-				binary.Read(buf, binary.LittleEndian, &a)
+				binary.Read(rdr, binary.LittleEndian, &a)
 				f.SetInt(int64(a))
+				pending--
 			case uint16:
 				var a uint16
 				readInt(&a)
 				f.SetUint(uint64(a))
+				pending -= 2
 			case int16:
 				var a int16
 				readInt(&a)
 				f.SetInt(int64(a))
+				pending -= 2
 			case uint32:
 				var a uint32
 				readInt(&a)
 				f.SetUint(uint64(a))
+				pending -= 4
 			case int32, int:
 				var a int32
 				readInt(&a)
 				f.SetInt(int64(a))
+				pending -= 4
 			case uint64:
 				var a uint64
 				readInt(&a)
 				f.SetUint(a)
+				pending -= 8
 			case int64:
 				var a int64
 				readInt(&a)
 				f.SetInt(a)
+				pending -= 8
+
 			//----------------------------------------------------------
 			// Byte arrays
 			//----------------------------------------------------------
@@ -393,11 +409,12 @@ func Unmarshal(obj interface{}, data []byte) error {
 					}
 				}
 				a := make([]byte, size)
-				n, _ := buf.Read(a)
+				n, _ := rdr.Read(a)
 				if n != size {
 					return ErrMarshalSizeMismatch
 				}
 				f.SetBytes(a)
+				pending -= n
 
 			//----------------------------------------------------------
 			// Read more complex types.
@@ -465,7 +482,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 					// unmarshal slice elements
 					for i := 0; i < count || count < 0; i++ {
 						// quit on end-of-buffer
-						if buf.Len() == 0 {
+						if pending < 1 {
 							break
 						}
 						// address the slice element. If the element does not
@@ -517,44 +534,52 @@ func Unmarshal(obj interface{}, data []byte) error {
 							s := ""
 							b := make([]byte, 1)
 							for {
-								buf.Read(b)
+								rdr.Read(b)
 								if b[0] == 0 {
 									break
 								}
 								s += string(b)
 							}
 							e.SetString(s)
+							pending -= len(s) + 1
 						//----------------------------------------------------------
 						// Integers
 						//----------------------------------------------------------
 						case reflect.Int8:
 							var a int8
-							binary.Read(buf, binary.LittleEndian, &a)
+							binary.Read(rdr, binary.LittleEndian, &a)
 							e.SetInt(int64(a))
+							pending--
 						case reflect.Uint16:
 							var a uint16
 							readInt(&a)
 							e.SetUint(uint64(a))
+							pending -= 2
 						case reflect.Int16:
 							var a int16
 							readInt(&a)
 							e.SetInt(int64(a))
+							pending -= 2
 						case reflect.Uint32:
 							var a uint32
 							readInt(&a)
 							e.SetUint(uint64(a))
+							pending -= 4
 						case reflect.Int32, reflect.Int:
 							var a int32
 							readInt(&a)
 							e.SetInt(int64(a))
+							pending -= 4
 						case reflect.Uint64:
 							var a uint64
 							readInt(&a)
 							e.SetUint(a)
+							pending -= 8
 						case reflect.Int64:
 							var a int64
 							readInt(&a)
 							e.SetInt(a)
+							pending -= 8
 						}
 					}
 				default:
@@ -574,7 +599,11 @@ func Unmarshal(obj interface{}, data []byte) error {
 	return ErrMarshalUnknownType
 }
 
-// Helper method to get a method from an instance during unmarshalling.
+//======================================================================
+// Helper methods
+//======================================================================
+
+// Get a method from an instance during unmarshalling:
 // 'inst' refers to the enclosing struct instance that "owns" the field
 // being unmarshalled. 'name' either refers to the name of a method of
 // the instance ("mthname") or a method of a field (or its subfields)
