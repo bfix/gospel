@@ -24,7 +24,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -72,6 +71,19 @@ import (
 //       expression like "*-16"); you need to out-source the calculation
 //       to a method if required.
 //######################################################################
+
+// Errors
+var (
+	ErrMarshalNil            = errors.New("object is nil")
+	ErrMarshalType           = errors.New("invalid object type")
+	ErrMarshalNoSize         = errors.New("missing size tag on field")
+	ErrMarshalSizeFcnNumArg  = errors.New("size function has more than one argument")
+	ErrMarshalSizeFcnArgType = errors.New("size function argument not a string")
+	ErrMarshalSizeMismatch   = errors.New("size mismatch during unmarshal")
+	ErrMarshalEmptyIntf      = errors.New("can't handle empty interface")
+	ErrMarshalUnknownType    = errors.New("Unknown field type")
+	ErrMarshalNoSizeFcn      = errors.New("missing size method")
+)
 
 //======================================================================
 // Marshal/unmarshal Golang objects to/from byte arrays.
@@ -208,7 +220,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 						}
 					}
 				default:
-					return nil, fmt.Errorf("Marshal: Unknown field type: %v", f.Type())
+					return nil, ErrMarshalUnknownType
 				}
 			}
 		}
@@ -228,11 +240,11 @@ func Marshal(obj interface{}) ([]byte, error) {
 		if e.IsValid() {
 			return marshal(e)
 		}
-		return nil, errors.New("Marshal: object is nil")
+		return nil, ErrMarshalNil
 	case reflect.Struct:
 		return marshal(a)
 	}
-	return nil, errors.New("Marshal: invalid object type")
+	return nil, ErrMarshalType
 }
 
 // Unmarshal reads a byte array to fill an object pointed to by 'obj'.
@@ -263,7 +275,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 				sizeTag := ft.Tag.Get("size")
 				stl := len(sizeTag)
 				if stl == 0 {
-					return 0, errors.New("missing size tag on field")
+					return 0, ErrMarshalNoSize
 				}
 				if sizeTag == "*" {
 					if asByte {
@@ -292,12 +304,12 @@ func Unmarshal(obj interface{}, data []byte) error {
 					numArgs := mth.Type().NumIn()
 					if numArgs > 1 {
 						// invalid number of arguments (none or just one string)
-						return 0, errors.New("size function has more than one argument")
+						return 0, ErrMarshalSizeFcnNumArg
 					} else if numArgs == 1 {
 						// check for string argument
 						arg0 := mth.Type().In(0)
 						if arg0.Kind() != reflect.String {
-							return 0, errors.New("size function argument not a string")
+							return 0, ErrMarshalSizeFcnArgType
 						}
 						// set argument
 						fname := reflect.New(reflect.TypeOf("")).Elem()
@@ -383,7 +395,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 				a := make([]byte, size)
 				n, _ := buf.Read(a)
 				if n != size {
-					return fmt.Errorf("unmarshal: size mismatch - have %d, got %d", size, n)
+					return ErrMarshalSizeMismatch
 				}
 				f.SetBytes(a)
 
@@ -398,7 +410,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 				case reflect.Interface:
 					e := f.Elem()
 					if !e.IsValid() {
-						return fmt.Errorf("cant handle empty interface")
+						return ErrMarshalEmptyIntf
 					}
 					if err := unmarshal(e); err != nil {
 						return err
@@ -479,7 +491,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 						case reflect.Interface:
 							e = e.Elem()
 							if !e.IsValid() {
-								return fmt.Errorf("cant handle empty interface")
+								return ErrMarshalEmptyIntf
 							}
 							if err := unmarshal(e); err != nil {
 								return err
@@ -546,7 +558,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 						}
 					}
 				default:
-					return fmt.Errorf("Unmarshal: Unknown field type: %v", f.Kind())
+					return ErrMarshalUnknownType
 				}
 			}
 		}
@@ -559,7 +571,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 			return unmarshal(e)
 		}
 	}
-	return fmt.Errorf("Unmarshal: Unknown (field) type: %v", inst.Type())
+	return ErrMarshalUnknownType
 }
 
 // Helper method to get a method from an instance during unmarshalling.
@@ -576,7 +588,7 @@ func getMethod(inst reflect.Value, name string) (mth reflect.Value, err error) {
 	}
 	if mth = inst.MethodByName(name); !mth.IsValid() {
 		if mth = inst.Addr().MethodByName(name); !mth.IsValid() {
-			err = errors.New("missing method for array size")
+			err = ErrMarshalNoSizeFcn
 		}
 	}
 	return
