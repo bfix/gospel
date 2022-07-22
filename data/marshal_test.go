@@ -102,14 +102,25 @@ func (x *VarStruct) CalcSize(field string) uint {
 	return 1
 }
 
+type OptStruct struct {
+	A uint16
+	B []byte `opt:"(IsUsed)" size:"A"`
+	C bool
+	D []byte `opt:"C" size:"23"`
+}
+
+func (x *OptStruct) IsUsed() bool {
+	return x.A > 10
+}
+
 func TestNested(t *testing.T) {
 	r := new(MainStruct)
 	r.C = 19031962
 	r.D = "Just a test"
 	r.E = make([]*NestedStruct, 3)
 	r.F = new(SubStruct)
-	r.G = 3
 	r.F.G = 0x23
+	r.G = 3
 	for i := 0; i < 3; i++ {
 		n := new(NestedStruct)
 		n.A = int64(255 - i)
@@ -213,4 +224,41 @@ func TestVar(t *testing.T) {
 	if !bytes.Equal(ad, bd) {
 		t.Fatal("serialization mismatch")
 	}
+}
+
+func TestOptional(t *testing.T) {
+	a := &OptStruct{
+		A: 25,
+		B: make([]byte, 25),
+		C: true,
+		D: make([]byte, 23),
+	}
+
+	test := func(label string, size int) {
+		ad, err := Marshal(a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ad) != size {
+			t.Fatalf("%s: size mismatch: %d != %d", label, len(ad), size)
+		}
+
+		b := new(OptStruct)
+		if err = Unmarshal(b, ad); err != nil {
+			t.Fatal(label + ": " + err.Error())
+		}
+		bd, err := Marshal(a)
+		if err != nil {
+			t.Fatal(label + ": " + err.Error())
+		}
+		if !bytes.Equal(ad, bd) {
+			t.Fatal(label + ": serialization mismatch")
+		}
+	}
+
+	test("T1", 51)
+	a.A = 3
+	test("T2", 26)
+	a.C = false
+	test("T3", 3)
 }

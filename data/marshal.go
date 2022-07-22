@@ -39,27 +39,36 @@ import (
 //    uint{8,16,32,64}      -- Unsigned integer of given size (little-endian)
 //    []uint8,[]byte        -- variable length byte array
 //    string                -- variable length string (\0 -terminated)
+//    bool                  -- boolean value (single byte, 0=false, true otherwise)
 //    *struct{}, struct{}   -- nested structure
 //    []*struct{}, []struct -- list of structures with allowed fields
 //
+// The serialization can be controlled by field annotations:
+//
+// ---------------------------------------
+// (1) Endianness of integers: tag "order"
+// ---------------------------------------
 // Integer fields (of size > 1) can be tagged for Big-Endian representation
 // by using the tag "order" with a value of "big":
 //
 //    field1 int64 `order:"big"`
 //
+// ---------------------------------
+// (2) Array/slice sizes: tag "size"
+// ---------------------------------
 // Variable-length slices can be tagged with a "size" tag to help the
 // Unmarshal function to figure out the number of slice elements to
 // process. The values can be "*" for greedy (as many elements as
 // possible before running out of data), "<num>" a decimal number specifying
 // the fixed size or two dynamic/variable approaches:
 //
-// (1) A "<name>" referring to a previous unsigned integer field in the
+// (a) A "<name>" referring to a previous unsigned integer field in the
 //     struct object:
 //
 //     ListSize uint16
 //     List     []*Entry `size:"ListSize"`
 //
-// (2) A "(<name>)" referring to a struct object method, that takes no
+// (b) A "(<name>)" referring to a struct object method, that takes no
 //     or one argument and returns an unsigned integer for length:
 //
 //     List     []*Entry `size:"(CalcSize)"`
@@ -71,19 +80,28 @@ import (
 // N.B.: You can't do math in the size expression (except for the greedy
 //       expression like "*-16"); you need to out-source the calculation
 //       to a method if required.
+//
+// ------------------------------
+// (3) Optional fields: tag "opt"
+// ------------------------------
+// A field can be marked as optional with the "opt" tag; the tag value
+// must be either a (previous) boolean field or a method returning a
+// bool value. As with size functions, the method can take a single
+// string argument (field name).
+//
 //######################################################################
 
 // Errors
 var (
-	ErrMarshalNil            = errors.New("object is nil")
-	ErrMarshalType           = errors.New("invalid object type")
-	ErrMarshalNoSize         = errors.New("missing size tag on field")
-	ErrMarshalSizeFcnNumArg  = errors.New("size function has more than one argument")
-	ErrMarshalSizeFcnArgType = errors.New("size function argument not a string")
-	ErrMarshalSizeMismatch   = errors.New("size mismatch during unmarshal")
-	ErrMarshalEmptyIntf      = errors.New("can't handle empty interface")
-	ErrMarshalUnknownType    = errors.New("Unknown field type")
-	ErrMarshalNoSizeFcn      = errors.New("missing size method")
+	ErrMarshalNil          = errors.New("object is nil")
+	ErrMarshalType         = errors.New("invalid object type")
+	ErrMarshalNoSize       = errors.New("missing size tag on field")
+	ErrMarshalFcnNumArg    = errors.New("function has more than one argument")
+	ErrMarshalFcnArgType   = errors.New("function argument not a string")
+	ErrMarshalSizeMismatch = errors.New("size mismatch during unmarshal")
+	ErrMarshalEmptyIntf    = errors.New("can't handle empty interface")
+	ErrMarshalUnknownType  = errors.New("Unknown field type")
+	ErrMarshalNoFcn        = errors.New("missing method")
 )
 
 //======================================================================
@@ -101,6 +119,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 
 // MarshalStream writes an object instance to stream
 func MarshalStream(wrt io.Writer, obj interface{}) error {
+	var inst reflect.Value
 	var marshal func(x reflect.Value) error
 	marshal = func(x reflect.Value) error {
 		for i := 0; i < x.NumField(); i++ {
@@ -110,27 +129,60 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 				continue
 			}
 			ft := x.Type().Field(i)
+
+			// collect annotations
+			tagSize := ft.Tag.Get("size")
+			tagOrder := ft.Tag.Get("order")
+			tagOpt := ft.Tag.Get("opt")
+
+			// check for optional field
+			used, err := isUsed(tagOpt, ft.Name, x, inst)
+			if err != nil {
+				return err
+			}
+			if !used {
+				continue
+			}
+
 			switch v := f.Interface().(type) {
 			//----------------------------------------------------------
 			// Strings
 			//----------------------------------------------------------
 			case string:
-				wrt.Write([]byte(v))
-				wrt.Write([]byte{0})
+				if _, err := wrt.Write([]byte(v)); err != nil {
+					return err
+				}
+				if _, err := wrt.Write([]byte{0}); err != nil {
+					return err
+				}
+			//----------------------------------------------------------
+			// Booleans
+			//----------------------------------------------------------
+			case bool:
+				var a byte
+				if v {
+					a = 1
+				}
+				if _, err := wrt.Write([]byte{a}); err != nil {
+					return err
+				}
 			//----------------------------------------------------------
 			// Integers
 			//----------------------------------------------------------
 			case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
-				if ft.Tag.Get("order") == "big" {
-					binary.Write(wrt, binary.BigEndian, v)
-				} else {
-					binary.Write(wrt, binary.LittleEndian, v)
+				if err := writeInt(wrt, tagOrder, v); err != nil {
+					return err
 				}
 			//----------------------------------------------------------
 			// Byte arrays
 			//----------------------------------------------------------
 			case []uint8:
-				wrt.Write(v)
+				if _, err := parseSize(tagSize, ft.Name, x, inst, len(v), 0); err != nil {
+					return err
+				}
+				if _, err := wrt.Write(v); err != nil {
+					return err
+				}
 
 			//----------------------------------------------------------
 			// Handle other complex types...
@@ -171,7 +223,15 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 				// Slices
 				//------------------------------------------------------
 				case reflect.Slice:
-					for i := 0; i < f.Len(); i++ {
+					count, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), 0)
+					if err != nil {
+						return err
+					}
+					// greedy slice: use existing size
+					if count < 0 {
+						count = f.Len()
+					}
+					for i := 0; i < count; i++ {
 						e := f.Index(i)
 						switch e.Kind() {
 						//----------------------------------------------
@@ -205,13 +265,23 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 						default:
 							switch v := e.Interface().(type) {
 							case string:
-								wrt.Write([]byte(v))
-								wrt.Write([]byte{0})
+								if _, err := wrt.Write([]byte(v)); err != nil {
+									return err
+								}
+								if _, err := wrt.Write([]byte{0}); err != nil {
+									return err
+								}
+							case bool:
+								var a byte
+								if v {
+									a = 1
+								}
+								if _, err := wrt.Write([]byte{a}); err != nil {
+									return err
+								}
 							case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
-								if ft.Tag.Get("order") == "big" {
-									binary.Write(wrt, binary.BigEndian, v)
-								} else {
-									binary.Write(wrt, binary.LittleEndian, v)
+								if err := writeInt(wrt, tagOrder, v); err != nil {
+									return err
 								}
 							}
 						}
@@ -224,22 +294,22 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 		return nil
 	}
 	// process if object is a '*struct{}', a 'struct{}' or an interface
-	a := reflect.ValueOf(obj)
-	switch a.Kind() {
+	inst = reflect.ValueOf(obj)
+	switch inst.Kind() {
 	case reflect.Interface:
-		e := a.Elem()
+		e := inst.Elem()
 		if e.Kind() == reflect.Ptr {
 			e = e.Elem()
 		}
 		return marshal(e)
 	case reflect.Ptr:
-		e := a.Elem()
+		e := inst.Elem()
 		if e.IsValid() {
 			return marshal(e)
 		}
 		return ErrMarshalNil
 	case reflect.Struct:
-		return marshal(a)
+		return marshal(inst)
 	}
 	return ErrMarshalType
 }
@@ -267,74 +337,18 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 			}
 			ft := x.Type().Field(i)
 
-			// read integer based on given endianess
-			readInt := func(a interface{}) {
-				if ft.Tag.Get("order") == "big" {
-					binary.Read(rdr, binary.BigEndian, a)
-				} else {
-					binary.Read(rdr, binary.LittleEndian, a)
-				}
+			// collect annotations
+			tagSize := ft.Tag.Get("size")
+			tagOrder := ft.Tag.Get("order")
+			tagOpt := ft.Tag.Get("opt")
+
+			// check for optional field
+			used, err := isUsed(tagOpt, ft.Name, x, inst)
+			if err != nil {
+				return err
 			}
-			// parse number elements of slice elements
-			parseSize := func(asByte bool) (count int, err error) {
-				// process "size" tag for slice
-				sizeTag := ft.Tag.Get("size")
-				stl := len(sizeTag)
-				if stl == 0 {
-					return 0, ErrMarshalNoSize
-				}
-				if sizeTag == "*" {
-					if asByte {
-						count = pending
-						if stl > 1 && sizeTag[1] == '-' {
-							off, err := strconv.ParseInt(sizeTag[2:], 10, 16)
-							if err != nil {
-								return 0, err
-							}
-							count -= int(off)
-						}
-					} else {
-						count = -1
-					}
-				} else if sizeTag[0] == '(' {
-					// method call
-					mthName := strings.Trim(sizeTag, "()")
-					mth, err := getMethod(x, mthName)
-					if err != nil {
-						if mth, err = getMethod(inst, mthName); err != nil {
-							return 0, err
-						}
-					}
-					// check for string argument
-					var args []reflect.Value
-					numArgs := mth.Type().NumIn()
-					if numArgs > 1 {
-						// invalid number of arguments (none or just one string)
-						return 0, ErrMarshalSizeFcnNumArg
-					} else if numArgs == 1 {
-						// check for string argument
-						arg0 := mth.Type().In(0)
-						if arg0.Kind() != reflect.String {
-							return 0, ErrMarshalSizeFcnArgType
-						}
-						// set argument
-						fname := reflect.New(reflect.TypeOf("")).Elem()
-						fname.SetString(ft.Name)
-						args = append(args, fname)
-					}
-					// call method
-					res := mth.Call(args)
-					count = int(res[0].Uint())
-				} else {
-					n, err := strconv.ParseInt(sizeTag, 10, 16)
-					if err == nil {
-						count = int(n)
-					} else {
-						// previous field value
-						count = int(x.FieldByName(sizeTag).Uint())
-					}
-				}
-				return
+			if !used {
+				continue
 			}
 
 			switch f.Interface().(type) {
@@ -345,7 +359,9 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 				s := ""
 				b := make([]byte, 1)
 				for {
-					rdr.Read(b)
+					if _, err := rdr.Read(b); err != nil {
+						return err
+					}
 					if b[0] == 0 {
 						break
 					}
@@ -354,46 +370,75 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 				f.SetString(s)
 				pending -= len(s) + 1
 			//----------------------------------------------------------
+			// Booleans
+			//----------------------------------------------------------
+			case bool:
+				b := make([]byte, 1)
+				if _, err := rdr.Read(b); err != nil {
+					return err
+				}
+				var a bool
+				if b[0] != 0 {
+					a = true
+				}
+				f.SetBool(a)
+			//----------------------------------------------------------
 			// Integers
 			//----------------------------------------------------------
 			case uint8:
 				var a uint8
-				binary.Read(rdr, binary.LittleEndian, &a)
+				if err := binary.Read(rdr, binary.LittleEndian, &a); err != nil {
+					return err
+				}
 				f.SetUint(uint64(a))
 				pending--
 			case int8:
 				var a int8
-				binary.Read(rdr, binary.LittleEndian, &a)
+				if err := binary.Read(rdr, binary.LittleEndian, &a); err != nil {
+					return err
+				}
 				f.SetInt(int64(a))
 				pending--
 			case uint16:
 				var a uint16
-				readInt(&a)
+				if err := readInt(rdr, tagOrder, &a); err != nil {
+					return err
+				}
 				f.SetUint(uint64(a))
 				pending -= 2
 			case int16:
 				var a int16
-				readInt(&a)
+				if err := readInt(rdr, tagOrder, &a); err != nil {
+					return err
+				}
 				f.SetInt(int64(a))
 				pending -= 2
 			case uint32:
 				var a uint32
-				readInt(&a)
+				if err := readInt(rdr, tagOrder, &a); err != nil {
+					return err
+				}
 				f.SetUint(uint64(a))
 				pending -= 4
 			case int32, int:
 				var a int32
-				readInt(&a)
+				if err := readInt(rdr, tagOrder, &a); err != nil {
+					return err
+				}
 				f.SetInt(int64(a))
 				pending -= 4
 			case uint64:
 				var a uint64
-				readInt(&a)
+				if err := readInt(rdr, tagOrder, &a); err != nil {
+					return err
+				}
 				f.SetUint(a)
 				pending -= 8
 			case int64:
 				var a int64
-				readInt(&a)
+				if err := readInt(rdr, tagOrder, &a); err != nil {
+					return err
+				}
 				f.SetInt(a)
 				pending -= 8
 
@@ -401,15 +446,15 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 			// Byte arrays
 			//----------------------------------------------------------
 			case []uint8:
-				size := f.Len()
-				if size == 0 {
-					var err error
-					if size, err = parseSize(true); err != nil {
-						return err
-					}
+				size, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), pending)
+				if err != nil {
+					return err
 				}
 				a := make([]byte, size)
-				n, _ := rdr.Read(a)
+				n, err := rdr.Read(a)
+				if err != nil {
+					return err
+				}
 				if n != size {
 					return ErrMarshalSizeMismatch
 				}
@@ -461,16 +506,11 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 					// length. The tag value can be "*" for greedy (read
 					// until end of buffer), the name of a (previous) integer
 					// field containing the length or an integer value.
-					count := f.Len()
-					add := false
-					if count == 0 {
-						add = true
-						// process "size" tag for slice
-						var err error
-						if count, err = parseSize(false); err != nil {
-							return err
-						}
+					count, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), 0)
+					if err != nil {
+						return err
 					}
+					add := (count > f.Len())
 					// If the element type is a pointer, get the type of the
 					// referenced object and remember to use a pointer.
 					et := f.Type().Elem()
@@ -534,7 +574,9 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 							s := ""
 							b := make([]byte, 1)
 							for {
-								rdr.Read(b)
+								if _, err := rdr.Read(b); err != nil {
+									return err
+								}
 								if b[0] == 0 {
 									break
 								}
@@ -547,37 +589,51 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 						//----------------------------------------------------------
 						case reflect.Int8:
 							var a int8
-							binary.Read(rdr, binary.LittleEndian, &a)
+							if err := binary.Read(rdr, binary.LittleEndian, &a); err != nil {
+								return err
+							}
 							e.SetInt(int64(a))
 							pending--
 						case reflect.Uint16:
 							var a uint16
-							readInt(&a)
+							if err := readInt(rdr, tagOrder, &a); err != nil {
+								return err
+							}
 							e.SetUint(uint64(a))
 							pending -= 2
 						case reflect.Int16:
 							var a int16
-							readInt(&a)
+							if err := readInt(rdr, tagOrder, &a); err != nil {
+								return err
+							}
 							e.SetInt(int64(a))
 							pending -= 2
 						case reflect.Uint32:
 							var a uint32
-							readInt(&a)
+							if err := readInt(rdr, tagOrder, &a); err != nil {
+								return err
+							}
 							e.SetUint(uint64(a))
 							pending -= 4
 						case reflect.Int32, reflect.Int:
 							var a int32
-							readInt(&a)
+							if err := readInt(rdr, tagOrder, &a); err != nil {
+								return err
+							}
 							e.SetInt(int64(a))
 							pending -= 4
 						case reflect.Uint64:
 							var a uint64
-							readInt(&a)
+							if err := readInt(rdr, tagOrder, &a); err != nil {
+								return err
+							}
 							e.SetUint(a)
 							pending -= 8
 						case reflect.Int64:
 							var a int64
-							readInt(&a)
+							if err := readInt(rdr, tagOrder, &a); err != nil {
+								return err
+							}
 							e.SetInt(a)
 							pending -= 8
 						}
@@ -603,6 +659,26 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 // Helper methods
 //======================================================================
 
+// read integer based on given endianess
+func readInt(rdr io.Reader, tag string, v interface{}) (err error) {
+	if tag == "big" {
+		err = binary.Read(rdr, binary.BigEndian, v)
+	} else {
+		err = binary.Read(rdr, binary.LittleEndian, v)
+	}
+	return
+}
+
+// write integer based on given endianess
+func writeInt(wrt io.Writer, tag string, v interface{}) (err error) {
+	if tag == "big" {
+		err = binary.Write(wrt, binary.BigEndian, v)
+	} else {
+		err = binary.Write(wrt, binary.LittleEndian, v)
+	}
+	return
+}
+
 // Get a method from an instance during unmarshalling:
 // 'inst' refers to the enclosing struct instance that "owns" the field
 // being unmarshalled. 'name' either refers to the name of a method of
@@ -617,8 +693,108 @@ func getMethod(inst reflect.Value, name string) (mth reflect.Value, err error) {
 	}
 	if mth = inst.MethodByName(name); !mth.IsValid() {
 		if mth = inst.Addr().MethodByName(name); !mth.IsValid() {
-			err = ErrMarshalNoSizeFcn
+			err = ErrMarshalNoFcn
 		}
 	}
 	return
+}
+
+// call a method (either x.Mthd() or inst.Mthd())
+func callMethod(mthName, fldName string, x, inst reflect.Value) (res []reflect.Value, err error) {
+	// find method on current struct first
+	mth, err := getMethod(x, mthName)
+	if err != nil {
+		// try to find method in enclosing struct instance
+		if mth, err = getMethod(inst, mthName); err != nil {
+			return
+		}
+	}
+	// check for string argument
+	var args []reflect.Value
+	numArgs := mth.Type().NumIn()
+	if numArgs > 1 {
+		// invalid number of arguments (none or just one string)
+		err = ErrMarshalFcnNumArg
+		return
+	} else if numArgs == 1 {
+		// check for string argument
+		arg0 := mth.Type().In(0)
+		if arg0.Kind() != reflect.String {
+			err = ErrMarshalFcnArgType
+			return
+		}
+		// set argument
+		fname := reflect.New(reflect.TypeOf("")).Elem()
+		fname.SetString(fldName)
+		args = append(args, fname)
+	}
+	// call method
+	res = mth.Call(args)
+	return
+}
+
+// parse number of slice/array elements
+func parseSize(tagSize, fldName string, x, inst reflect.Value, inSize, pending int) (count int, err error) {
+	// process "size" tag for slice/array
+	stl := len(tagSize)
+	if stl == 0 {
+		// if no size annotation is found, return the incoming length
+		return inSize, nil
+	}
+	if tagSize == "*" {
+		if pending > 0 {
+			count = pending
+			if stl > 1 && tagSize[1] == '-' {
+				off, err := strconv.ParseInt(tagSize[2:], 10, 16)
+				if err != nil {
+					return 0, err
+				}
+				count -= int(off)
+			}
+		} else {
+			count = -1
+		}
+	} else if tagSize[0] == '(' {
+		// method call
+		mthName := strings.Trim(tagSize, "()")
+		var res []reflect.Value
+		res, err = callMethod(mthName, fldName, x, inst)
+		count = int(res[0].Uint())
+	} else {
+		n, err := strconv.ParseInt(tagSize, 10, 16)
+		if err == nil {
+			count = int(n)
+		} else {
+			// previous field value
+			count = int(x.FieldByName(tagSize).Uint())
+		}
+	}
+	// check actual size for expected size
+	if inSize > 0 && count > 0 && inSize != count {
+		err = ErrMarshalSizeMismatch
+		return
+	}
+	return
+}
+
+// isUsed returns true if an optional field is used
+func isUsed(tagOpt, fldName string, x, inst reflect.Value) (bool, error) {
+	used := true
+	if len(tagOpt) > 0 {
+		// evaluate condition: must be either variable or function;
+		// defaults to false!
+		used = false
+		if tagOpt[0] == '(' {
+			// method call
+			mthName := strings.Trim(tagOpt, "()")
+			res, err := callMethod(mthName, fldName, x, inst)
+			if err != nil {
+				return false, err
+			}
+			used = res[0].Bool()
+		} else {
+			used = x.FieldByName(tagOpt).Bool()
+		}
+	}
+	return used, nil
 }
