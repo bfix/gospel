@@ -27,6 +27,8 @@ import (
 	"testing"
 )
 
+//----------------------------------------------------------------------
+
 type NestedStruct struct {
 	A int64 `order:"big"`
 	B int32
@@ -36,6 +38,8 @@ func (n *NestedStruct) String() string {
 	return fmt.Sprintf("NS(%v)", *n)
 }
 
+//----------------------------------------------------------------------
+
 type SubStruct struct {
 	G int32
 }
@@ -43,6 +47,8 @@ type SubStruct struct {
 func (s *SubStruct) String() string {
 	return fmt.Sprintf("SS(%v)", *s)
 }
+
+//----------------------------------------------------------------------
 
 type MainStruct struct {
 	C uint64 `order:"big"`
@@ -52,6 +58,8 @@ type MainStruct struct {
 	E []*NestedStruct `size:"G"`
 	H []uint32        `size:"5" order:"big"`
 }
+
+//----------------------------------------------------------------------
 
 type MthStruct struct {
 	A uint16 `order:"big"`
@@ -72,11 +80,15 @@ func (x *MthStruct) CSize() uint {
 	return 7
 }
 
+//----------------------------------------------------------------------
+
 type EnvelopeStruct struct {
 	A string
 	B *MthStruct
 	C []byte `size:"(B.CSize)"`
 }
+
+//----------------------------------------------------------------------
 
 type VarStruct struct {
 	A uint16
@@ -102,6 +114,8 @@ func (x *VarStruct) CalcSize(field string) uint {
 	return 1
 }
 
+//----------------------------------------------------------------------
+
 type OptStruct struct {
 	A uint16
 	B []byte `opt:"(IsUsed)" size:"A"`
@@ -112,6 +126,21 @@ type OptStruct struct {
 func (x *OptStruct) IsUsed() bool {
 	return x.A > 10
 }
+
+//----------------------------------------------------------------------
+
+type ErrStruct struct {
+	A uint32
+	B struct {
+		C struct {
+			D []byte `size:"X"`
+		}
+	}
+}
+
+//----------------------------------------------------------------------
+// unit tests
+//----------------------------------------------------------------------
 
 func TestNested(t *testing.T) {
 	r := new(MainStruct)
@@ -237,7 +266,7 @@ func TestOptional(t *testing.T) {
 	test := func(label string, size int) {
 		ad, err := Marshal(a)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal(label + ": " + err.Error())
 		}
 		if len(ad) != size {
 			t.Fatalf("%s: size mismatch: %d != %d", label, len(ad), size)
@@ -261,4 +290,16 @@ func TestOptional(t *testing.T) {
 	test("T2", 26)
 	a.C = false
 	test("T3", 3)
+}
+
+func TestErr(t *testing.T) {
+	a := new(ErrStruct)
+	a.A = 23
+	a.B.C.D = make([]byte, 23)
+
+	_, err := Marshal(a)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	t.Log(err)
 }

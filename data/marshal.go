@@ -28,6 +28,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	gerr "github.com/bfix/gospel/errors"
 )
 
 //######################################################################
@@ -96,12 +98,14 @@ var (
 	ErrMarshalNil          = errors.New("object is nil")
 	ErrMarshalType         = errors.New("invalid object type")
 	ErrMarshalNoSize       = errors.New("missing size tag on field")
-	ErrMarshalFcnNumArg    = errors.New("function has more than one argument")
-	ErrMarshalFcnArgType   = errors.New("function argument not a string")
 	ErrMarshalSizeMismatch = errors.New("size mismatch during unmarshal")
 	ErrMarshalEmptyIntf    = errors.New("can't handle empty interface")
 	ErrMarshalUnknownType  = errors.New("Unknown field type")
-	ErrMarshalNoFcn        = errors.New("missing method")
+	ErrMarshalMthdMissing  = errors.New("missing method")
+	ErrMarshalFieldRef     = errors.New("field reference invalid")
+	ErrMarshalMthdNumArg   = errors.New("method has more than one argument")
+	ErrMarshalMthdArgType  = errors.New("method argument not a string")
+	ErrMarshalMthdResult   = errors.New("invalid method result")
 )
 
 //======================================================================
@@ -120,6 +124,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 // MarshalStream writes an object instance to stream
 func MarshalStream(wrt io.Writer, obj interface{}) error {
 	var inst reflect.Value
+	path := newPath()
 	var marshal func(x reflect.Value) error
 	marshal = func(x reflect.Value) error {
 		for i := 0; i < x.NumField(); i++ {
@@ -129,6 +134,7 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 				continue
 			}
 			ft := x.Type().Field(i)
+			path.push(ft.Name)
 
 			// collect annotations
 			tagSize := ft.Tag.Get("size")
@@ -138,9 +144,10 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 			// check for optional field
 			used, err := isUsed(tagOpt, ft.Name, x, inst)
 			if err != nil {
-				return err
+				return gerr.New(err, "field '%s'", path.string())
 			}
 			if !used {
+				path.pop()
 				continue
 			}
 
@@ -150,10 +157,10 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 			//----------------------------------------------------------
 			case string:
 				if _, err := wrt.Write([]byte(v)); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				if _, err := wrt.Write([]byte{0}); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 			//----------------------------------------------------------
 			// Booleans
@@ -164,24 +171,24 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 					a = 1
 				}
 				if _, err := wrt.Write([]byte{a}); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 			//----------------------------------------------------------
 			// Integers
 			//----------------------------------------------------------
 			case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
 				if err := writeInt(wrt, tagOrder, v); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 			//----------------------------------------------------------
 			// Byte arrays
 			//----------------------------------------------------------
 			case []uint8:
 				if _, err := parseSize(tagSize, ft.Name, x, inst, len(v), 0); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				if _, err := wrt.Write(v); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 
 			//----------------------------------------------------------
@@ -225,7 +232,7 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 				case reflect.Slice:
 					count, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), 0)
 					if err != nil {
-						return err
+						return gerr.New(err, "field '%s'", path.string())
 					}
 					// greedy slice: use existing size
 					if count < 0 {
@@ -266,10 +273,10 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 							switch v := e.Interface().(type) {
 							case string:
 								if _, err := wrt.Write([]byte(v)); err != nil {
-									return err
+									return gerr.New(err, "field '%s'", path.string())
 								}
 								if _, err := wrt.Write([]byte{0}); err != nil {
-									return err
+									return gerr.New(err, "field '%s'", path.string())
 								}
 							case bool:
 								var a byte
@@ -277,19 +284,20 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 									a = 1
 								}
 								if _, err := wrt.Write([]byte{a}); err != nil {
-									return err
+									return gerr.New(err, "field '%s'", path.string())
 								}
 							case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
 								if err := writeInt(wrt, tagOrder, v); err != nil {
-									return err
+									return gerr.New(err, "field '%s'", path.string())
 								}
 							}
 						}
 					}
 				default:
-					return ErrMarshalUnknownType
+					return gerr.New(ErrMarshalUnknownType, "field '%s'", path.string())
 				}
 			}
+			path.pop()
 		}
 		return nil
 	}
@@ -327,6 +335,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 // UnmarshalStream reads an object from strean.
 func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 	var inst reflect.Value
+	path := newPath()
 	var unmarshal func(x reflect.Value) error
 	unmarshal = func(x reflect.Value) error {
 		for i := 0; i < x.NumField(); i++ {
@@ -336,6 +345,7 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 				continue
 			}
 			ft := x.Type().Field(i)
+			path.push(ft.Name)
 
 			// collect annotations
 			tagSize := ft.Tag.Get("size")
@@ -345,9 +355,10 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 			// check for optional field
 			used, err := isUsed(tagOpt, ft.Name, x, inst)
 			if err != nil {
-				return err
+				return gerr.New(err, "field '%s'", path.string())
 			}
 			if !used {
+				path.pop()
 				continue
 			}
 
@@ -360,7 +371,7 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 				b := make([]byte, 1)
 				for {
 					if _, err := rdr.Read(b); err != nil {
-						return err
+						return gerr.New(err, "field '%s'", path.string())
 					}
 					if b[0] == 0 {
 						break
@@ -375,7 +386,7 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 			case bool:
 				b := make([]byte, 1)
 				if _, err := rdr.Read(b); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				var a bool
 				if b[0] != 0 {
@@ -388,56 +399,56 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 			case uint8:
 				var a uint8
 				if err := binary.Read(rdr, binary.LittleEndian, &a); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				f.SetUint(uint64(a))
 				pending--
 			case int8:
 				var a int8
 				if err := binary.Read(rdr, binary.LittleEndian, &a); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				f.SetInt(int64(a))
 				pending--
 			case uint16:
 				var a uint16
 				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				f.SetUint(uint64(a))
 				pending -= 2
 			case int16:
 				var a int16
 				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				f.SetInt(int64(a))
 				pending -= 2
 			case uint32:
 				var a uint32
 				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				f.SetUint(uint64(a))
 				pending -= 4
 			case int32, int:
 				var a int32
 				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				f.SetInt(int64(a))
 				pending -= 4
 			case uint64:
 				var a uint64
 				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				f.SetUint(a)
 				pending -= 8
 			case int64:
 				var a int64
 				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				f.SetInt(a)
 				pending -= 8
@@ -448,15 +459,15 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 			case []uint8:
 				size, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), pending)
 				if err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				a := make([]byte, size)
 				n, err := rdr.Read(a)
 				if err != nil {
-					return err
+					return gerr.New(err, "field '%s'", path.string())
 				}
 				if n != size {
-					return ErrMarshalSizeMismatch
+					return gerr.New(ErrMarshalSizeMismatch, "field '%s'", path.string())
 				}
 				f.SetBytes(a)
 				pending -= n
@@ -472,7 +483,7 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 				case reflect.Interface:
 					e := f.Elem()
 					if !e.IsValid() {
-						return ErrMarshalEmptyIntf
+						return gerr.New(ErrMarshalEmptyIntf, "field '%s'", path.string())
 					}
 					if err := unmarshal(e); err != nil {
 						return err
@@ -508,7 +519,7 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 					// field containing the length or an integer value.
 					count, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), 0)
 					if err != nil {
-						return err
+						return gerr.New(err, "field '%s'", path.string())
 					}
 					add := (count > f.Len())
 					// If the element type is a pointer, get the type of the
@@ -548,7 +559,7 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 						case reflect.Interface:
 							e = e.Elem()
 							if !e.IsValid() {
-								return ErrMarshalEmptyIntf
+								return gerr.New(ErrMarshalEmptyIntf, "field '%s'", path.string())
 							}
 							if err := unmarshal(e); err != nil {
 								return err
@@ -575,7 +586,7 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 							b := make([]byte, 1)
 							for {
 								if _, err := rdr.Read(b); err != nil {
-									return err
+									return gerr.New(err, "field '%s'", path.string())
 								}
 								if b[0] == 0 {
 									break
@@ -590,58 +601,59 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 						case reflect.Int8:
 							var a int8
 							if err := binary.Read(rdr, binary.LittleEndian, &a); err != nil {
-								return err
+								return gerr.New(err, "field '%s'", path.string())
 							}
 							e.SetInt(int64(a))
 							pending--
 						case reflect.Uint16:
 							var a uint16
 							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return err
+								return gerr.New(err, "field '%s'", path.string())
 							}
 							e.SetUint(uint64(a))
 							pending -= 2
 						case reflect.Int16:
 							var a int16
 							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return err
+								return gerr.New(err, "field '%s'", path.string())
 							}
 							e.SetInt(int64(a))
 							pending -= 2
 						case reflect.Uint32:
 							var a uint32
 							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return err
+								return gerr.New(err, "field '%s'", path.string())
 							}
 							e.SetUint(uint64(a))
 							pending -= 4
 						case reflect.Int32, reflect.Int:
 							var a int32
 							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return err
+								return gerr.New(err, "field '%s'", path.string())
 							}
 							e.SetInt(int64(a))
 							pending -= 4
 						case reflect.Uint64:
 							var a uint64
 							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return err
+								return gerr.New(err, "field '%s'", path.string())
 							}
 							e.SetUint(a)
 							pending -= 8
 						case reflect.Int64:
 							var a int64
 							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return err
+								return gerr.New(err, "field '%s'", path.string())
 							}
 							e.SetInt(a)
 							pending -= 8
 						}
 					}
 				default:
-					return ErrMarshalUnknownType
+					return gerr.New(ErrMarshalUnknownType, "field '%s'", path.string())
 				}
 			}
+			path.pop()
 		}
 		return nil
 	}
@@ -656,8 +668,44 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 }
 
 //======================================================================
-// Helper methods
+// Helper types and methods
 //======================================================================
+
+// path keeps track of field "addresses" nested data structures.
+// The top-level struct is anonymous and labeled "@". The following path
+// elements are the field names as defined in the struct.
+type path struct {
+	list []string
+}
+
+// create a new path with top-level reference set
+func newPath() *path {
+	p := &path{
+		list: make([]string, 0),
+	}
+	p.push("@")
+	return p
+}
+
+// push (append) next level
+func (p *path) push(elem string) {
+	p.list = append(p.list, elem)
+}
+
+// pop (remove) last level
+func (p *path) pop() (elem string) {
+	num := len(p.list) - 1
+	elem = p.list[num]
+	p.list = p.list[:num]
+	return
+}
+
+// return human-readable path name
+func (p *path) string() string {
+	return strings.Join(p.list, ".")
+}
+
+//----------------------------------------------------------------------
 
 // read integer based on given endianess
 func readInt(rdr io.Reader, tag string, v interface{}) (err error) {
@@ -679,7 +727,9 @@ func writeInt(wrt io.Writer, tag string, v interface{}) (err error) {
 	return
 }
 
-// Get a method from an instance during unmarshalling:
+//----------------------------------------------------------------------
+
+// Get a method from an instance during (un-)marshalling:
 // 'inst' refers to the enclosing struct instance that "owns" the field
 // being unmarshalled. 'name' either refers to the name of a method of
 // the instance ("mthname") or a method of a field (or its subfields)
@@ -693,7 +743,7 @@ func getMethod(inst reflect.Value, name string) (mth reflect.Value, err error) {
 	}
 	if mth = inst.MethodByName(name); !mth.IsValid() {
 		if mth = inst.Addr().MethodByName(name); !mth.IsValid() {
-			err = ErrMarshalNoFcn
+			err = ErrMarshalMthdMissing
 		}
 	}
 	return
@@ -714,13 +764,13 @@ func callMethod(mthName, fldName string, x, inst reflect.Value) (res []reflect.V
 	numArgs := mth.Type().NumIn()
 	if numArgs > 1 {
 		// invalid number of arguments (none or just one string)
-		err = ErrMarshalFcnNumArg
+		err = ErrMarshalMthdNumArg
 		return
 	} else if numArgs == 1 {
 		// check for string argument
 		arg0 := mth.Type().In(0)
 		if arg0.Kind() != reflect.String {
-			err = ErrMarshalFcnArgType
+			err = ErrMarshalMthdArgType
 			return
 		}
 		// set argument
@@ -758,15 +808,27 @@ func parseSize(tagSize, fldName string, x, inst reflect.Value, inSize, pending i
 		// method call
 		mthName := strings.Trim(tagSize, "()")
 		var res []reflect.Value
-		res, err = callMethod(mthName, fldName, x, inst)
+		if res, err = callMethod(mthName, fldName, x, inst); err != nil {
+			return
+		}
+		if len(res) != 1 || !res[0].CanUint() {
+			err = ErrMarshalMthdResult
+			return
+		}
 		count = int(res[0].Uint())
 	} else {
-		n, err := strconv.ParseInt(tagSize, 10, 16)
-		if err == nil {
+		var n int64
+		if n, err = strconv.ParseInt(tagSize, 10, 16); err == nil {
 			count = int(n)
 		} else {
+			err = nil
 			// previous field value
-			count = int(x.FieldByName(tagSize).Uint())
+			ref := x.FieldByName(tagSize)
+			if !ref.CanUint() {
+				err = ErrMarshalFieldRef
+				return
+			}
+			count = int(ref.Uint())
 		}
 	}
 	// check actual size for expected size
@@ -791,9 +853,16 @@ func isUsed(tagOpt, fldName string, x, inst reflect.Value) (bool, error) {
 			if err != nil {
 				return false, err
 			}
+			if len(res) != 1 {
+				return false, ErrMarshalMthdResult
+			}
 			used = res[0].Bool()
 		} else {
-			used = x.FieldByName(tagOpt).Bool()
+			ref := x.FieldByName(tagOpt)
+			if ref.Kind() != reflect.Bool {
+				return false, ErrMarshalFieldRef
+			}
+			used = ref.Bool()
 		}
 	}
 	return used, nil
