@@ -100,7 +100,7 @@ var (
 	ErrMarshalNoSize       = errors.New("missing size tag on field")
 	ErrMarshalSizeMismatch = errors.New("size mismatch during unmarshal")
 	ErrMarshalEmptyIntf    = errors.New("can't handle empty interface")
-	ErrMarshalUnknownType  = errors.New("Unknown field type")
+	ErrMarshalUnknownType  = errors.New("unknown field type")
 	ErrMarshalMthdMissing  = errors.New("missing method")
 	ErrMarshalFieldRef     = errors.New("field reference invalid")
 	ErrMarshalMthdNumArg   = errors.New("method has more than one argument")
@@ -184,7 +184,7 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 			// Byte arrays
 			//----------------------------------------------------------
 			case []uint8:
-				if _, err := parseSize(tagSize, ft.Name, x, inst, len(v), 0); err != nil {
+				if _, err := parseSize(tagSize, ft.Name, x, inst, len(v), -1); err != nil {
 					return gerr.New(err, "field '%s'", path.string())
 				}
 				if _, err := wrt.Write(v); err != nil {
@@ -230,7 +230,7 @@ func MarshalStream(wrt io.Writer, obj interface{}) error {
 				// Slices
 				//------------------------------------------------------
 				case reflect.Slice:
-					count, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), 0)
+					count, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), -1)
 					if err != nil {
 						return gerr.New(err, "field '%s'", path.string())
 					}
@@ -517,7 +517,7 @@ func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 					// length. The tag value can be "*" for greedy (read
 					// until end of buffer), the name of a (previous) integer
 					// field containing the length or an integer value.
-					count, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), 0)
+					count, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), -1)
 					if err != nil {
 						return gerr.New(err, "field '%s'", path.string())
 					}
@@ -786,20 +786,22 @@ func callMethod(mthName, fldName string, x, inst reflect.Value) (res []reflect.V
 // parse number of slice/array elements
 func parseSize(tagSize, fldName string, x, inst reflect.Value, inSize, pending int) (count int, err error) {
 	// process "size" tag for slice/array
-	stl := len(tagSize)
-	if stl == 0 {
+	lts := len(tagSize)
+	if lts == 0 {
 		// if no size annotation is found, return the incoming length
 		return inSize, nil
 	}
 	if tagSize == "*" {
-		if pending > 0 {
+		if pending >= 0 {
 			count = pending
-			if stl > 1 && tagSize[1] == '-' {
+			if count > 0 && lts > 1 && tagSize[1] == '-' {
 				off, err := strconv.ParseInt(tagSize[2:], 10, 16)
 				if err != nil {
 					return 0, err
 				}
-				count -= int(off)
+				if count > int(off) {
+					count -= int(off)
+				}
 			}
 		} else {
 			count = -1

@@ -91,7 +91,7 @@ type EnvelopeStruct struct {
 //----------------------------------------------------------------------
 
 type VarStruct struct {
-	A uint16
+	A int16
 	B []byte `size:"(CalcSize)"`
 	C []byte `size:"(CalcSize)"`
 	D []byte `size:"*"`
