@@ -21,7 +21,6 @@ package math
 //----------------------------------------------------------------------
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -74,7 +73,7 @@ func TestSqrt(t *testing.T) {
 			}
 			gg := h.ModPow(TWO, p)
 			if !gg.Equals(g) {
-				t.Fatal(fmt.Sprintf("result error: %v != %v", g, gg))
+				t.Fatalf("result error: %v != %v", g, gg)
 			}
 		}
 	}

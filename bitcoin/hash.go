@@ -23,6 +23,7 @@ package bitcoin
 import (
 	"crypto/sha1"
 	"crypto/sha256"
+
 	"golang.org/x/crypto/ripemd160"
 )
 

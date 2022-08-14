@@ -66,7 +66,7 @@ func TestExec(t *testing.T) {
 	}
 	scr, rc := Parse(s[0])
 	if rc != RcOK {
-		t.Fatal(fmt.Sprintf("Parse failed: rc=%s", RcString[rc]))
+		t.Fatalf("Parse failed: rc=%s", RcString[rc])
 	}
 	ok, rc := r.exec(scr)
 	if rc != RcOK {
@@ -76,7 +76,7 @@ func TestExec(t *testing.T) {
 			}
 			return
 		}
-		t.Fatal(fmt.Sprintf("Exec failed: rc=%s", RcString[rc]))
+		t.Fatalf("Exec failed: rc=%s", RcString[rc])
 	}
 	if verbose {
 		fmt.Printf("Result: %v\n", ok)
@@ -86,11 +86,11 @@ func TestExec(t *testing.T) {
 func TestTemplate(t *testing.T) {
 	scr, rc := Parse(s[0])
 	if rc != RcOK {
-		t.Fatal(fmt.Sprintf("Parse failed: rc=%s", RcString[rc]))
+		t.Fatalf("Parse failed: rc=%s", RcString[rc])
 	}
 	tpl, rc := scr.GetTemplate()
 	if rc != RcOK {
-		t.Fatal(fmt.Sprintf("GetTemplate failed: rc=%s", RcString[rc]))
+		t.Fatalf("GetTemplate failed: rc=%s", RcString[rc])
 	}
 	if verbose {
 		fmt.Printf("Template: %s\n", hex.EncodeToString(tpl))

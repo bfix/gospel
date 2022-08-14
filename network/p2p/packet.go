@@ -24,7 +24,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
+	"errors"
 
 	"github.com/bfix/gospel/crypto/ed25519"
 	"github.com/bfix/gospel/data"
@@ -34,9 +34,9 @@ import (
 
 // Error messages
 var (
-	ErrPacketSenderMismatch = fmt.Errorf("Sender not matching message header")
-	ErrPacketIntegrity      = fmt.Errorf("Packet integrity violated")
-	ErrPacketSizeMismatch   = fmt.Errorf("Packet size mismatch")
+	ErrPacketSenderMismatch = errors.New("sender not matching message header")
+	ErrPacketIntegrity      = errors.New("packet integrity violated")
+	ErrPacketSizeMismatch   = errors.New("packet size mismatch")
 )
 
 //----------------------------------------------------------------------

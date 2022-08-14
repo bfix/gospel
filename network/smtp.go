@@ -26,10 +26,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/bfix/gospel/crypto"
-	"github.com/bfix/gospel/logger"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -40,6 +36,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/bfix/gospel/crypto"
+	gerr "github.com/bfix/gospel/errors"
+	"github.com/bfix/gospel/logger"
+	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/armor"
 )
 
 // SendMailMessage handles outgoing message to SMTP server.
@@ -52,7 +54,7 @@ import (
 //   to initiate a channel encryption.
 //
 // - Connections can be tunneled through any SOCKS5 proxy (like Tor)
-func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) error {
+func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) (err error) {
 	var (
 		c0  net.Conn
 		c1  *tls.Conn
@@ -70,9 +72,9 @@ func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) error {
 		}
 	}()
 
-	uSrv, err := url.Parse(host)
-	if err != nil {
-		return err
+	var uSrv *url.URL
+	if uSrv, err = url.Parse(host); err != nil {
+		return
 	}
 	if proxy == "" {
 		c0, err = net.Dial("tcp", uSrv.Host)
@@ -83,26 +85,27 @@ func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) error {
 		)
 		host, portS, err = net.SplitHostPort(uSrv.Host)
 		if err != nil {
-			return err
+			return
 		}
 		port, err = strconv.ParseInt(portS, 10, 32)
 		if err != nil {
-			return err
+			return
 		}
 		c0, err = Socks5Connect("tcp", host, int(port), proxy)
 	}
 	if err != nil {
-		return err
+		return
 	}
 	if c0 == nil {
-		return errors.New("Can't estabish connection to " + uSrv.Host)
+		err = errors.New("can't estabish connection to " + uSrv.Host)
+		return
 	}
 
 	sslConfig := &tls.Config{InsecureSkipVerify: true}
 	if uSrv.Scheme == "smtps" {
 		c1 = tls.Client(c0, sslConfig)
 		if err = c1.Handshake(); err != nil {
-			return err
+			return
 		}
 		cli, err = smtp.NewClient(c1, uSrv.Host)
 	} else {
@@ -114,26 +117,31 @@ func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) error {
 		}
 	}
 	if err != nil {
-		return err
+		return
 	}
 	pw, _ := uSrv.User.Password()
 	auth := smtp.PlainAuth("", uSrv.User.Username(), pw, uSrv.Host)
 	if err = cli.Auth(auth); err != nil {
-		return err
+		return
 	}
 	if err = cli.Mail(fromAddr); err != nil {
-		return err
+		return
 	}
 	if err = cli.Rcpt(toAddr); err != nil {
-		return err
+		return
 	}
 	wrt, err := cli.Data()
 	if err != nil {
-		return err
+		return
 	}
-	wrt.Write(body)
-	wrt.Close()
-	return cli.Quit()
+	if _, err = wrt.Write(body); err != nil {
+		return
+	}
+	if err = wrt.Close(); err != nil {
+		return
+	}
+	err = cli.Quit()
+	return
 }
 
 // MailAttachment is a data structure for data attached to a mail.
@@ -144,67 +152,77 @@ type MailAttachment struct {
 
 // CreateMailMessage creates a (plain) SMTP email with body and
 // optional attachments.
-func CreateMailMessage(body []byte, att []*MailAttachment) ([]byte, error) {
+func CreateMailMessage(body []byte, att []*MailAttachment) (msg []byte, err error) {
 	buf := new(bytes.Buffer)
 	wrt := multipart.NewWriter(buf)
-	buf.WriteString(
+	_, err = buf.WriteString(
 		"MIME-Version: 1.0\n" +
 			"Content-Type: multipart/mixed;\n" +
 			" boundary=\"" + wrt.Boundary() + "\"\n\n" +
 			"This is a multi-part message in MIME format.\n")
+	if err != nil {
+		return
+	}
 	hdr := textproto.MIMEHeader{}
 	hdr.Set("Content-Type", "text/plain; charset=ISO-8859-15")
 	hdr.Set("Content-Transfer-Encoding", "utf-8")
-	pw, err := wrt.CreatePart(hdr)
-	if err != nil {
-		return nil, err
+	var pw io.Writer
+	if pw, err = wrt.CreatePart(hdr); err != nil {
+		return
 	}
-	pw.Write(body)
+	if _, err = pw.Write(body); err != nil {
+		return
+	}
 
 	for _, a := range att {
-		pw, err = wrt.CreatePart(a.Header)
-		if err != nil {
-			return nil, err
+		if pw, err = wrt.CreatePart(a.Header); err != nil {
+			return
 		}
-		pw.Write(a.Data)
+		if _, err = pw.Write(a.Data); err != nil {
+			return
+		}
 	}
-	wrt.Close()
-	return buf.Bytes(), nil
+	if err = wrt.Close(); err != nil {
+		return
+	}
+	msg = buf.Bytes()
+	return
 }
 
 // EncryptMailMessage encrypts a mail with given public key.
-func EncryptMailMessage(key, body []byte) ([]byte, error) {
+func EncryptMailMessage(key, body []byte) (cipher []byte, err error) {
 	rdr := bytes.NewBuffer(key)
-	keyring, err := openpgp.ReadArmoredKeyRing(rdr)
-	if err != nil {
-		logger.Println(logger.ERROR, err.Error())
-		return nil, err
+	var keyring openpgp.EntityList
+	if keyring, err = openpgp.ReadArmoredKeyRing(rdr); err != nil {
+		return
 	}
 
 	out := new(bytes.Buffer)
-	ct, err := armor.Encode(out, "PGP MESSAGE", nil)
-	if err != nil {
-		logger.Println(logger.ERROR, "Can't create armorer: "+err.Error())
-		return nil, err
+	var ct, wrt io.WriteCloser
+	if ct, err = armor.Encode(out, "PGP MESSAGE", nil); err != nil {
+		err = gerr.New(err, "no armorer created")
+		return
 	}
-	wrt, err := openpgp.Encrypt(ct, []*openpgp.Entity{keyring[0]}, nil, &openpgp.FileHints{IsBinary: true}, nil)
-	if err != nil {
-		logger.Println(logger.ERROR, err.Error())
-		return nil, err
+	if wrt, err = openpgp.Encrypt(ct, []*openpgp.Entity{keyring[0]}, nil, &openpgp.FileHints{IsBinary: true}, nil); err != nil {
+		return
 	}
-	wrt.Write(body)
-	wrt.Close()
-	ct.Close()
+	if _, err = wrt.Write(body); err != nil {
+		return
+	}
+	if err = wrt.Close(); err != nil {
+		return
+	}
+	if err = ct.Close(); err != nil {
+		return
+	}
 
 	tmp := make([]byte, 30)
-	_, err = io.ReadFull(rand.Reader, tmp)
-	if err != nil {
-		logger.Println(logger.ERROR, err.Error())
-		return nil, err
+	if _, err = io.ReadFull(rand.Reader, tmp); err != nil {
+		return
 	}
 	bndry := fmt.Sprintf("%x", tmp)
 	msg := new(bytes.Buffer)
-	msg.WriteString(
+	_, err = msg.WriteString(
 		"MIME-Version: 1.0\n" +
 			"Content-Type: multipart/encrypted;\n" +
 			" protocol=\"application/pgp-encrypted\";\n" +
@@ -218,8 +236,12 @@ func EncryptMailMessage(key, body []byte) ([]byte, error) {
 			"Content-Type: application/octet-stream;\n name=\"encrypted.asc\"\n" +
 			"Content-Description: OpenPGP encrypted message\n" +
 			"Content-Disposition: inline;\n filename=\"encrypted.asc\"\n\n" +
-			string(out.Bytes()) + "\n--" + bndry + "--")
-	return msg.Bytes(), nil
+			out.String() + "\n--" + bndry + "--")
+	if err != nil {
+		return
+	}
+	cipher = msg.Bytes()
+	return
 }
 
 // MailContent is the result type for parsing mail messages
@@ -239,9 +261,9 @@ type MailUserInfo func(key int, data string) interface{}
 func getIdentity(getInfo MailUserInfo, key int, data string) *openpgp.Entity {
 	var id *openpgp.Entity
 	tmp := getInfo(key, data)
-	switch tmp.(type) {
+	switch ent := tmp.(type) {
 	case *openpgp.Entity:
-		id = tmp.(*openpgp.Entity)
+		id = ent
 	}
 	return id
 }
@@ -266,28 +288,28 @@ const (
 )
 
 // ParseMailMessage dissects an incoming mail message
-func ParseMailMessage(msg io.Reader, getInfo MailUserInfo) (*MailContent, error) {
-	m, err := mail.ReadMessage(msg)
-	if err != nil {
-		return nil, err
+func ParseMailMessage(msg io.Reader, getInfo MailUserInfo) (mc *MailContent, err error) {
+	var (
+		m                *mail.Message
+		fromAddr, toAddr *mail.Address
+	)
+	if m, err = mail.ReadMessage(msg); err != nil {
+		return
 	}
-	fromAddr, err := mail.ParseAddress(m.Header.Get("From"))
-	if err != nil {
-		return nil, err
+	if fromAddr, err = mail.ParseAddress(m.Header.Get("From")); err != nil {
+		return
 	}
-	toAddr, err := mail.ParseAddress(m.Header.Get("To"))
-	if err != nil {
-		return nil, err
+	if toAddr, err = mail.ParseAddress(m.Header.Get("To")); err != nil {
+		return
 	}
 	ct := m.Header.Get("Content-Type")
-	var mc *MailContent
 	if strings.HasPrefix(ct, ctPLAIN) {
 		mc = new(MailContent)
 		mc.Mode = modePLAIN
 		mc.Key = nil
-		data, err := ioutil.ReadAll(m.Body)
-		if err != nil {
-			return nil, err
+		var data []byte
+		if data, err = ioutil.ReadAll(m.Body); err != nil {
+			return
 		}
 		mc.Body = string(data)
 	} else if strings.HasPrefix(ct, ctMPMIX) {
@@ -298,15 +320,16 @@ func ParseMailMessage(msg io.Reader, getInfo MailUserInfo) (*MailContent, error)
 		mc, err = ParseSigned(ct, fromAddr.Address, getInfo, m.Body)
 	}
 	if err != nil {
-		return nil, err
+		return
 	}
 	if mc == nil {
-		return nil, errors.New("Unparsed mail message")
+		err = errors.New("unparsed mail message")
+		return
 	}
 	mc.From = fromAddr.Address
 	mc.To = toAddr.Address
 	mc.Subject = m.Header.Get("Subject")
-	return mc, nil
+	return
 }
 
 // ParsePlain disassembles a plain email message.
@@ -366,17 +389,21 @@ func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (*Mai
 				}
 				pw := ""
 				pwTmp := getInfo(infoPASSPHRASE, "")
-				switch pwTmp.(type) {
+				switch pws := pwTmp.(type) {
 				case string:
-					pw = pwTmp.(string)
+					pw = pws
 				}
 				prompt := func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
 					priv := keys[0].PrivateKey
 					if priv.Encrypted {
-						priv.Decrypt([]byte(pw))
+						if err = priv.Decrypt([]byte(pw)); err != nil {
+							return nil, err
+						}
 					}
 					buf := new(bytes.Buffer)
-					priv.Serialize(buf)
+					if err = priv.Serialize(buf); err != nil {
+						return nil, err
+					}
 					return buf.Bytes(), nil
 				}
 				id := getIdentity(getInfo, infoIDENTITY, "")

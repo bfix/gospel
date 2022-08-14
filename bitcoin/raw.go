@@ -99,10 +99,11 @@ func NewDissectedTransaction(rawHex string) (dt *DissectedTransaction, err error
 	dt.Content = append(dt.Content, buf[pos:pos+j])
 	pos += j
 	for i := 0; i < int(n); i++ {
-		add(32)                           // input address hash
-		add(4)                            // input index
-		s, j, err := GetVarUint(buf, pos) // size of script
-		if err != nil {
+		add(32) // input address hash
+		add(4)  // input index
+		// size of script
+		var s uint64
+		if s, j, err = GetVarUint(buf, pos); err != nil {
 			return nil, err
 		}
 		dt.Content = append(dt.Content, buf[pos:pos+j])
@@ -154,7 +155,7 @@ func (d *DissectedTransaction) Bytes() (buf []byte) {
 func (d *DissectedTransaction) PrepareForSign(vin int, scr []byte) error {
 	d.VinSlot = vin
 	// create a local copy of the content.
-	var tx [][]byte
+	tx := make([][]byte, 0)
 	for _, b := range d.Content {
 		bl := len(b)
 		r := make([]byte, bl)
@@ -238,7 +239,7 @@ func GetVarUint(buf []byte, p int) (uint64, int, error) {
 		v, err := GetUint(buf, p+1, 4)
 		return v, 5, err
 	case 0xff:
-		return 0, 1, errors.New("Invalid VarUint")
+		return 0, 1, errors.New("invalid VarUint")
 	default:
 		return uint64(buf[p]), 1, nil
 	}

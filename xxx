@@ -1,0 +1,78 @@
+bitcoin/rpc/wallet.go:122:11: Error return value is not checked (errcheck)
+	label := res.Result.(string)
+	         ^
+bitcoin/rpc/wallet.go:132:10: Error return value is not checked (errcheck)
+	addr := res.Result.(string)
+	        ^
+bitcoin/rpc/wallet.go:262:10: Error return value is not checked (errcheck)
+	data := res.Result.(map[string]interface{})
+	        ^
+bitcoin/rpc/transaction.go:320:9: shadow: declaration of "err" shadows declaration at line 315 (govet)
+	if ok, err := res.UnmarshalResult(&addr); !ok {
+	       ^
+bitcoin/rpc/wallet_test.go:118:8: shadow: declaration of "err" shadows declaration at line 103 (govet)
+	if _, err := sess.GetAccountAddress(_accnt); err != nil {
+	      ^
+bitcoin/rpc/wallet_test.go:126:13: shadow: declaration of "err" shadows declaration at line 103 (govet)
+		addrList, err := sess.GetAddressesByAccount(label)
+		          ^
+bitcoin/rpc/transaction.go:33:2: ST1003: var ErrBtcRpcNoHex should be ErrBtcRPCNoHex (stylecheck)
+	ErrBtcRpcNoHex          = errors.New("missing hex encoding of raw transaction")
+	^
+bitcoin/rpc/transaction.go:34:2: ST1003: var ErrBtcRpcVinBounds should be ErrBtcRPCVinBounds (stylecheck)
+	ErrBtcRpcVinBounds      = errors.New("vin out of bounds")
+	^
+bitcoin/rpc/transaction.go:35:2: ST1003: var ErrBtcRpcVoutBounds should be ErrBtcRPCVoutBounds (stylecheck)
+	ErrBtcRpcVoutBounds     = errors.New("vout out of bounds")
+	^
+bitcoin/rpc/transaction.go:36:2: ST1003: var ErrBtcRpcParseBinFailed should be ErrBtcRPCParseBinFailed (stylecheck)
+	ErrBtcRpcParseBinFailed = errors.New("parseBin failed")
+	^
+bitcoin/rpc/transaction.go:37:2: ST1003: var ErrBtcRpcScriptFailed should be ErrBtcRPCScriptFailed (stylecheck)
+	ErrBtcRpcScriptFailed   = errors.New("execScript failed")
+	^
+bitcoin/wallet/address.go:494:14: Error return value of `binary.Write` is not checked (errcheck)
+	binary.Write(res, binary.BigEndian, crc)
+	            ^
+bitcoin/wallet/hd.go:171:13: Error return value of `binary.Read` is not checked (errcheck)
+	binary.Read(rdr, binary.BigEndian, &i)
+	           ^
+bitcoin/wallet/hd.go:382:14: Error return value of `binary.Write` is not checked (errcheck)
+	binary.Write(mac, binary.BigEndian, i)
+	            ^
+bitcoin/wallet/hd.go:408:14: Error return value of `binary.Write` is not checked (errcheck)
+	binary.Write(mac, binary.BigEndian, i)
+	            ^
+bitcoin/wallet/coins.go:151:10: `STRAT` is a misspelling of `START` (misspell)
+		{105, "STRAT", "Stratis"},
+		       ^
+bitcoin/wallet/coins.go:769:18: `Contentos` is a misspelling of `Contents` (misspell)
+		{3077, "COS", "Contentos"},
+		               ^
+bitcoin/wallet/address.go:104:15: unnecessary conversion (unconvert)
+	return string(bitcoin.Base58Encode(addr))
+	             ^
+bitcoin/wallet/hd.go:131:15: unnecessary conversion (unconvert)
+	return string(bitcoin.Base58Encode(r))
+	             ^
+bitcoin/wallet/address_test.go:111:12: unnecessary conversion (unconvert)
+		if string(addr) != d.IDaddr {
+		         ^
+data/marshal.go:696:23: (*path).pop - result elem is never used (unparam)
+func (p *path) pop() (elem string) {
+                      ^
+bitcoin/hash.go:27:2: SA1019: package golang.org/x/crypto/ripemd160 is deprecated: RIPEMD-160 is a legacy hash and should not be used for new applications. Also, this package does not and will not provide an optimized implementation. Instead, use a modern hash like SHA-256 (from crypto/sha256). (staticcheck)
+	"golang.org/x/crypto/ripemd160"
+	^
+parser/parser.go:242:9: shadow: declaration of "err" shadows declaration at line 94 (govet)
+					if err := rdr.UnreadRune(); err != nil {
+					   ^
+parser/parser.go:355:5: ST1015: default case should be first or last in switch statement (stylecheck)
+				default:
+				^
+parser/data_test.go:74:6: test helper function should start from t.Helper() (thelper)
+func testCase1(t *testing.T, data, access, path, elem string, flags string) {
+     ^
+network/smtp.go:310:18: expected type, found newline (typecheck)
+		var data [byte]
+		               ^

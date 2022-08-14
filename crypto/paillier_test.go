@@ -21,8 +21,9 @@ package crypto
 //----------------------------------------------------------------------
 
 import (
-	"github.com/bfix/gospel/math"
 	"testing"
+
+	"github.com/bfix/gospel/math"
 )
 
 func TestPaillier(t *testing.T) {

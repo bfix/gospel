@@ -491,6 +491,6 @@ func makeAddressBCH(key *bitcoin.PublicKey, coin, version, network, prefix int) 
 	copy(values[12:], bit5(buf))
 	crc := polymod(values)
 	res := new(bytes.Buffer)
-	binary.Write(res, binary.BigEndian, crc)
+	_ = binary.Write(res, binary.BigEndian, crc)
 	return addr + strings.Trim(b32.EncodeToString(res.Bytes()[3:]), "=")
 }

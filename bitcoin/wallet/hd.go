@@ -36,9 +36,9 @@ import (
 
 // Error codes
 var (
-	ErrHDVersion = errors.New("Version mismatch")
-	ErrHDPath    = errors.New("Invalid HD path")
-	ErrHDKey     = errors.New("Invalid HD key")
+	ErrHDVersion = errors.New("version mismatch")
+	ErrHDPath    = errors.New("invalid HD path")
+	ErrHDKey     = errors.New("invalid HD key")
 )
 
 //----------------------------------------------------------------------
@@ -345,7 +345,7 @@ func (hd *HDPublic) Public(path string) (pub *ExtendedPublicKey, err error) {
 	// trim to relative path
 	path = path[len(hd.path)+1:]
 	// check for hardened levels
-	if strings.Index(path, "'") != -1 {
+	if strings.Contains(path, "'") {
 		return nil, ErrHDPath
 	}
 	// follow the path...
@@ -405,7 +405,7 @@ func CKDpub(k *ExtendedPublicKey, i uint32) (ki *ExtendedPublicKey) {
 	}
 	mac := hmac.New(sha512.New, k.Data.Chaincode)
 	mac.Write(k.Key.Bytes(true))
-	binary.Write(mac, binary.BigEndian, i)
+	_ = binary.Write(mac, binary.BigEndian, i)
 	x := mac.Sum(nil)
 
 	j := math.NewIntFromBytes(x[:32])

@@ -23,6 +23,7 @@ package crypto
 import (
 	"bytes"
 	"errors"
+
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
@@ -50,7 +51,7 @@ func GetPublicKey(buf []byte) (*packet.PublicKey, error) {
 	}
 	key, ok := keyData.(*packet.PublicKey)
 	if !ok {
-		return nil, errors.New("Invalid public key")
+		return nil, errors.New("invalid public key")
 	}
 	return key, nil
 }
@@ -76,21 +77,22 @@ func GetKeyFromIdentity(ent *openpgp.Entity, mode int) *openpgp.Key {
 	key := new(openpgp.Key)
 	key.Entity = ent
 	ki := -1
+loop:
 	for i, sk := range ent.Subkeys {
 		switch mode {
 		case KeySign:
 			if sk.PublicKey.PubKeyAlgo.CanSign() {
 				ki = i
-				break
+				break loop
 			}
 		case KeyEncrypt:
 			if sk.PublicKey.PubKeyAlgo.CanEncrypt() {
 				ki = i
-				break
+				break loop
 			}
 		case KeyAuth:
 			ki = i
-			break
+			break loop
 		}
 	}
 	if ki >= 0 {

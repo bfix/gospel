@@ -200,10 +200,10 @@ func TestReceived(t *testing.T) {
 			}
 		}
 		if amount != rAc.Amount {
-			t.Fatal(fmt.Sprintf("Amount mismatch: %f != %f\n", rAc.Amount, amount))
+			t.Fatalf("Amount mismatch: %f != %f\n", rAc.Amount, amount)
 		}
 		if confirmations != rAc.Confirmations {
-			t.Fatal(fmt.Sprintf("Confirmations mismatch: %d != %d\n", rAc.Confirmations, confirmations))
+			t.Fatalf("Confirmations mismatch: %d != %d\n", rAc.Confirmations, confirmations)
 		}
 	}
 }

@@ -21,10 +21,20 @@ package rpc
 //----------------------------------------------------------------------
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/bfix/gospel/bitcoin"
 	"github.com/bfix/gospel/bitcoin/script"
+	gerr "github.com/bfix/gospel/errors"
+)
+
+// Error codes
+var (
+	ErrBtcRPCNoHex          = errors.New("missing hex encoding of raw transaction")
+	ErrBtcRPCVinBounds      = errors.New("vin out of bounds")
+	ErrBtcRPCVoutBounds     = errors.New("vout out of bounds")
+	ErrBtcRPCParseBinFailed = errors.New("parseBin failed")
+	ErrBtcRPCScriptFailed   = errors.New("execScript failed")
 )
 
 // CreateRawTransaction [{"txid":txid,"vout":n},...] {address:amount,...}
@@ -314,44 +324,45 @@ func (s *Session) VerifyTxOutProof(proof string) ([]string, error) {
 }
 
 // VerifyTransfer verifies a fund transfer.
-func VerifyTransfer(prev *RawTransaction, vout int, curr *RawTransaction, vin int) (bool, error) {
+func VerifyTransfer(prev *RawTransaction, vout int, curr *RawTransaction, vin int) (ok bool, err error) {
 	// dissect left transaction
 	if prev.Hex == nil {
-		return false, fmt.Errorf("Missing hex encoding of raw transaction")
+		err = ErrBtcRPCNoHex
+		return
 	}
-	prevTx, err := bitcoin.NewDissectedTransaction(*prev.Hex)
-	if err != nil {
-		return false, err
+	var prevTx, currTx *bitcoin.DissectedTransaction
+	if prevTx, err = bitcoin.NewDissectedTransaction(*prev.Hex); err != nil {
+		return
 	}
 	// dissect right transaction
 	if curr.Hex == nil {
-		return false, fmt.Errorf("Missing hex encoding of raw transaction")
+		err = ErrBtcRPCNoHex
+		return
 	}
-	currTx, err := bitcoin.NewDissectedTransaction(*curr.Hex)
-	if err != nil {
-		return false, err
+	if currTx, err = bitcoin.NewDissectedTransaction(*curr.Hex); err != nil {
+		return
 	}
 	// get scriptSig from current transaction for the vin slot
-	nc, _, err := bitcoin.GetVarUint(currTx.Content[1], 0)
-	if err != nil {
-		return false, err
+	var nc, np, o uint64
+	if nc, _, err = bitcoin.GetVarUint(currTx.Content[1], 0); err != nil {
+		return
 	}
 	if vin >= int(nc) {
-		return false, fmt.Errorf("Vin out of bounds")
+		err = gerr.New(ErrBtcRPCVinBounds, "%d of %d", vin, nc-1)
+		return
 	}
 	vinScr := currTx.Content[5*vin+5]
 	// get scriptPubkey from previous transaction
-	np, _, err := bitcoin.GetVarUint(prevTx.Content[1], 0)
-	if err != nil {
-		return false, err
+	if np, _, err = bitcoin.GetVarUint(prevTx.Content[1], 0); err != nil {
+		return
 	}
 	m := 5*int(np) + 2
-	o, _, err := bitcoin.GetVarUint(prevTx.Content[m], 0)
-	if err != nil {
-		return false, err
+	if o, _, err = bitcoin.GetVarUint(prevTx.Content[m], 0); err != nil {
+		return
 	}
 	if vout >= int(o) {
-		return false, fmt.Errorf("Vout out of bounds")
+		err = gerr.New(ErrBtcRPCVoutBounds, "%d of %d", vout, o-1)
+		return
 	}
 	voutScr := prevTx.Content[m+4*vout+4]
 	// assemble script
@@ -359,18 +370,19 @@ func VerifyTransfer(prev *RawTransaction, vout int, curr *RawTransaction, vin in
 	scr = append(scr, vinScr...)
 	scr = append(scr, voutScr...)
 	// prepare raw transaction for signing
-	if err := currTx.PrepareForSign(vin, voutScr); err != nil {
-		return false, err
+	if err = currTx.PrepareForSign(vin, voutScr); err != nil {
+		return
 	}
 	// run script
 	s, rc := script.ParseBin(scr)
 	if rc != script.RcOK {
-		return false, fmt.Errorf("ParseBin failed with '%s'", script.RcString[rc])
+		err = gerr.New(ErrBtcRPCParseBinFailed, "%s", script.RcString[rc])
+		return
 	}
 	rt := script.NewRuntime()
-	ok, rc := rt.ExecScript(s, currTx)
-	if rc != script.RcOK {
-		return ok, fmt.Errorf("ExecScript failed with '%s'", script.RcString[rc])
+	if ok, rc = rt.ExecScript(s, currTx); rc != script.RcOK {
+		err = gerr.New(ErrBtcRPCScriptFailed, "%s", script.RcString[rc])
+		return
 	}
 	return ok, nil
 }

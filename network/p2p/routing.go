@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base32"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -53,7 +54,7 @@ var (
 	AddrSize uint16 = 32
 
 	// ErrAddressInvalid error message for malformed addresses
-	ErrAddressInvalid = fmt.Errorf("Invalid address")
+	ErrAddressInvalid = errors.New("invalid address")
 )
 
 // Address encapsulates data representing the object identifier.
@@ -172,7 +173,7 @@ func (d *drop) update() {
 
 // check if a drop has expired
 func (d *drop) expired() bool {
-	return time.Now().Sub(d.seen).Seconds() > BucketTTLSecs
+	return time.Since(d.seen).Seconds() > BucketTTLSecs
 }
 
 //----------------------------------------------------------------------
@@ -260,7 +261,6 @@ func (b *Bucket) Update(pos int, drop *drop) {
 	copy(b.addrs[pos:b.count-1], b.addrs[pos+1:b.count])
 	b.addrs[b.count-1] = drop
 	b.lock.Unlock()
-	return
 }
 
 // Count returns the number of addresses in bucket

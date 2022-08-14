@@ -134,7 +134,7 @@ func (prv *PrivateKey) Mult(n *math.Int) *PrivateKey {
 // NewKeypair creates a new Ed25519 key pair.
 func NewKeypair() (*PublicKey, *PrivateKey) {
 	seed := make([]byte, 32)
-	rand.Read(seed)
+	_, _ = rand.Read(seed)
 	prv := NewPrivateKeyFromSeed(seed)
 	pub := prv.Public()
 	return pub, prv

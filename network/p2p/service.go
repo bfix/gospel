@@ -24,7 +24,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/bfix/gospel/data"
@@ -37,9 +37,9 @@ import (
 
 // Error messages
 var (
-	ErrServiceRequest         = fmt.Errorf("Request failed or invalid")
-	ErrServiceRequestUnknown  = fmt.Errorf("Unknown request")
-	ErrServiceResponseUnknown = fmt.Errorf("Unknown response")
+	ErrServiceRequest         = errors.New("request failed or invalid")
+	ErrServiceRequestUnknown  = errors.New("unknown request")
+	ErrServiceResponseUnknown = errors.New("unknown response")
 )
 
 //----------------------------------------------------------------------
@@ -167,15 +167,17 @@ func (s *ServiceImpl) Task(ctx context.Context, m Message, f *TaskHandler) (err 
 	// register for responses
 	ctrl := make(chan int)
 	txid := int(m.Header().TxID)
-	s.listeners.Add(txid, func(ctx context.Context, m Message) (bool, error) {
+	err = s.listeners.Add(txid, func(ctx context.Context, m Message) (ok bool, err error) {
 		// call the "real" handler
-		rc, err := f.msgHdlr(ctx, m)
-		if rc {
+		if ok, err = f.msgHdlr(ctx, m); ok {
 			// no more responses expected
 			ctrl <- 0
 		}
-		return rc, err
+		return
 	})
+	if err != nil {
+		return
+	}
 	// send message
 	ctxSend, cancel := context.WithDeadline(ctx, time.Now().Add(f.timeout))
 	defer cancel()
@@ -183,14 +185,15 @@ func (s *ServiceImpl) Task(ctx context.Context, m Message, f *TaskHandler) (err 
 		return
 	}
 	// timeout for response(s)
-	tick := time.Tick(f.timeout)
+	tick := time.NewTicker(f.timeout)
 	select {
-	case <-tick:
+	case <-tick.C:
 		err = ErrNodeTimeout
+		tick.Stop()
 	case <-ctrl:
 	}
 	// unregister handler
-	s.listeners.Remove(txid)
+	err = s.listeners.Remove(txid)
 	return
 }
 
@@ -211,24 +214,26 @@ func NewServiceList() *ServiceList {
 }
 
 // MessageFactory re-creates a message from binary data.
-func (sl *ServiceList) MessageFactory(buf []byte) (Message, error) {
+func (sl *ServiceList) MessageFactory(buf []byte) (msg Message, err error) {
 	// read the type of the message
 	var mt uint16
-	binary.Read(bytes.NewBuffer(buf[2:4]), binary.BigEndian, &mt)
-
+	if err = binary.Read(bytes.NewBuffer(buf[2:4]), binary.BigEndian, &mt); err != nil {
+		return
+	}
 	// create empty message of given type
 	for _, srv := range sl.srvcs {
-		msg := srv.NewMessage(int(mt))
-		if msg != nil {
+		if msg = srv.NewMessage(int(mt)); msg != nil {
 			// parse binary data
-			if err := data.Unmarshal(msg, buf); err != nil {
-				return nil, err
+			if err = data.Unmarshal(msg, buf); err != nil {
+				msg = nil
+				return
 			}
-			return msg, nil
+			return
 		}
 	}
 	// we failed to re-create the message
-	return nil, ErrMessageParse
+	err = ErrMessageParse
+	return
 }
 
 // Add service to list

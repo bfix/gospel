@@ -49,7 +49,7 @@ func (s *Session) AddMultiSigAddress(m int, list interface{}, account string) (s
 	case string:
 		data = append(data, list)
 	default:
-		return "", errors.New("Unknown parameter type #2")
+		return "", errors.New("unknown parameter type #2")
 	}
 	data = append(data, account)
 	res, err := s.call("addmultisigaddress", data)
@@ -135,17 +135,13 @@ func (s *Session) GetAccountAddress(label string) (string, error) {
 
 // GetAddressesByAccount returns the an array of bitcoin addresses
 // matching label.
-func (s *Session) GetAddressesByAccount(label string) ([]string, error) {
-	res, err := s.call("getaddressesbyaccount", []Data{label})
-	if err != nil {
-		return nil, err
+func (s *Session) GetAddressesByAccount(label string) (list []string, err error) {
+	var res *Response
+	if res, err = s.call("getaddressesbyaccount", []Data{label}); err != nil {
+		return
 	}
-	var list []string
-	val := res.Result.([]interface{})
-	for _, v := range val {
-		list = append(list, v.(string))
-	}
-	return list, nil
+	list, _ = res.Result.([]string)
+	return
 }
 
 // GetBalance returns the balance in the account.

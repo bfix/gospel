@@ -21,9 +21,10 @@ package crypto
 //----------------------------------------------------------------------
 
 import (
-	"github.com/bfix/gospel/math"
 	"math/rand"
 	"testing"
+
+	"github.com/bfix/gospel/math"
 )
 
 func TestKeys(t *testing.T) {

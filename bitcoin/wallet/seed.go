@@ -33,7 +33,7 @@ import (
 
 // Error codes
 var (
-	ErrInvalidEntropy = fmt.Errorf("Invalid entropy data")
+	ErrInvalidEntropy = fmt.Errorf("invalid entropy data")
 )
 
 // WordsToSeed computes a seed value for a given word list

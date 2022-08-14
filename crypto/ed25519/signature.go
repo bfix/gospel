@@ -24,18 +24,19 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha512"
-	"fmt"
+	"errors"
 
 	"github.com/bfix/gospel/math"
 )
 
 // Error codes for signing / verifying
 var (
-	ErrSigInvalidPrvKey = fmt.Errorf("private key not suitable for EdDSA")
-	ErrSigNotEdDSA      = fmt.Errorf("not a EdDSA signature")
-	ErrSigNotEcDSA      = fmt.Errorf("not a EcDSA signature")
-	ErrSigInvalidEcDSA  = fmt.Errorf("invalid EcDSA signature")
-	ErrSigHashTooSmall  = fmt.Errorf("hash value to small")
+	ErrSigInvalidPrvKey = errors.New("private key not suitable for EdDSA")
+	ErrSigNotEdDSA      = errors.New("not a EdDSA signature")
+	ErrSigNotEcDSA      = errors.New("not a EcDSA signature")
+	ErrSigInvalidEcDSA  = errors.New("invalid EcDSA signature")
+	ErrSigHashTooSmall  = errors.New("hash value to small")
+	ErrSigInvalid       = errors.New("invalid signature")
 )
 
 //----------------------------------------------------------------------
@@ -318,7 +319,7 @@ func (pub *PublicKey) EcVerify(msg []byte, sig *EcSignature) (bool, error) {
 	// compute u1, u2
 	si := sig.S.ModInverse(c.N)
 	if si == nil {
-		return false, fmt.Errorf("invalid signature")
+		return false, ErrSigInvalid
 	}
 	u1 := si.Mul(z).Mod(c.N)
 	u2 := si.Mul(sig.R).Mod(c.N)

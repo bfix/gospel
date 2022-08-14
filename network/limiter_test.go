@@ -27,7 +27,11 @@ import (
 
 func TestRateLimiter(t *testing.T) {
 
-	print := func(stats *RateStats) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	prt := func(stats *RateStats) {
 		t.Log("-----------------------------------")
 		t.Log(" Second Minute   Hour    Day   Week")
 		t.Logf("%7d%7d%7d%7d%7d\n", stats.pSec, stats.pMin, stats.pHr, stats.pDay, stats.pWeek)
@@ -40,7 +44,7 @@ func TestRateLimiter(t *testing.T) {
 	for i := 0; i < 200; i++ {
 		time.Sleep(time.Second)
 		stats := lim.Stats()
-		print(stats)
+		prt(stats)
 		delay := stats.Wait()
 		t.Logf("Delaying %d seconds...\n", delay)
 		time.Sleep(time.Duration(delay) * time.Second)

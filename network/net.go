@@ -21,12 +21,13 @@ package network
 //----------------------------------------------------------------------
 
 import (
-	"fmt"
+	"errors"
 	"net"
 	"os"
 	"strings"
 	"time"
 
+	gerr "github.com/bfix/gospel/errors"
 	"github.com/bfix/gospel/logger"
 )
 
@@ -34,6 +35,12 @@ var (
 	delay, _   = time.ParseDuration("1ms")
 	retries    = 1000
 	timeout, _ = time.ParseDuration("100us")
+)
+
+// Error codes
+var (
+	ErrNetInvalidEndpoint = errors.New("invalid endpoint")
+	ErrNetInvalidNetwork  = errors.New("invalid network")
 )
 
 // SendData sends data over network connection (stream-oriented).
@@ -46,7 +53,9 @@ func SendData(conn net.Conn, data []byte, srv string) bool {
 	// write data to socket buffer
 	for count > 0 {
 		// set timeout
-		conn.SetDeadline(time.Now().Add(timeout))
+		if conn.SetDeadline(time.Now().Add(timeout)) != nil {
+			return false
+		}
 		// get (next) chunk to be send
 		chunk := data[start : start+count]
 		if num, err := conn.Write(chunk); num > 0 {
@@ -56,27 +65,26 @@ func SendData(conn net.Conn, data []byte, srv string) bool {
 			retry = 0
 		} else if err != nil {
 			// handle error condition
-			switch err.(type) {
+			switch nerr := err.(type) {
 			case net.Error:
 				// network error: retry...
-				nerr := err.(net.Error)
-				if nerr.Timeout() || nerr.Temporary() {
+				if nerr.Timeout() {
 					retry++
 					time.Sleep(delay)
 					if retry == retries {
-						logger.Printf(logger.ERROR, "[%s] Write failed after retries: %s\n", srv, err.Error())
+						logger.Printf(logger.ERROR, "[%s] Write failed after retries: %s", srv, err.Error())
 						return false
 					}
 				}
 			default:
-				logger.Printf(logger.INFO, "[%s] Connection closed by peer\n", srv)
+				logger.Printf(logger.INFO, "[%s] Connection closed by peer", srv)
 				return false
 			}
 		}
 	}
 	// report success
 	if retry > 0 {
-		logger.Printf(logger.INFO, "[%s] %d retries needed to send data.\n", srv, retry)
+		logger.Printf(logger.INFO, "[%s] %d retries needed to send data.", srv, retry)
 	}
 	return true
 }
@@ -86,35 +94,33 @@ func RecvData(conn net.Conn, data []byte, srv string) (int, bool) {
 
 	for retry := 0; retry < retries; {
 		// set timeout
-		conn.SetDeadline(time.Now().Add(timeout))
+		if conn.SetDeadline(time.Now().Add(timeout)) != nil {
+			return 0, false
+		}
 		// read data from socket buffer
 		n, err := conn.Read(data)
 		if err != nil {
 			// handle error condition
-			switch err.(type) {
+			switch nerr := err.(type) {
 			case net.Error:
 				// network error: retry...
-				nerr := err.(net.Error)
 				if nerr.Timeout() {
-					return 0, true
-				} else if nerr.Temporary() {
 					retry++
-					time.Sleep(delay)
 					continue
 				}
 			default:
-				logger.Printf(logger.INFO, "[%s] Connection closed by peer\n", srv)
+				logger.Printf(logger.INFO, "[%s] Connection closed by peer", srv)
 				return 0, false
 			}
 		}
 		// report success
 		if retry > 0 {
-			logger.Printf(logger.INFO, "[%s] %d retries needed to receive data.\n", srv, retry)
+			logger.Printf(logger.INFO, "[%s] %d retries needed to receive data.", srv, retry)
 		}
 		return n, true
 	}
 	// retries failed
-	logger.Printf(logger.ERROR, "[%s] Read failed after retries...\n", srv)
+	logger.Printf(logger.ERROR, "[%s] Read failed after retries...", srv)
 	return 0, false
 }
 
@@ -123,7 +129,7 @@ func RecvData(conn net.Conn, data []byte, srv string) (int, bool) {
 func SplitNetworkEndpoint(networkendp string) (network string, endp string, err error) {
 	pos := strings.Index(networkendp, ":")
 	if pos == -1 {
-		err = fmt.Errorf("Invalid network endpoint")
+		err = ErrNetInvalidEndpoint
 		return
 	}
 	network = networkendp[:pos]
@@ -137,6 +143,6 @@ func SplitNetworkEndpoint(networkendp string) (network string, endp string, err 
 	case "tcp", "tcp4", "tcp6", "udp", "udp4", "udp6":
 		return
 	}
-	err = fmt.Errorf("Invalid network")
+	err = gerr.New(ErrNetInvalidNetwork, network)
 	return
 }

@@ -23,10 +23,11 @@ package parser
 import (
 	"bufio"
 	"errors"
-	"github.com/bfix/gospel/data"
 	"io"
 	"strconv"
 	"unicode"
+
+	"github.com/bfix/gospel/data"
 )
 
 const (
@@ -165,9 +166,12 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 							stack.Pop()
 						}
 						// start unnamed list
-						param.Name = ""  // unnamed parameter
-						rdr.UnreadRune() // putback first character
-						state = 3        // read value
+						param.Name = "" // unnamed parameter
+						// putback first character
+						if err = rdr.UnreadRune(); err != nil {
+							return err
+						}
+						state = 3 // read value
 						handled = true
 					} else if r == '}' {
 						// check for pending empty parameter
@@ -177,8 +181,11 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 							cb(EMPTY, param)
 						}
 						// end unnamed list
-						rdr.UnreadRune() // putback first character
-						state = 5        // read delimiter
+						// putback first character
+						if err = rdr.UnreadRune(); err != nil {
+							return err
+						}
+						state = 5 // read delimiter
 						handled = true
 					} else if r == ',' {
 						// end unnamed empty parameter
@@ -232,7 +239,9 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 					// pop VAR tag
 					stack.Pop()
 					// restart
-					rdr.UnreadRune()
+					if err := rdr.UnreadRune(); err != nil {
+						return err
+					}
 					state = 5
 
 				// else collect char in name buffer
@@ -270,8 +279,11 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 							param.Value = ""
 							cb(VAR, param)
 						} else {
-							rdr.UnreadRune() // unread character
-							state = 1        // start of parameter
+							// unread character
+							if err = rdr.UnreadRune(); err != nil {
+								return err
+							}
+							state = 1 // start of parameter
 						}
 					}
 				// begin new value or parameter
@@ -308,9 +320,11 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 						// pop VALUE and VAR tags
 						stack.Pop()
 						stack.Pop()
-
-						rdr.UnreadRune() // restore read character
-						state = 5        // read/handle delimiter
+						// restore read character
+						if err = rdr.UnreadRune(); err != nil {
+							return err
+						}
+						state = 5 // read/handle delimiter
 					} else {
 						buf += string(r)
 					}
@@ -334,7 +348,6 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 						param.Value = "}"
 						cb(LIST, param)
 						param.reset()
-
 						stack.Pop()
 					}
 				// non-delimiting character: "unread" character
@@ -348,7 +361,9 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 							}
 							stack.Pop()
 						}
-						rdr.UnreadRune()
+						if err = rdr.UnreadRune(); err != nil {
+							return err
+						}
 					}
 					fallthrough
 

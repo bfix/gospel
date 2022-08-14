@@ -22,17 +22,19 @@ package p2p
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/bfix/gospel/data"
+	gerr "github.com/bfix/gospel/errors"
 	"github.com/bfix/gospel/logger"
 )
 
 // Error codes
 var (
-	ErrLookupFailed = fmt.Errorf("Lookup failed")
+	ErrLookupFailed = errors.New("Lookup failed")
 )
 
 //----------------------------------------------------------------------
@@ -147,7 +149,7 @@ func (s *LookupService) Respond(ctx context.Context, m Message) (bool, error) {
 		return false, nil
 	}
 	// cast will succeed because type of message is checked
-	msg := m.(*FindNodeMsg)
+	msg, _ := m.(*FindNodeMsg)
 
 	// assemble FIND_NODE_RESP message
 	resp := NewFindNodeRespMsg().(*FindNodeRespMsg)
@@ -235,16 +237,15 @@ func (s *LookupService) LookupNode(ctx context.Context, addr *Address, timeout t
 	query := func(ctx context.Context, peer, addr *Address) interface{} {
 		// perform query
 		logger.Printf(logger.INFO, "[%.8s] Lookup for '%.8s' on '%.8s'...\n", sAddr, addr, peer)
-		list, err := s.Request(ctx, peer, addr, timeout)
-		if err != nil {
-			logger.Printf(logger.ERROR, "[%.8s] Lookup for '%.8s' on '%.8s' failed: %s\n", sAddr, addr, peer, err.Error())
-			return err
+		var list []*Endpoint
+		if list, err = s.Request(ctx, peer, addr, timeout); err != nil {
+			return gerr.New(ErrLookupFailed, "[%.8s] Lookup for '%.8s' on '%.8s'", sAddr, addr, peer)
 		}
 		// learn all entries
 		peers := make([]*Address, 0)
 		for _, e := range list {
 			peers = append(peers, e.Addr)
-			s.Node().Learn(e.Addr, e.Endp.String())
+			_ = s.Node().Learn(e.Addr, e.Endp.String())
 		}
 		// check if we got a final result
 		if len(list) == 1 && list[0].Addr.Equals(addr) {

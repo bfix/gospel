@@ -43,9 +43,7 @@ type RateLimiter struct {
 func NewRateLimiter(rate ...int) *RateLimiter {
 	lim := new(RateLimiter)
 	lim.rates = make([]int, 5)
-	for i, r := range rate {
-		lim.rates[i] = r
-	}
+	copy(lim.rates, rate)
 	lim.last = newEntry()
 	lim.first = lim.last
 	lim.intern = false

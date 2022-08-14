@@ -22,9 +22,10 @@ package parser
 
 import (
 	"bufio"
-	"github.com/bfix/gospel/data"
 	"strconv"
 	"strings"
+
+	"github.com/bfix/gospel/data"
 )
 
 // Data represents parsed data
@@ -49,8 +50,10 @@ func (d *Data) Read(rdr *bufio.Reader) error {
 		if param == nil {
 			if mode == ERROR {
 				// handle error condition
+				return false
 			} else if mode == DONE {
 				// clean-up data
+				return false
 			}
 		} else {
 			// no: handle parameter
@@ -68,7 +71,7 @@ func (d *Data) Read(rdr *bufio.Reader) error {
 						curr = next
 					} else if param.Value == "}" {
 						// end sub-list: pop current object from stack
-						curr = stack.Drop().(*Data)
+						curr, _ = stack.Drop().(*Data)
 					}
 				}
 			// handle named parameters
@@ -101,8 +104,8 @@ func (d *Data) Read(rdr *bufio.Reader) error {
 }
 
 // Write data structure to stream writer.
-func (d *Data) Write(wrt *bufio.Writer) {
-	d.writeData(wrt, 0)
+func (d *Data) Write(wrt *bufio.Writer) error {
+	return d.writeData(wrt, 0)
 }
 
 // Elem accesses the n.th sub-element of nested data structure.
@@ -208,39 +211,58 @@ func (d *Data) Lookup(path string) *Data {
 }
 
 // Write internal data structure to stream writer.
-func (d *Data) writeData(wrt *bufio.Writer, level int) {
+func (d *Data) writeData(wrt *bufio.Writer, level int) (err error) {
 
 	// emit name (if defined)
 	if len(d.Name) > 0 {
-		wrt.WriteString(d.Name)
-		wrt.WriteRune('=')
+		if _, err = wrt.WriteString(d.Name); err != nil {
+			return
+		}
+		if _, err = wrt.WriteRune('='); err != nil {
+			return
+		}
 	}
 	// handle value..
 	if d.Len() == 0 {
 		// .. as direct value
-		wrt.WriteRune('"')
-		wrt.WriteString(d.Value)
-		wrt.WriteRune('"')
+		if _, err = wrt.WriteRune('"'); err != nil {
+			return
+		}
+		if _, err = wrt.WriteString(d.Value); err != nil {
+			return
+		}
+		if _, err = wrt.WriteRune('"'); err != nil {
+			return
+		}
 	} else {
 		// .. as list of data
 		if level > 0 {
-			wrt.WriteRune('{')
+			if _, err = wrt.WriteRune('{'); err != nil {
+				return
+			}
 		}
 		// handle all list elements...
 		count := d.Len()
 		for n := 0; n < count; n++ {
 			// emit delimiter
 			if n > 0 {
-				wrt.WriteRune(',')
+				if _, err = wrt.WriteRune(','); err != nil {
+					return
+				}
 			}
 			// recursively write list element
-			s := d.At(n).(*Data)
-			s.writeData(wrt, level+1)
+			s, _ := d.At(n).(*Data)
+			if err = s.writeData(wrt, level+1); err != nil {
+				return
+			}
 		}
 		if level > 0 {
-			wrt.WriteRune('}')
+			if _, err = wrt.WriteRune('}'); err != nil {
+				return
+			}
 		}
 	}
+	return
 }
 
 // Find root instance for current object.

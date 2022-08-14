@@ -130,7 +130,7 @@ func NewPointFromBytes(b []byte) (p *Point, compr bool, err error) {
 			return
 		}
 	default:
-		err = errors.New("Invalid binary Point representation")
+		err = errors.New("invalid binary point representation")
 	}
 	return
 }
@@ -339,7 +339,6 @@ func coordAsBytes(v *math.Int) []byte {
 
 // helper: reconstruct y-coordinate of Point
 func computeY(x *math.Int, m uint) (y *math.Int, err error) {
-	y = math.ZERO
 	err = nil
 	y2 := pAdd(pCub(x), c.B)
 	y, err = math.SqrtModP(y2, c.P)

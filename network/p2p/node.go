@@ -22,7 +22,7 @@ package p2p
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net"
 	"time"
 
@@ -33,11 +33,12 @@ import (
 
 // Error codes
 var (
-	ErrNodeTimeout        = fmt.Errorf("Operation timed out")
-	ErrNodeRemote         = fmt.Errorf("No remote nodes allowed")
-	ErrNodeConnectorSet   = fmt.Errorf("Connector for node already set")
-	ErrNodeSendNoReceiver = fmt.Errorf("Send has no recipient")
-	ErrNodeResolve        = fmt.Errorf("Can't resolve network address")
+	ErrNodeTimeout        = errors.New("operation timed out")
+	ErrNodeRemote         = errors.New("no remote nodes allowed")
+	ErrNodeConnectorSet   = errors.New("connector for node already set")
+	ErrNodeSendNoReceiver = errors.New("send has no recipient")
+	ErrNodeResolve        = errors.New("can't resolve network address")
+	ErrNodeMsgType        = errors.New("invalid message type")
 )
 
 // constants
@@ -170,7 +171,10 @@ func (n *Node) RelayedMessage(msg Message, peers []*Address) (Message, error) {
 			return nil, err
 		}
 		// assemble relay message
-		wrp := n.relay.NewMessage(ReqRELAY).(*RelayMsg)
+		wrp, ok := n.relay.NewMessage(ReqRELAY).(*RelayMsg)
+		if !ok {
+			return nil, ErrNodeMsgType
+		}
 		wrp.Set(endp, pkt)
 		wrp.TxID = n.NextID()
 		wrp.Flags = MsgfRelay
@@ -341,7 +345,7 @@ func (n *Node) Run(ctx context.Context) {
 	// we do periodic jobs once every minute
 	// and remember the epoch we are in
 	epoch := 0
-	period := time.Tick(NodeTick)
+	period := time.NewTicker(NodeTick)
 
 	// run bucket list processor
 	n.buckets.Run(ctx)
@@ -363,19 +367,23 @@ func (n *Node) Run(ctx context.Context) {
 				//----------------------------------------------------------
 				case 1:
 					// lookup service handling the request
-					n.srvcs.Respond(ctx, msg)
+					if _, err := n.srvcs.Respond(ctx, msg); err != nil {
+						logger.Printf(logger.ERROR, "[%.8s] Respond failed: %s\n", n.addr, err.Error())
+					}
 
 				//----------------------------------------------------------
 				// Incoming response
 				//----------------------------------------------------------
 				case 0:
 					// lookup service listening to response
-					n.srvcs.Listen(ctx, msg)
+					if _, err := n.srvcs.Listen(ctx, msg); err != nil {
+						logger.Printf(logger.ERROR, "[%.8s] Listen failed: %s\n", n.addr, err.Error())
+					}
 				}
 			}()
 
 		// periodic jobs
-		case <-period:
+		case <-period.C:
 			epoch++
 			n.conn.Epoch(epoch)
 

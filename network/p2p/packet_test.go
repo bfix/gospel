@@ -102,7 +102,7 @@ func TestPacket(t *testing.T) {
 	//------------------------------------------------------------------
 
 	pktIn := new(Packet)
-	if err := data.Unmarshal(pktIn, wire); err != nil {
+	if err = data.Unmarshal(pktIn, wire); err != nil {
 		t.Fatal(err)
 	}
 

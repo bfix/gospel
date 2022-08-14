@@ -21,8 +21,9 @@ package crypto
 //----------------------------------------------------------------------
 
 import (
-	"github.com/bfix/gospel/math"
 	"testing"
+
+	"github.com/bfix/gospel/math"
 )
 
 func TestCounter(t *testing.T) {
@@ -40,7 +41,9 @@ func TestCounter(t *testing.T) {
 			var inc int64
 			for i := 0; i < 5; i++ {
 				v := math.NewIntRnd(math.TWO)
-				cnt.Increment(v)
+				if err = cnt.Increment(v); err != nil {
+					t.Fatal(err)
+				}
 				if v.Bit(0) == 1 {
 					inc++
 				}

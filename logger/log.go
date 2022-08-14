@@ -94,26 +94,26 @@ func init() {
 						ts:    time.Now(),
 					}
 					s := logInst.formatter(rep)
-					logInst.logfile.WriteString(s)
+					_, _ = logInst.logfile.WriteString(s)
 				}
 				logInst.repeats = 0
 				logInst.lastMsg = msg
 				s := logInst.formatter(msg)
-				logInst.logfile.WriteString(s)
+				_, _ = logInst.logfile.WriteString(s)
 			case cmd := <-logInst.cmdChan:
 				switch cmd {
 				case ROTATE:
 					// Rotate log files
 					if logInst.logfile != os.Stdout {
 						fname := logInst.logfile.Name()
-						logInst.logfile.Close()
-						ts := logInst.started.Format(time.RFC3339)
-						os.Rename(fname, fname+"."+ts)
-						var err error
-						if logInst.logfile, err = os.Create(fname); err != nil {
+						if err := logInst.logfile.Close(); err == nil {
 							logInst.logfile = os.Stdout
+							ts := logInst.started.Format(time.RFC3339)
+							if err := os.Rename(fname, fname+"."+ts); err == nil {
+								logInst.logfile, _ = os.Create(fname)
+								logInst.started = time.Now()
+							}
 						}
-						logInst.started = time.Now()
 					} else {
 						Println(WARN, "[log] log rotation for 'stdout' not applicable.")
 					}
@@ -124,7 +124,7 @@ func init() {
 					ts := time.Now().Format(time.Stamp)
 					if logInst.repeats > 0 {
 						s := fmt.Sprintf("...(last message repeated %d times)\n", logInst.repeats)
-						logInst.logfile.WriteString(ts + s)
+						_, _ = logInst.logfile.WriteString(ts + s)
 					}
 				}
 			}

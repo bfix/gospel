@@ -328,7 +328,7 @@ func (i *Int) Int64() int64 {
 func SqrtModP(n, p *Int) (*Int, error) {
 	// check if a solution is possible
 	if n.Legendre(p) != 1 {
-		return nil, errors.New("No quadratic residue")
+		return nil, errors.New("no quadratic residue")
 	}
 	// 1. Factor out powers of 2 from p − 1, defining Q and S as:
 	//    p − 1 = Q*2^S with Q odd

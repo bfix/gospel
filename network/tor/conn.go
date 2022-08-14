@@ -36,7 +36,7 @@ import (
 
 // Error codes
 var (
-	ErrTorInvalidProto = fmt.Errorf("Only TCP protocol allowed")
+	ErrTorInvalidProto = fmt.Errorf("only TCP protocol allowed")
 )
 
 // Dial a Tor-based connection

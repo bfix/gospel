@@ -80,8 +80,6 @@ var (
 
 	versionMainPublic  = "0488b21e"
 	versionMainPrivate = "0488ade4"
-	versionTestPublic  = "043587cf"
-	versionTestPrivate = "04358394"
 )
 
 func TestAddress(t *testing.T) {

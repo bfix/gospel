@@ -154,8 +154,8 @@ func (r *R) CheckMultiSig() (bool, int) {
 	}
 	var keys []*math.Int
 	for i := 0; i < int(nk.Int64()); i++ {
-		pkInt, rc := r.stack.Pop()
-		if rc != RcOK {
+		var pkInt *math.Int
+		if pkInt, rc = r.stack.Pop(); rc != RcOK {
 			return false, rc
 		}
 		keys = append(keys, pkInt)

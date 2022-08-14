@@ -28,10 +28,12 @@ import (
 	"encoding/asn1"
 	"encoding/base32"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/bfix/gospel/crypto/ed25519"
+	gerr "github.com/bfix/gospel/errors"
 	"github.com/bfix/gospel/math"
 	"golang.org/x/crypto/sha3"
 )
@@ -42,15 +44,16 @@ import (
 
 // Error codes
 var (
-	ErrOnionAlreadyRunning = fmt.Errorf("Onion already running")
-	ErrOnionNotRunning     = fmt.Errorf("Onion not running")
-	ErrOnionInvalidKey     = fmt.Errorf("Invalid onion key")
-	ErrOnionInvalidKeyType = fmt.Errorf("Invalid onion key type")
-	ErrOnionKeyInvalidSize = fmt.Errorf("Invalid onion key size")
-	ErrOnionKeyExists      = fmt.Errorf("Onion private key already exists")
-	ErrOnionMissingKey     = fmt.Errorf("Missing private key for onion")
-	ErrOnionInvalidKeySpec = fmt.Errorf("Invalid private key specification")
-	ErrOnionAddFailed      = fmt.Errorf("Failed to add hidden service")
+	ErrOnionAlreadyRunning = errors.New("onion already running")
+	ErrOnionNotRunning     = errors.New("onion not running")
+	ErrOnionInvalidKey     = errors.New("invalid onion key")
+	ErrOnionInvalidKeyType = errors.New("invalid onion key type")
+	ErrOnionKeyInvalidSize = errors.New("invalid onion key size")
+	ErrOnionKeyExists      = errors.New("onion private key already exists")
+	ErrOnionMissingKey     = errors.New("missing private key for onion")
+	ErrOnionInvalidKeySpec = errors.New("invalid private key specification")
+	ErrOnionAddFailed      = errors.New("failed to add hidden service")
+	ErrOnionServiceID      = errors.New("serviceID mismatch")
 )
 
 //----------------------------------------------------------------------
@@ -98,9 +101,7 @@ func (o *Onion) ServiceID() (id string, err error) {
 
 // AddFlag adds service flags
 func (o *Onion) AddFlag(flags ...string) {
-	for _, flag := range flags {
-		o.flags = append(o.flags, flag)
-	}
+	o.flags = flags
 }
 
 // AddPort adds a port mapping for the hidden service
@@ -229,7 +230,7 @@ func (o *Onion) Start(srv *Service) (err error) {
 			return ErrOnionAddFailed
 		}
 		if idList[0] != srvID {
-			return fmt.Errorf("ServiceID mismatch: %s != %s", idList[0], srvID)
+			return gerr.New(ErrOnionServiceID, "mismatch: %s != %s", idList[0], srvID)
 		}
 	}
 	o.running = true

@@ -44,10 +44,10 @@ func TestParse(t *testing.T) {
 	for _, hexScript := range s {
 		scr, rc := Parse(hexScript)
 		if rc != RcOK {
-			t.Fatal(fmt.Sprintf("Parse failed: rc=%s", RcString[rc]))
+			t.Fatalf("Parse failed: rc=%s", RcString[rc])
 		}
 		if verbose {
-			fmt.Printf("Statements: %v\n", scr.Stmts)
+			t.Logf("Statements: %v\n", scr.Stmts)
 		}
 		h2 := hex.EncodeToString(scr.Bytes())
 		if h2 != hexScript {
@@ -55,7 +55,7 @@ func TestParse(t *testing.T) {
 				fmt.Println("<<< " + hexScript)
 				fmt.Println(">>> " + h2)
 			}
-			t.Fatal(fmt.Sprintf("Hex script mismatch"))
+			t.Fatal("Hex script mismatch")
 		}
 	}
 }
@@ -69,9 +69,9 @@ func TestCompile(t *testing.T) {
 		src2 := bin.Decompile()
 		if src != src2 {
 			if true {
-				fmt.Println(">>> " + src)
-				fmt.Println("    " + hex.EncodeToString(bin.Bytes()))
-				fmt.Println("<<< " + src2)
+				t.Log(">>> " + src)
+				t.Log("    " + hex.EncodeToString(bin.Bytes()))
+				t.Log("<<< " + src2)
 			}
 			t.Fatal("Script compile/decompile mismatch")
 		}

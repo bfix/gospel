@@ -31,7 +31,6 @@ var (
 	currName    string // current name of machine
 	currAddress string // current address of machine
 	currPort    string // current port in list
-	currService string // current name of service
 	countName   int    // current number of machine
 	countPort   int    // current number of ports
 	rc          bool

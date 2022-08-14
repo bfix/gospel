@@ -45,7 +45,7 @@ import (
 // network address (identifier) and a Tor hidden service address
 // (onion or hidden service address); both network addresses are
 // derived from the associated public key of the node and are
-// interchangable so that the Tor-based transport (and its connector)
+// interchangeable so that the Tor-based transport (and its connector)
 // does not need to resolve network addresses for given P2P identifiers
 // (they can simply be "computed"). As a consequence the "lookup
 // service" is usually not called to find nodes; the routing table
@@ -96,7 +96,7 @@ func (a *TorAddress) String() string {
 //----------------------------------------------------------------------
 
 // TorTransportConfig specifies the configuration parameters required to
-// instanciate a Tor-based transport for the P2P network.
+// instantiate a Tor-based transport for the P2P network.
 type TorTransportConfig struct {
 	// Ctrl specifies the Tor control interface. It is formatted like
 	// "network:endp", where 'network' is either "tcp" (for TCP/IP) or
@@ -156,9 +156,8 @@ type TorConnector struct {
 	ttlConn  int
 
 	// list of last-seen peer addresses
-	sample     []*Address
-	pos        int
-	sampleLock sync.Mutex
+	sample []*Address
+	pos    int
 }
 
 // NewTorConnector creates a connector on transport for a given node
@@ -364,8 +363,8 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 						}
 						// tell transport and node about the sender (in case it is unknown and not forwarded)
 						if hdr.Flags&MsgfRelay == 0 {
-							c.Learn(hdr.Sender, nil)
-							c.node.Learn(hdr.Sender, "")
+							_ = c.Learn(hdr.Sender, nil)
+							_ = c.node.Learn(hdr.Sender, "")
 						}
 						// let the node handle the message
 						ch <- msg
@@ -374,8 +373,8 @@ func (c *TorConnector) Listen(ctx context.Context, ch chan Message) {
 			}
 			// close the listener
 			logger.Printf(logger.WARN, "[%.8s] Closing listener and hidden service", nodeAddr)
-			hs.Stop(c.trans.ctrl)
-			c.conn.Close()
+			_ = hs.Stop(c.trans.ctrl)
+			_ = c.conn.Close()
 			c.conn = nil
 			// wait before retrying
 			time.Sleep(10 * time.Second)
@@ -461,6 +460,9 @@ func (t *TorTransport) Open(cfg TransportConfig) (err error) {
 	}
 	// connect to the Tor service through the control port
 	netw, endp, err := network.SplitNetworkEndpoint(torCfg.Ctrl)
+	if err != nil {
+		return
+	}
 	t.ctrl, err = tor.NewService(netw, endp)
 	if err != nil {
 		return
@@ -478,12 +480,14 @@ func (t *TorTransport) Open(cfg TransportConfig) (err error) {
 func (t *TorTransport) Register(ctx context.Context, n *Node, endp string) (err error) {
 	// check for opened transport
 	if !t.active {
-		return ErrTransClosed
+		err = ErrTransClosed
+		return
 	}
 	// check for already registered address
 	addr := n.Address().String()
 	if _, ok := t.registry[addr]; ok {
-		return ErrTransAddressDup
+		err = ErrTransAddressDup
+		return
 	}
 	// 'endp' specifies an available local port; if not set or 0, a random
 	// available port is used.
@@ -495,13 +499,13 @@ func (t *TorTransport) Register(ctx context.Context, n *Node, endp string) (err 
 		}
 	}
 	// connect to suitable connector
-	conn, err := NewTorConnector(t, n, port)
-	if err != nil {
-		return err
+	var conn *TorConnector
+	if conn, err = NewTorConnector(t, n, port); err != nil {
+		return
 	}
-	n.Connect(conn)
+	err = n.Connect(conn)
 	logger.Printf(logger.DBG, "[%.8s] Registered with transport at %s\n", addr, conn.addr)
-	return nil
+	return
 }
 
 // Close transport

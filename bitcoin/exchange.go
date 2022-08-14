@@ -71,19 +71,18 @@ func ImportPrivateKey(keydata string, testnet bool) (*PrivateKey, error) {
 		k = data[1:34]
 		c = data[34:38]
 		if data[33] != 1 {
-			msg := fmt.Sprintf("Invalid key compression indicator: %d\n", int(data[33]))
-			return nil, errors.New(msg)
+			return nil, fmt.Errorf("invalid key compression indicator: %d", int(data[33]))
 		}
 	} else {
-		return nil, errors.New("Invalid key format")
+		return nil, errors.New("invalid key format")
 	}
 	// recompute and verify checksum
 	var t []byte
 	t = append(t, data[0])
 	t = append(t, k...)
 	cs := Hash256(t)
-	if bytes.Compare(c, cs[:4]) != 0 {
-		return nil, errors.New("Invalid key data")
+	if !bytes.Equal(c, cs[:4]) {
+		return nil, errors.New("invalid key data")
 	}
 	// return key
 	return PrivateKeyFromBytes(k)

@@ -22,6 +22,7 @@ package tor
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -39,8 +40,8 @@ import (
 
 // Error codes
 var (
-	ErrTorNoSocksPort = fmt.Errorf("No SocksPort found")
-	ErrTorNotLocal    = fmt.Errorf("Tor service not local")
+	ErrTorNoSocksPort = errors.New("no SocksPort found")
+	ErrTorNotLocal    = errors.New("tor service not local")
 )
 
 // Service instance to communicate commands (and responses) with a
@@ -249,7 +250,7 @@ func (s *Service) execute(cmd string) (list map[string][]string, err error) {
 			return
 		}
 		if rc != 250 {
-			err = fmt.Errorf(out)
+			err = errors.New(out)
 			return
 		}
 		// check for multi-line response

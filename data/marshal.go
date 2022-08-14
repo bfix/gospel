@@ -795,8 +795,8 @@ func parseSize(tagSize, fldName string, x, inst reflect.Value, inSize, pending i
 		if pending >= 0 {
 			count = pending
 			if count > 0 && lts > 1 && tagSize[1] == '-' {
-				off, err := strconv.ParseInt(tagSize[2:], 10, 16)
-				if err != nil {
+				var off int64
+				if off, err = strconv.ParseInt(tagSize[2:], 10, 16); err != nil {
 					return 0, err
 				}
 				if count > int(off) {
@@ -847,7 +847,6 @@ func isUsed(tagOpt, fldName string, x, inst reflect.Value) (bool, error) {
 	if len(tagOpt) > 0 {
 		// evaluate condition: must be either variable or function;
 		// defaults to false!
-		used = false
 		if tagOpt[0] == '(' {
 			// method call
 			mthName := strings.Trim(tagOpt, "()")

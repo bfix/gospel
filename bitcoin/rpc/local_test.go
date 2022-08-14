@@ -21,7 +21,6 @@ package rpc
 //----------------------------------------------------------------------
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -34,7 +33,7 @@ func TestConnectionCount(t *testing.T) {
 		t.Fatal(err)
 	}
 	if conns != info.Connections {
-		t.Fatal(fmt.Sprintf("session-count mismatch: %d != %d", conns, info.Connections))
+		t.Fatalf("session-count mismatch: %d != %d", conns, info.Connections)
 	}
 }
 
@@ -93,7 +92,7 @@ func TestGetRawMemPool(t *testing.T) {
 	}
 	for _, k := range list {
 		if _, ok := tx[k]; !ok {
-			t.Fatal(fmt.Sprintf("Unknown key '%s'", k))
+			t.Fatalf("Unknown key '%s'", k)
 		}
 	}
 }

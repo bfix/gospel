@@ -103,7 +103,7 @@ func NewSession(addr, user, pw string) (*Session, error) {
 		return nil, err
 	}
 	if len(user) == 0 || len(pw) == 0 {
-		return nil, errors.New("Missing credentials")
+		return nil, errors.New("missing credentials")
 	}
 	s := &Session{
 		address:    addr,
@@ -121,7 +121,7 @@ func NewSessionSSL(addr, user, pw string, scert *x509.Certificate) (*Session, er
 		return nil, err
 	}
 	if len(user) == 0 || len(pw) == 0 {
-		return nil, errors.New("Missing credentials")
+		return nil, errors.New("missing credentials")
 	}
 	s := &Session{
 		address:    addr,
@@ -144,7 +144,7 @@ func NewSessionSSL(addr, user, pw string, scert *x509.Certificate) (*Session, er
 
 // Generic call to running server: Handles input parameters and
 // returns generic result data.
-func (s *Session) call(methodname string, args []Data) (result *Response, err error) {
+func (s *Session) call(methodname string, args []Data) (response *Response, err error) {
 	request := &Request{
 		Version: "1.0",
 		ID:      "",
@@ -155,26 +155,31 @@ func (s *Session) call(methodname string, args []Data) (result *Response, err er
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", s.address, strings.NewReader(string(data)))
+	var req *http.Request
+	if req, err = http.NewRequest("POST", s.address, strings.NewReader(string(data))); err != nil {
+		return
+	}
 	req.SetBasicAuth(s.user, s.passwd)
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, err
+	var resp *http.Response
+	if resp, err = s.client.Do(req); err != nil {
+		return
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return nil, err
+	var body []byte
+	if body, err = ioutil.ReadAll(resp.Body); err != nil {
+		return
 	}
-	response := new(Response)
-	err = json.Unmarshal(body, response)
-	if err != nil {
-		return nil, err
+	if err = resp.Body.Close(); err != nil {
+		return
+	}
+	response = new(Response)
+	if err = json.Unmarshal(body, response); err != nil {
+		return
 	}
 	if response.Error.Code != 0 {
-		return nil, errors.New(response.Error.Message)
+		err = errors.New(response.Error.Message)
+		return
 	}
-	return response, nil
+	return
 }
 
 //======================================================================
@@ -213,8 +218,8 @@ func compare(a, b interface{}, depth int, w io.Writer) bool {
 	}
 	switch at {
 	case "array":
-		aa := a.([]interface{})
-		ba := b.([]interface{})
+		aa, _ := a.([]interface{})
+		ba, _ := b.([]interface{})
 		for i, v := range aa {
 			fmt.Fprintf(w, "%d| [%d]\n", depth, i)
 			if !compare(v, ba[i], depth+1, w) {
@@ -222,8 +227,8 @@ func compare(a, b interface{}, depth int, w io.Writer) bool {
 			}
 		}
 	case "map":
-		am := a.(map[string]interface{})
-		bm := b.(map[string]interface{})
+		am, _ := a.(map[string]interface{})
+		bm, _ := b.(map[string]interface{})
 		for k, v := range am {
 			fmt.Fprintf(w, "%d| ['%s']\n", depth, k)
 			x, ok := bm[k]
@@ -236,23 +241,23 @@ func compare(a, b interface{}, depth int, w io.Writer) bool {
 			}
 		}
 	case "string":
-		as := a.(string)
-		bs := b.(string)
+		as, _ := a.(string)
+		bs, _ := b.(string)
 		fmt.Fprintf(w, "%d|   ='%s'\n", depth, as)
 		return as == bs
 	case "int":
-		ai := a.(int)
-		bi := b.(int)
+		ai, _ := a.(int)
+		bi, _ := b.(int)
 		fmt.Fprintf(w, "%d|   =%d\n", depth, ai)
 		return ai == bi
 	case "float64":
-		af := a.(float64)
-		bf := b.(float64)
+		af, _ := a.(float64)
+		bf, _ := b.(float64)
 		fmt.Fprintf(w, "%d|   =%f\n", depth, af)
 		return af == bf
 	case "bool":
-		ab := a.(bool)
-		bb := b.(bool)
+		ab, _ := a.(bool)
+		bb, _ := b.(bool)
 		fmt.Fprintf(w, "%d|   =%v\n", depth, ab)
 		return ab == bb
 	default:

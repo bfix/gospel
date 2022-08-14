@@ -64,8 +64,8 @@ func (l *Listener) Signal() <-chan Signal {
 // Close listener: This more an announcement than an operation as the
 // channel is not closed immediately. It is possible for the listener
 // to receive some more signals before it actually closes.
-func (l *Listener) Close() {
-	l.mngr.drop(l)
+func (l *Listener) Close() error {
+	return l.mngr.drop(l)
 }
 
 //----------------------------------------------------------------------
@@ -164,8 +164,7 @@ func NewSignaller() *Signaller {
 						select {
 						case <-time.After(s.maxLatency):
 							// listener not responding: drop it
-							s.drop(listener)
-
+							_ = s.drop(listener)
 						// signal sent
 						case <-done:
 						}
@@ -222,7 +221,7 @@ func (s *Signaller) Listener() (*Listener, error) {
 
 // drop removes a listener from the list. Failing to drop or close a
 // listener will result in hanging go routines.
-func (s *Signaller) drop(listener *Listener) error {
+func (s *Signaller) drop(listener *Listener) (err error) {
 	// check for active signaller
 	if !s.active {
 		return ErrSigInactive
@@ -236,12 +235,11 @@ func (s *Signaller) drop(listener *Listener) error {
 		op:  sigListenerDrop,
 	}
 	// handle error return for command.
-	var err error
 	res := <-s.resCh
 	if res != nil {
-		err = res.(error)
+		err, _ = res.(error)
 	}
-	return err
+	return
 }
 
 //----------------------------------------------------------------------

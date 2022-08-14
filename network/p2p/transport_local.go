@@ -182,8 +182,7 @@ func (t *LocalTransport) Register(ctx context.Context, n *Node, endp string) err
 		trans: t,
 		cache: make(map[string]string),
 	}
-	n.Connect(conn)
-	return nil
+	return n.Connect(conn)
 }
 
 // Close transport

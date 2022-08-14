@@ -22,7 +22,7 @@ package p2p
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 
 	"github.com/bfix/gospel/data"
@@ -59,7 +59,7 @@ const (
 
 var (
 	// ErrMessageParse if message parsing from binary data failed
-	ErrMessageParse = fmt.Errorf("Failed to parse message")
+	ErrMessageParse = errors.New("failed to parse message")
 )
 
 //----------------------------------------------------------------------
@@ -151,8 +151,8 @@ type NewMessage func() Message
 
 // Error codes used
 var (
-	ErrHandlerUsed   = fmt.Errorf("Handler in use")
-	ErrHandlerUnused = fmt.Errorf("Handler not in use")
+	ErrHandlerUsed   = errors.New("handler in use")
+	ErrHandlerUnused = errors.New("handler not in use")
 )
 
 // MessageHandler is a (async) function that handles a message

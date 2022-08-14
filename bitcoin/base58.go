@@ -24,12 +24,18 @@ import (
 	"bytes"
 	"errors"
 
+	gerr "github.com/bfix/gospel/errors"
 	"github.com/bfix/gospel/math"
 )
 
 var (
 	alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 	b58      = math.NewInt(58)
+)
+
+// Error codes
+var (
+	ErrBtcBase58Decoding = errors.New("base58 decoding error -- unknown character")
 )
 
 // Base58Encode converts byte array to base58 string representation
@@ -40,7 +46,7 @@ func Base58Encode(in []byte) string {
 
 	// convert integer to base58 representation
 	b := []byte{}
-	m := math.ZERO
+	var m *math.Int
 	for val.Cmp(math.ZERO) > 0 {
 		val, m = val.DivMod(b58)
 		b = append(b, alphabet[int(m.Int64())])
@@ -58,7 +64,7 @@ func Base58Encode(in []byte) string {
 }
 
 // Base58Decode converts a base58 representation into byte array
-func Base58Decode(s string) ([]byte, error) {
+func Base58Decode(s string) (data []byte, err error) {
 
 	// convert string to byte array
 	in := []byte(s)
@@ -68,7 +74,8 @@ func Base58Decode(s string) ([]byte, error) {
 	for _, b := range in {
 		pos := bytes.IndexByte(alphabet, b)
 		if pos == -1 {
-			return nil, errors.New("Base58 decoding error -- unknown character")
+			err = gerr.New(ErrBtcBase58Decoding, "char '%c'", b)
+			return
 		}
 		val = val.Mul(b58).Add(math.NewInt(int64(pos)))
 	}
@@ -82,7 +89,8 @@ func Base58Decode(s string) ([]byte, error) {
 		}
 	}
 	// return final byte array
-	return append(pf, val.Bytes()...), nil
+	data = append(pf, val.Bytes()...)
+	return
 }
 
 // reverse byte array

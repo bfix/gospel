@@ -67,7 +67,7 @@ func TestWords(t *testing.T) {
 		if len(fail) > 0 {
 			t.Fatalf("Failed word(s): '%s'", fail)
 		}
-		if bytes.Compare(ent, d) != 0 {
+		if !bytes.Equal(ent, d) {
 			t.Fatalf("Wrong entropy for: '%s'", s[1])
 		}
 	}
@@ -81,7 +81,7 @@ func TestSeed(t *testing.T) {
 		if len(fail) > 0 {
 			t.Fatalf("failed word(s): '%s'", fail)
 		}
-		if bytes.Compare(seed, d) != 0 {
+		if !bytes.Equal(seed, d) {
 			fmt.Printf("< %s\n", hex.EncodeToString(seed))
 			fmt.Printf("> %s\n", hex.EncodeToString(d))
 			t.Fatalf("Failed words: '%s'", s[1])

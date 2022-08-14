@@ -31,36 +31,36 @@ func TestData(t *testing.T) {
 	//=================================================================
 	// Basic
 	//=================================================================
-	testCase1("Simple=Test", "/Simple", "", "Simple=\"Test\"", t, "111")
-	testCase1("Test", "/#1", "", "\"Test\"", t, "111")
-	testCase1("\"Test\"", "/#1", "", "", t, "111")
-	testCase1("Simple=\"Test\"", "/Simple", "", "", t, "111")
-	testCase1("Simple=\"Test mit Spaces\"", "/#1", "/Simple", "", t, "111")
-	testCase1("Simple=\"Test,mit=Spaces{}\"", "/Simple", "", "", t, "111")
+	testCase1(t, "Simple=Test", "/Simple", "", "Simple=\"Test\"", "111")
+	testCase1(t, "Test", "/#1", "", "\"Test\"", "111")
+	testCase1(t, "\"Test\"", "/#1", "", "", "111")
+	testCase1(t, "Simple=\"Test\"", "/Simple", "", "", "111")
+	testCase1(t, "Simple=\"Test mit Spaces\"", "/#1", "/Simple", "", "111")
+	testCase1(t, "Simple=\"Test,mit=Spaces{}\"", "/Simple", "", "", "111")
 
-	testCase1("Simple=Test,", "/Simple", "", "Simple=\"Test\"", t, "111")
-	testCase1("Simple=Test,Muster", "/#2", "", "\"Muster\"", t, "111")
-	testCase1("Simple=Test", "/#3", "", "", t, "10X")
-	testCase1("Simple=Test", "/#-1", "", "", t, "10X")
+	testCase1(t, "Simple=Test,", "/Simple", "", "Simple=\"Test\"", "111")
+	testCase1(t, "Simple=Test,Muster", "/#2", "", "\"Muster\"", "111")
+	testCase1(t, "Simple=Test", "/#3", "", "", "10X")
+	testCase1(t, "Simple=Test", "/#-1", "", "", "10X")
 
-	testCase1("List={Entry1=Value1,Entry2=Value2}", "/List", "", "List={}", t, "111")
-	testCase1("List={Entry1=Value1,Entry2=Value2}", "/List/#1", "/List/Entry1", "Entry1=\"Value1\"", t, "111")
-	testCase1("List={Entry1=Value1,{{", "", "", "", t, "0XX")
-	testCase1("List={Entry1=Value1,{{}", "", "", "", t, "0XX")
-	testCase1("List={Entry1=Value1,{{}}", "", "", "", t, "0XX")
-	testCase1("List={Entry1=Value1,,{}}", "/List/#2", "", "~", t, "111")
-	testCase1("List={}", "/List", "", "", t, "111")
-	testCase1("List={{}}", "/List", "", "List={}", t, "111")
-	testCase1("List={,,,}", "/List/#1", "", "~", t, "111")
-	testCase1("List={,,,}", "/List/#2", "", "~", t, "111")
-	testCase1("List={,,,}", "/List/#3", "", "~", t, "111")
-	testCase1("List={,,,}", "/List/#4", "", "~", t, "111")
+	testCase1(t, "List={Entry1=Value1,Entry2=Value2}", "/List", "", "List={}", "111")
+	testCase1(t, "List={Entry1=Value1,Entry2=Value2}", "/List/#1", "/List/Entry1", "Entry1=\"Value1\"", "111")
+	testCase1(t, "List={Entry1=Value1,{{", "", "", "", "0XX")
+	testCase1(t, "List={Entry1=Value1,{{}", "", "", "", "0XX")
+	testCase1(t, "List={Entry1=Value1,{{}}", "", "", "", "0XX")
+	testCase1(t, "List={Entry1=Value1,,{}}", "/List/#2", "", "~", "111")
+	testCase1(t, "List={}", "/List", "", "", "111")
+	testCase1(t, "List={{}}", "/List", "", "List={}", "111")
+	testCase1(t, "List={,,,}", "/List/#1", "", "~", "111")
+	testCase1(t, "List={,,,}", "/List/#2", "", "~", "111")
+	testCase1(t, "List={,,,}", "/List/#3", "", "~", "111")
+	testCase1(t, "List={,,,}", "/List/#4", "", "~", "111")
 }
 
 var err error
 
 // Parse string into data object.
-func getData(s string, t *testing.T) *Data {
+func getData(s string) *Data {
 	rdr := bufio.NewReader(strings.NewReader(s))
 	d := new(Data)
 	err = d.Read(rdr)
@@ -71,14 +71,14 @@ func getData(s string, t *testing.T) *Data {
 }
 
 // Run test case.
-func testCase1(data, access, path, elem string, t *testing.T, flags string) {
+func testCase1(t *testing.T, data, access, path, elem string, flags string) {
 	if len(elem) == 0 {
 		elem = data
 	}
 	if len(path) == 0 {
 		path = access
 	}
-	d := getData(data, t)
+	d := getData(data)
 	if (flags[0] == '1') != (d != nil) {
 		t.Fatal("getdata failed")
 	}

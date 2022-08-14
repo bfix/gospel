@@ -555,7 +555,7 @@ type ScriptPubKey struct {
 	// greater than 1 for bare multisig. This value will not be
 	// returned for nulldata or nonstandard script types (see the type
 	// key below)
-	ReqSigs int `json:"reqSigs,emitempty"`
+	ReqSigs int `json:"reqSigs,omitempty"`
 	// Type of script. This will be one of the following:
 	// -- 'pubkey' for a P2PK script
 	// -- 'pubkeyhash' for a P2PKH script

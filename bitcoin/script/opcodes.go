@@ -364,7 +364,7 @@ var (
 			if rc != RcOK {
 				return rc
 			}
-			if rc := r.stack.Push(v); rc != RcOK {
+			if rc = r.stack.Push(v); rc != RcOK {
 				return rc
 			}
 			v, rc = r.stack.PeekAt(3)
@@ -392,7 +392,7 @@ var (
 			if rc != RcOK {
 				return rc
 			}
-			if rc := r.stack.Push(v); rc != RcOK {
+			if rc = r.stack.Push(v); rc != RcOK {
 				return rc
 			}
 			v, rc = r.stack.RemoveAt(3)

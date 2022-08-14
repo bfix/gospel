@@ -55,13 +55,13 @@ func main() {
 	for i := 0; ; i++ {
 		priv := bitcoin.GenerateKeys(true)
 		addr := wallet.MakeAddress(&priv.PublicKey, 0, wallet.AddrP2PKH, wallet.AddrMain)
-		test := string(addr)
+		test := addr
 		if !caseSensitive {
 			test = strings.ToLower(test)
 		}
 		for _, r := range reg {
 			if r.MatchString(test) {
-				elapsed := time.Now().Sub(start)
+				elapsed := time.Since(start)
 				kd := bitcoin.ExportPrivateKey(priv, false)
 				fmt.Printf("%s [%s] (%d tries, %s elapsed)\n", addr, kd, i, elapsed)
 				i = 0

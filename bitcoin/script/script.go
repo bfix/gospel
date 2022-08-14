@@ -234,7 +234,7 @@ func Compile(src string) (*Script, error) {
 				}
 			}
 			if !found {
-				return script, fmt.Errorf("Unknown opcode '%s'", op)
+				return script, fmt.Errorf("unknown opcode '%s'", op)
 			}
 		} else if strings.HasPrefix(op, "#") {
 			v := math.NewIntFromString(op[1:])

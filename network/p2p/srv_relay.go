@@ -100,43 +100,44 @@ func (s *RelayService) Relay(ctx context.Context, msg *RelayMsg) error {
 }
 
 // Respond to a service request from peer.
-func (s *RelayService) Respond(ctx context.Context, m Message) (bool, error) {
+func (s *RelayService) Respond(ctx context.Context, m Message) (ok bool, err error) {
 	// check we are responsible for this
 	hdr := m.Header()
 	if hdr.Type != ReqRELAY {
-		return false, nil
+		return
 	}
 	// cast will succeed because type of message is checked
-	msg := m.(*RelayMsg)
+	msg, _ := m.(*RelayMsg)
 
 	// check if this is a relay to ourself
 	if msg.NextHop.Addr.Equals(s.Node().Address()) {
 		// Unwrap the packet
-		inMsg, err := s.Node().Unwrap(msg.Pkt)
-		if err == nil {
+		var inMsg Message
+		if inMsg, err = s.Node().Unwrap(msg.Pkt); err == nil {
 			hdr := msg.Header()
 			// relay request endpoint is the network address of the sender
-			s.Node().Learn(hdr.Sender, msg.NextHop.Endp.String())
+			_ = s.Node().Learn(hdr.Sender, msg.NextHop.Endp.String())
 			// process unwrapped message
 			go func() {
 				s.Node().Handle() <- inMsg
 			}()
 		}
-		return true, err
+		ok = true
+		return
 	}
 
 	// resolve receiver
 	netw := s.Node().Resolve(msg.NextHop.Addr)
-	var err error = nil
 	if netw == nil {
 		// cache miss: try provided network address
 		endp := msg.NextHop.Endp.String()
 		netw, err = s.Node().NewNetworkAddr(endp)
 	}
 	if err == nil {
-		s.Node().SendRaw(ctx, netw, msg.Pkt)
+		err = s.Node().SendRaw(ctx, netw, msg.Pkt)
 	}
-	return true, err
+	ok = true
+	return
 }
 
 // NewMessage creates an empty service message of given type

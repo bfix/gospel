@@ -68,7 +68,7 @@ func NewUDPConnector(trans *UDPTransport, node *Node, addr *net.UDPAddr) *UDPCon
 		pos:     0,
 	}
 	// register our own node
-	conn.Learn(node.Address(), addr)
+	_ = conn.Learn(node.Address(), addr)
 	return conn
 }
 
@@ -185,8 +185,8 @@ func (c *UDPConnector) Listen(ctx context.Context, ch chan Message) {
 				}
 				// tell transport and node about the sender (in case it is unknown and not forwarded)
 				if hdr.Flags&MsgfRelay == 0 {
-					c.Learn(hdr.Sender, addr)
-					c.node.Learn(hdr.Sender, "")
+					_ = c.Learn(hdr.Sender, addr)
+					_ = c.node.Learn(hdr.Sender, "")
 				}
 				// let the node handle the message
 				ch <- msg
@@ -274,7 +274,9 @@ func (t *UDPTransport) Register(ctx context.Context, n *Node, endp string) error
 		return ErrTransAddressDup
 	}
 	// connect to suitable connector
-	n.Connect(NewUDPConnector(t, n, netwAddr))
+	if err = n.Connect(NewUDPConnector(t, n, netwAddr)); err != nil {
+		return err
+	}
 	logger.Printf(logger.DBG, "[%.8s] Registered with transport at %s\n", addr, netwAddr)
 	return nil
 }

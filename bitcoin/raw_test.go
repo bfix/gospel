@@ -54,7 +54,7 @@ func TestSign(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := tx.PrepareForSign(0, sigScr); err != nil {
+	if err = tx.PrepareForSign(0, sigScr); err != nil {
 		t.Fatal(err)
 	}
 

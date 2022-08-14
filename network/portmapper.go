@@ -37,10 +37,10 @@ const (
 
 // Error messages
 var (
-	ErrPortMapperInit    = fmt.Errorf("Port mapper initialized")
-	ErrPortMapperNoInit  = fmt.Errorf("Port mapper not initialized")
-	ErrPortMapperConfig  = fmt.Errorf("Can't configure port mapper")
-	ErrPortMapperUnknown = fmt.Errorf("Unknown port mapping")
+	ErrPortMapperInit    = fmt.Errorf("port mapper initialized")
+	ErrPortMapperNoInit  = fmt.Errorf("port mapper not initialized")
+	ErrPortMapperConfig  = fmt.Errorf("can't configure port mapper")
+	ErrPortMapperUnknown = fmt.Errorf("unknown port mapping")
 )
 
 // Mapping of an "external" port to "internal" port for a network protocol.

@@ -22,7 +22,7 @@ package p2p
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net"
 )
 
@@ -34,18 +34,18 @@ const (
 
 // Error codes
 var (
-	ErrTransSenderMismatch  = fmt.Errorf("Sender mismatch")
-	ErrTransUnknownSender   = fmt.Errorf("Unknown sender")
-	ErrTransPackaging       = fmt.Errorf("Failed to create packet")
-	ErrTransMarshalling     = fmt.Errorf("Failed to marshal message")
-	ErrTransOpened          = fmt.Errorf("Transport is opened")
-	ErrTransClosed          = fmt.Errorf("Transport is closed")
-	ErrTransWrite           = fmt.Errorf("Failed write to remote")
-	ErrTransWriteShort      = fmt.Errorf("Short write to remote")
-	ErrTransAddressDup      = fmt.Errorf("Address already registered")
-	ErrTransUnknownReceiver = fmt.Errorf("Unknown receiver")
-	ErrTransAddressInvalid  = fmt.Errorf("Invalid network address")
-	ErrTransInvalidConfig   = fmt.Errorf("Invalid configuration type")
+	ErrTransSenderMismatch  = errors.New("sender mismatch")
+	ErrTransUnknownSender   = errors.New("unknown sender")
+	ErrTransPackaging       = errors.New("failed to create packet")
+	ErrTransMarshalling     = errors.New("failed to marshal message")
+	ErrTransOpened          = errors.New("transport is opened")
+	ErrTransClosed          = errors.New("transport is closed")
+	ErrTransWrite           = errors.New("failed write to remote")
+	ErrTransWriteShort      = errors.New("short write to remote")
+	ErrTransAddressDup      = errors.New("address already registered")
+	ErrTransUnknownReceiver = errors.New("unknown receiver")
+	ErrTransAddressInvalid  = errors.New("invalid network address")
+	ErrTransInvalidConfig   = errors.New("invalid configuration type")
 )
 
 //======================================================================

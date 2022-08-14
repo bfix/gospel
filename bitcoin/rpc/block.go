@@ -30,39 +30,37 @@ const (
 
 // Generate nearly instantly generates blocks.
 // if maxTries < 0, use the default retry value (1000000).
-func (s *Session) Generate(n, maxTries int) ([]string, error) {
+func (s *Session) Generate(n, maxTries int) (list []string, err error) {
 	data := []Data{n}
 	if maxTries > 0 {
 		data = append(data, maxTries)
 	}
-	res, err := s.call("generate", data)
-	if err != nil {
-		return nil, err
+	var res *Response
+	if res, err = s.call("generate", data); err != nil {
+		return
 	}
-	var list []string
-	val := res.Result.([]interface{})
-	for _, v := range val {
-		list = append(list, v.(string))
+	t, ok := res.Result.([]string)
+	if ok {
+		list = t
 	}
-	return list, nil
+	return
 }
 
 // GenerateToAddress mines blocks immediately to a specified address.
-func (s *Session) GenerateToAddress(n int, addr string, maxTries int) ([]string, error) {
+func (s *Session) GenerateToAddress(n int, addr string, maxTries int) (list []string, err error) {
 	data := []Data{n, addr}
 	if maxTries > 0 {
 		data = append(data, maxTries)
 	}
-	res, err := s.call("generate", data)
-	if err != nil {
-		return nil, err
+	var res *Response
+	if res, err = s.call("generate", data); err != nil {
+		return
 	}
-	var list []string
-	val := res.Result.([]interface{})
-	for _, v := range val {
-		list = append(list, v.(string))
+	t, ok := res.Result.([]string)
+	if ok {
+		list = t
 	}
-	return list, nil
+	return
 }
 
 // GetBestBlockHash returns the header hash of the most recent block on the

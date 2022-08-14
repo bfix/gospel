@@ -21,8 +21,9 @@ package network
 //----------------------------------------------------------------------
 
 import (
-	"github.com/bfix/gospel/logger"
 	"net"
+
+	"github.com/bfix/gospel/logger"
 )
 
 // Service is a user-defined service handler that handles TCP/UDP

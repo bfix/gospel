@@ -49,8 +49,8 @@ type POP3Session struct {
 //   to initiate a channel encryption.
 //
 // - Connections can be tunneled through any SOCKS5 proxy (like Tor)
-func POP3Connect(service, proxy string) (*POP3Session, error) {
-	sess := new(POP3Session)
+func POP3Connect(service, proxy string) (sess *POP3Session, err error) {
+	sess = new(POP3Session)
 	sess.conn = nil
 	sess.c0 = nil
 	sess.c1 = nil
@@ -59,20 +59,21 @@ func POP3Connect(service, proxy string) (*POP3Session, error) {
 	defer func() {
 		if !sess.established {
 			if sess.conn != nil {
-				sess.conn.Close()
+				_ = sess.conn.Close()
 			}
 			if sess.c1 != nil {
-				sess.c1.Close()
+				_ = sess.c1.Close()
 			}
 			if sess.c0 != nil {
-				sess.c0.Close()
+				_ = sess.c0.Close()
 			}
 		}
 	}()
 
-	uSrv, err := url.Parse(service)
-	if err != nil {
-		return nil, err
+	var res []string
+	var uSrv *url.URL
+	if uSrv, err = url.Parse(service); err != nil {
+		return
 	}
 	if proxy == "" {
 		sess.c0, err = net.Dial("tcp", uSrv.Host)
@@ -92,82 +93,86 @@ func POP3Connect(service, proxy string) (*POP3Session, error) {
 		sess.c0, err = Socks5Connect("tcp", host, int(port), proxy)
 	}
 	if err != nil {
-		return nil, err
+		return
 	}
 	if sess.c0 == nil {
-		return nil, errors.New("Can't estabish connection to " + uSrv.Host)
+		err = errors.New("Can't estabish connection to " + uSrv.Host)
+		return
 	}
-
 	sslConfig := &tls.Config{InsecureSkipVerify: true}
 	if uSrv.Scheme == "pops" {
 		sess.c1 = tls.Client(sess.c0, sslConfig)
 		if err = sess.c1.Handshake(); err != nil {
-			return nil, err
+			return
 		}
 	}
-
 	if sess.c1 != nil {
 		sess.conn = textproto.NewConn(sess.c1)
 	} else {
 		sess.conn = textproto.NewConn(sess.c0)
 	}
-
-	sess.Exec("", false)
-
+	if _, err = sess.Exec("", false); err != nil {
+		return
+	}
 	if sess.c1 == nil {
-		capabilities, err := sess.Exec("CAPA", true)
-		if err != nil {
-			return nil, err
+		var capabilities []string
+		if capabilities, err = sess.Exec("CAPA", true); err != nil {
+			return
 		}
 		if success, msg := checkResponse(capabilities[0]); !success {
-			return nil, errors.New(msg)
+			err = errors.New(msg)
+			return
 		}
 		for _, s := range capabilities[1:] {
 			if s == "STLS" {
-				res, err := sess.Exec("STLS", false)
-				if err != nil {
-					return nil, err
+				if res, err = sess.Exec("STLS", false); err != nil {
+					return
 				}
 				if success, _ := checkResponse(res[0]); success {
 					sess.c1 = tls.Client(sess.c0, sslConfig)
 					if err = sess.c1.Handshake(); err != nil {
-						return nil, err
+						return
 					}
 					sess.conn = textproto.NewConn(sess.c1)
 				}
 			}
 		}
 	}
-
-	res, err := sess.Exec("USER "+uSrv.User.Username(), false)
-	if err != nil {
-		return nil, err
+	if res, err = sess.Exec("USER "+uSrv.User.Username(), false); err != nil {
+		return
 	}
 	if success, msg := checkResponse(res[0]); !success {
 		return nil, errors.New(msg)
 	}
 	pw, ok := uSrv.User.Password()
 	if !ok {
-		return nil, errors.New("Missing password")
+		return nil, errors.New("missing password")
 	}
 	if res, err = sess.Exec("PASS "+pw, false); err != nil {
-		return nil, err
+		return
 	}
 	if success, msg := checkResponse(res[0]); !success {
 		return nil, errors.New(msg)
 	}
 	sess.established = true
-	return sess, nil
+	return
 }
 
 // Close a POP3 session with the server.
-func (sess *POP3Session) Close() {
-	sess.Exec("QUIT", false)
-	sess.conn.Close()
-	sess.c0.Close()
-	if sess.c1 != nil {
-		sess.c1.Close()
+func (sess *POP3Session) Close() (err error) {
+	if _, err = sess.Exec("QUIT", false); err != nil {
+		return
 	}
+	if err = sess.conn.Close(); err != nil {
+		return
+	}
+	if err = sess.c0.Close(); err != nil {
+		return
+	}
+	if sess.c1 != nil {
+		err = sess.c1.Close()
+	}
+	return
 }
 
 // Exec executes a command on the POP3 server:
@@ -192,7 +197,7 @@ func (sess *POP3Session) Exec(cmd string, expectData bool) ([]string, error) {
 			res = append(res, s)
 		}
 		if len(res) == 0 {
-			return nil, errors.New("No response data")
+			return nil, errors.New("no response data")
 		}
 		return res, nil
 	}
@@ -204,30 +209,31 @@ func (sess *POP3Session) Exec(cmd string, expectData bool) ([]string, error) {
 }
 
 // ListUnread returns a list of unread messages.
-func (sess *POP3Session) ListUnread() ([]int, error) {
-	res, err := sess.Exec("LIST", true)
-	if err != nil {
-		return nil, err
+func (sess *POP3Session) ListUnread() (list []int, err error) {
+	var res []string
+	if res, err = sess.Exec("LIST", true); err != nil {
+		return
 	}
 	if success, msg := checkResponse(res[0]); !success {
-		return nil, errors.New(msg)
+		err = errors.New(msg)
+		return
 	}
-
-	var idList []int
 	for _, s := range res[1:] {
 		idStr := strings.Split(s, " ")[0]
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
 			continue
 		}
-		idList = append(idList, id)
+		list = append(list, id)
 	}
-	return idList, nil
+	return
 }
 
 // Retrieve message# <id> from the server.
 func (sess *POP3Session) Retrieve(id int) ([]string, error) {
-	sess.c0.SetDeadline(time.Now().Add(30 * time.Minute))
+	if err := sess.c0.SetDeadline(time.Now().Add(30 * time.Minute)); err != nil {
+		return nil, err
+	}
 	res, err := sess.Exec("RETR "+strconv.Itoa(id), true)
 	if err != nil {
 		return nil, err
@@ -260,7 +266,7 @@ func checkResponse(res string) (success bool, msg string) {
 	}
 	msg = ""
 	if pos := strings.IndexRune(res, ' '); pos != -1 {
-		msg = string(res[pos+1:])
+		msg = res[pos+1:]
 	}
 	return success, msg
 }

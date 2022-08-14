@@ -22,6 +22,7 @@ package bitcoin
 
 import (
 	"errors"
+
 	"github.com/bfix/gospel/math"
 )
 
@@ -79,10 +80,10 @@ func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 		if b[32] == 1 {
 			compr = true
 		} else {
-			return nil, errors.New("Invalid private key format (compression flag)")
+			return nil, errors.New("invalid private key format (compression flag)")
 		}
 	} else if len(b) != 32 {
-		return nil, errors.New("Invalid private key format (length)")
+		return nil, errors.New("invalid private key format (length)")
 	}
 	// set private factor.
 	key := &PrivateKey{}
