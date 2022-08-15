@@ -99,7 +99,9 @@ func POP3Connect(service, proxy string) (sess *POP3Session, err error) {
 		err = errors.New("Can't estabish connection to " + uSrv.Host)
 		return
 	}
-	sslConfig := &tls.Config{InsecureSkipVerify: true}
+	sslConfig := &tls.Config{
+		InsecureSkipVerify: true, //nolint:gosec // intentional
+	}
 	if uSrv.Scheme == "pops" {
 		sess.c1 = tls.Client(sess.c0, sslConfig)
 		if err = sess.c1.Handshake(); err != nil {

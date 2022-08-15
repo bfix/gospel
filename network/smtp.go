@@ -101,7 +101,9 @@ func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) (err err
 		return
 	}
 
-	sslConfig := &tls.Config{InsecureSkipVerify: true}
+	sslConfig := &tls.Config{
+		InsecureSkipVerify: true, //nolint:gosec // intentional
+	}
 	if uSrv.Scheme == "smtps" {
 		c1 = tls.Client(c0, sslConfig)
 		if err = c1.Handshake(); err != nil {
@@ -333,169 +335,176 @@ func ParseMailMessage(msg io.Reader, getInfo MailUserInfo) (mc *MailContent, err
 }
 
 // ParsePlain disassembles a plain email message.
-func ParsePlain(ct string, body io.Reader) (*MailContent, error) {
-	mc := new(MailContent)
+func ParsePlain(ct string, body io.Reader) (mc *MailContent, err error) {
+	mc = new(MailContent)
 	mc.Mode = modePLAIN
 	boundary := extractValue(ct, "boundary")
 	rdr := multipart.NewReader(body, boundary)
 	for {
-		if part, err := rdr.NextPart(); err == nil {
-			ct = part.Header.Get("Content-Type")
-			switch {
-			case strings.HasPrefix(ct, "text/plain;"):
-				data, err := ioutil.ReadAll(part)
-				if err != nil {
-					return nil, err
-				}
-				mc.Body = string(data)
-			case strings.HasPrefix(ct, "application/pgp-keys;"):
-				mc.Key, err = ioutil.ReadAll(part)
-				if err != nil {
-					return nil, err
-				}
-			default:
-				return nil, errors.New("Unhandled MIME part: " + ct)
+		var part *multipart.Part
+		if part, err = rdr.NextPart(); err != nil {
+			if err == io.EOF {
+				err = nil
 			}
-		} else if err == io.EOF {
-			break
-		} else {
-			return nil, err
+			return
+		}
+		ct = part.Header.Get("Content-Type")
+		switch {
+		case strings.HasPrefix(ct, "text/plain;"):
+			var data []byte
+			if data, err = ioutil.ReadAll(part); err != nil {
+				return
+			}
+			mc.Body = string(data)
+		case strings.HasPrefix(ct, "application/pgp-keys;"):
+			if mc.Key, err = ioutil.ReadAll(part); err != nil {
+				return
+			}
+		default:
+			err = errors.New("Unhandled MIME part: " + ct)
+			return
 		}
 	}
-	return mc, nil
 }
 
 // ParseEncrypted parses a encrypted (and possibly signed) message.
-func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (*MailContent, error) {
-	mc := new(MailContent)
+func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (mc *MailContent, err error) {
+	mc = new(MailContent)
 	mc.Mode = modeENC
 	boundary := extractValue(ct, "boundary")
 	rdr := multipart.NewReader(body, boundary)
 	for {
-		if part, err := rdr.NextPart(); err == nil {
-			ct = part.Header.Get("Content-Type")
-			switch {
-			case strings.HasPrefix(ct, "application/pgp-encrypted"):
-				buf, err := ioutil.ReadAll(part)
-				if err != nil {
-					return nil, err
-				}
-				logger.Printf(logger.DBG, "application/pgp-encrypted: '%s'\n", strings.TrimSpace(string(buf)))
-				continue
-			case strings.HasPrefix(ct, "application/octet-stream;"):
-				rdr, err := armor.Decode(part)
-				if err != nil {
-					return nil, err
-				}
-				pw := ""
-				pwTmp := getInfo(infoPASSPHRASE, "")
-				switch pws := pwTmp.(type) {
-				case string:
-					pw = pws
-				}
-				prompt := func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
-					priv := keys[0].PrivateKey
-					if priv.Encrypted {
-						if err = priv.Decrypt([]byte(pw)); err != nil {
-							return nil, err
-						}
-					}
-					buf := new(bytes.Buffer)
-					if err = priv.Serialize(buf); err != nil {
-						return nil, err
-					}
-					return buf.Bytes(), nil
-				}
-				id := getIdentity(getInfo, infoIDENTITY, "")
-				md, err := openpgp.ReadMessage(rdr.Body, openpgp.EntityList{id}, prompt, nil)
-				if err != nil {
-					return nil, err
-				}
-				if md.IsSigned {
-					mc.Mode = modeSIGNENC
-					id := getIdentity(getInfo, infoSENDER, addr)
-					if id == nil {
-						mc.Mode = modeUSIGNENC
-						content, err := ioutil.ReadAll(md.UnverifiedBody)
-						if err != nil {
-							return nil, err
-						}
-						mc.Body = string(content)
-						continue
-					}
-					md.SignedBy = crypto.GetKeyFromIdentity(id, crypto.KeySign)
-					md.SignedByKeyId = md.SignedBy.PublicKey.KeyId
-					mc.Key, err = crypto.GetArmoredPublicKey(id)
-					if err != nil {
-						return nil, err
-					}
-					content, err := ioutil.ReadAll(md.UnverifiedBody)
-					if err != nil {
-						return nil, err
-					}
-					if md.SignatureError != nil {
-						return nil, md.SignatureError
-					}
-					logger.Println(logger.INFO, "Signature verified OK")
-
-					m, err := mail.ReadMessage(bytes.NewBuffer(content))
-					if err != nil {
-						return nil, err
-					}
-					ct = m.Header.Get("Content-Type")
-					mc2, err := ParsePlain(ct, m.Body)
-					if err != nil {
-						return nil, err
-					}
-					mc.Body = mc2.Body
-				}
-			default:
-				return nil, errors.New("Unhandled MIME part: " + ct)
+		var part *multipart.Part
+		// read next mime part
+		if part, err = rdr.NextPart(); err != nil {
+			// no more parts: we are done
+			if err == io.EOF {
+				err = nil
 			}
-		} else if err == io.EOF {
-			break
-		} else {
-			return nil, err
+			return
+		}
+		// decode mime part
+		ct = part.Header.Get("Content-Type")
+		switch {
+		case strings.HasPrefix(ct, "application/pgp-encrypted"):
+			var buf []byte
+			if buf, err = ioutil.ReadAll(part); err != nil {
+				return
+			}
+			logger.Printf(logger.DBG, "application/pgp-encrypted: '%s'\n", strings.TrimSpace(string(buf)))
+
+		case strings.HasPrefix(ct, "application/octet-stream;"):
+			var rdr *armor.Block
+			if rdr, err = armor.Decode(part); err != nil {
+				return
+			}
+			pw := ""
+			pwTmp := getInfo(infoPASSPHRASE, "")
+			switch pws := pwTmp.(type) {
+			case string:
+				pw = pws
+			}
+			prompt := func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
+				priv := keys[0].PrivateKey
+				if priv.Encrypted {
+					if err = priv.Decrypt([]byte(pw)); err != nil {
+						return nil, err
+					}
+				}
+				buf := new(bytes.Buffer)
+				if err = priv.Serialize(buf); err != nil {
+					return nil, err
+				}
+				return buf.Bytes(), nil
+			}
+			id := getIdentity(getInfo, infoIDENTITY, "")
+			var md *openpgp.MessageDetails
+			if md, err = openpgp.ReadMessage(rdr.Body, openpgp.EntityList{id}, prompt, nil); err != nil {
+				return
+			}
+			if md.IsSigned {
+				mc.Mode = modeSIGNENC
+				id := getIdentity(getInfo, infoSENDER, addr)
+				if id == nil {
+					mc.Mode = modeUSIGNENC
+					var content []byte
+					if content, err = ioutil.ReadAll(md.UnverifiedBody); err != nil {
+						return
+					}
+					mc.Body = string(content)
+					continue
+				}
+				md.SignedBy = crypto.GetKeyFromIdentity(id, crypto.KeySign)
+				md.SignedByKeyId = md.SignedBy.PublicKey.KeyId
+				if mc.Key, err = crypto.GetArmoredPublicKey(id); err != nil {
+					return
+				}
+				var content []byte
+				if content, err = ioutil.ReadAll(md.UnverifiedBody); err != nil {
+					return
+				}
+				if md.SignatureError != nil {
+					err = md.SignatureError
+					return
+				}
+				logger.Println(logger.INFO, "Signature verified OK")
+
+				var m *mail.Message
+				if m, err = mail.ReadMessage(bytes.NewBuffer(content)); err != nil {
+					return
+				}
+				ct = m.Header.Get("Content-Type")
+				var mc2 *MailContent
+				if mc2, err = ParsePlain(ct, m.Body); err != nil {
+					return
+				}
+				mc.Body = mc2.Body
+			}
+		default:
+			err = errors.New("Unhandled MIME part: " + ct)
+			return
 		}
 	}
-	return mc, nil
 }
 
 // ParseSigned reads an unencrypted, but signed message.
-func ParseSigned(ct, addr string, getInfo MailUserInfo, body io.Reader) (*MailContent, error) {
-	mc := new(MailContent)
+func ParseSigned(ct, addr string, getInfo MailUserInfo, body io.Reader) (mc *MailContent, err error) {
+	mc = new(MailContent)
 	mc.Mode = modeSIGN
 	boundary := extractValue(ct, "boundary")
 	rdr := multipart.NewReader(body, boundary)
 	for {
-		if part, err := rdr.NextPart(); err == nil {
-			ct = part.Header.Get("Content-Type")
-			switch {
-			case strings.HasPrefix(ct, "text/plain;"):
-				data, err := ioutil.ReadAll(part)
-				if err != nil {
-					return nil, err
-				}
-				mc.Body = string(data)
-			case strings.HasPrefix(ct, "application/pgp-signature;"):
-				id := getIdentity(getInfo, infoSENDER, addr)
-				if id == nil {
-					mc.Mode = modeUSIGN
-					continue
-				}
-				buf := bytes.NewBufferString(mc.Body)
-				if _, err := openpgp.CheckArmoredDetachedSignature(openpgp.EntityList{id}, buf, part); err != nil {
-					return nil, err
-				}
-				logger.Println(logger.INFO, "Signature verified OK")
+		// get next mime part
+		var part *multipart.Part
+		if part, err = rdr.NextPart(); err != nil {
+			// no more parts: we are done
+			if err == io.EOF {
+				err = nil
 			}
-		} else if err == io.EOF {
-			break
-		} else {
-			return nil, err
+			return
+		}
+		// check content type
+		ct = part.Header.Get("Content-Type")
+		switch {
+		case strings.HasPrefix(ct, "text/plain;"):
+			var data []byte
+			if data, err = ioutil.ReadAll(part); err != nil {
+				return
+			}
+			mc.Body = string(data)
+		case strings.HasPrefix(ct, "application/pgp-signature;"):
+			id := getIdentity(getInfo, infoSENDER, addr)
+			if id == nil {
+				mc.Mode = modeUSIGN
+				continue
+			}
+			buf := bytes.NewBufferString(mc.Body)
+			if _, err = openpgp.CheckArmoredDetachedSignature(openpgp.EntityList{id}, buf, part); err != nil {
+				return
+			}
+			logger.Println(logger.INFO, "Signature verified OK")
 		}
 	}
-	return mc, nil
 }
 
 // Extract value from string ('... key="value" ...')

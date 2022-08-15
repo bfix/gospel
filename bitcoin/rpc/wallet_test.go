@@ -115,7 +115,7 @@ func TestAccount(t *testing.T) {
 	if _accnt != label {
 		t.Fatal("account label mismatch")
 	}
-	if _, err := sess.GetAccountAddress(_accnt); err != nil {
+	if _, err = sess.GetAccountAddress(_accnt); err != nil {
 		t.Fatal(err)
 	}
 	accnts, err := sess.ListAccounts(0)
@@ -123,16 +123,16 @@ func TestAccount(t *testing.T) {
 		t.Fatal(err)
 	}
 	for label := range accnts {
-		addrList, err := sess.GetAddressesByAccount(label)
-		if err != nil {
+		var addrList []string
+		if addrList, err = sess.GetAddressesByAccount(label); err != nil {
 			t.Fatal(err)
 		}
 		if len(addrList) == 0 {
 			continue
 		}
 		if len(label) > 0 {
-			bal, err := sess.GetBalance(label)
-			if err != nil {
+			var bal float64
+			if bal, err = sess.GetBalance(label); err != nil {
 				t.Fatal(err)
 			}
 			if bal > 0 {

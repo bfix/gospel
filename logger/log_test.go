@@ -56,7 +56,7 @@ func TestLogger(t *testing.T) {
 	list := make([]chan bool, NumTasks)
 	Println(INFO, "Test run started...")
 	for i := 0; i < NumTasks; i++ {
-		list[i] = newTask(i, 500+int(rand.Int31n(2500)))
+		list[i] = newTask(i, 500+int(rand.Int31n(2500))) //nolint:gosec // just a test
 	}
 	for _, ch := range list {
 		ch <- true

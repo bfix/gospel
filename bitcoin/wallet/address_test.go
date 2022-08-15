@@ -108,8 +108,8 @@ func TestAddress(t *testing.T) {
 		}
 
 		addr := MakeAddress(pubkey, 0, AddrP2PKH, AddrMain)
-		if string(addr) != d.IDaddr {
-			t.Fatalf("makeaddress failed: '%s' != '%s'\n", string(addr), d.IDaddr)
+		if addr != d.IDaddr {
+			t.Fatalf("makeaddress failed: '%s' != '%s'\n", addr, d.IDaddr)
 		}
 		pubkeyhex := hex.EncodeToString(pubkey.Bytes())
 		if pubkeyhex != d.SerPubHex[90:] {

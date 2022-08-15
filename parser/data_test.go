@@ -72,6 +72,8 @@ func getData(s string) *Data {
 
 // Run test case.
 func testCase1(t *testing.T, data, access, path, elem string, flags string) {
+	t.Helper()
+
 	if len(elem) == 0 {
 		elem = data
 	}

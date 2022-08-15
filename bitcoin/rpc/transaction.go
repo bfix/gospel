@@ -311,16 +311,12 @@ func (s *Session) SignRawTransaction(raw string, ins []Output, keys []string, mo
 // VerifyTxOutProof verifies that a proof points to one or more transactions
 // in a block, returning the transactions the proof commits to and throwing
 // an RPC error if the block is not in our best block chain.
-func (s *Session) VerifyTxOutProof(proof string) ([]string, error) {
-	res, err := s.call("verifytxoutproof", []Data{proof})
-	if err != nil {
-		return nil, err
+func (s *Session) VerifyTxOutProof(proof string) (addr []string, err error) {
+	var res *Response
+	if res, err = s.call("verifytxoutproof", []Data{proof}); err == nil {
+		_, err = res.UnmarshalResult(&addr)
 	}
-	var addr []string
-	if ok, err := res.UnmarshalResult(&addr); !ok {
-		return nil, err
-	}
-	return addr, err
+	return
 }
 
 // VerifyTransfer verifies a fund transfer.

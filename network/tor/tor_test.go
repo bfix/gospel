@@ -181,7 +181,7 @@ func TestOnion(t *testing.T) {
 	// start a simple echo server
 	var echoErr error
 	go func() {
-		listener, err := net.Listen("tcp", "0.0.0.0:12345")
+		listener, err := net.Listen("tcp", "0.0.0.0:12345") //nolint:gosec // intentional
 		if err != nil {
 			echoErr = err
 			return

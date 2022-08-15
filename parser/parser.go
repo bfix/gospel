@@ -74,6 +74,7 @@ type Callback func(mode int, param *Parameter) bool
 
 // Parser reads data definitions from reader and pass parameters
 // to callback.
+//nolint:gocyclo // complex
 func Parser(rdr *bufio.Reader, cb Callback) error {
 
 	state := 1                  // current state in state machine
@@ -239,7 +240,7 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 					// pop VAR tag
 					stack.Pop()
 					// restart
-					if err := rdr.UnreadRune(); err != nil {
+					if err = rdr.UnreadRune(); err != nil {
 						return err
 					}
 					state = 5
@@ -352,7 +353,7 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 					}
 				// non-delimiting character: "unread" character
 				// and start new parameter expression
-				default:
+				default: // nolint:stylecheck // has fallthrough
 					{
 						if stack.Len() > 0 {
 							if stack.Peek() != VAR {

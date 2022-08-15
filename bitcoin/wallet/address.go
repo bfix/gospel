@@ -101,7 +101,7 @@ func MakeAddress(key *bitcoin.PublicKey, coin, version, network int) string {
 	addr = append(addr, kh...)
 	cs := bitcoin.Hash256(addr)
 	addr = append(addr, cs[:4]...)
-	return string(bitcoin.Base58Encode(addr))
+	return bitcoin.Base58Encode(addr)
 }
 
 // GetXDVersion returns the extended data version for a given coin mode

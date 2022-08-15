@@ -57,7 +57,7 @@ func (m *FindNodeMsg) String() string {
 func NewFindNodeMsg() Message {
 	return &FindNodeMsg{
 		MsgHeader: MsgHeader{
-			Size:     uint16(HdrSize + AddrSize),
+			Size:     HdrSize + AddrSize,
 			TxID:     0,
 			Type:     ReqNODE,
 			Flags:    0,
@@ -152,7 +152,7 @@ func (s *LookupService) Respond(ctx context.Context, m Message) (bool, error) {
 	msg, _ := m.(*FindNodeMsg)
 
 	// assemble FIND_NODE_RESP message
-	resp := NewFindNodeRespMsg().(*FindNodeRespMsg)
+	resp, _ := NewFindNodeRespMsg().(*FindNodeRespMsg)
 	resp.TxID = hdr.TxID
 	resp.Sender = hdr.Receiver
 	resp.Receiver = hdr.Sender
@@ -199,7 +199,7 @@ func (s *LookupService) NewMessage(mt int) Message {
 // Request resolves an address 'addr' on peer 'rcv' synchronously
 func (s *LookupService) Request(ctx context.Context, rcv, addr *Address, timeout time.Duration) (res []*Endpoint, err error) {
 	// assemble request
-	req := NewFindNodeMsg().(*FindNodeMsg)
+	req, _ := NewFindNodeMsg().(*FindNodeMsg)
 	req.TxID = s.node.NextID()
 	req.Sender = s.node.Address()
 	req.Receiver = rcv

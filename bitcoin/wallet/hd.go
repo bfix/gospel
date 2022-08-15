@@ -128,7 +128,7 @@ func (d *ExtendedData) String() string {
 	r = append(r, b...)
 	cs := bitcoin.Hash256(b)
 	r = append(r, cs[:4]...)
-	return string(bitcoin.Base58Encode(r))
+	return bitcoin.Base58Encode(r)
 }
 
 //----------------------------------------------------------------------
@@ -168,7 +168,7 @@ func (e *ExtendedPublicKey) String() string {
 func (e *ExtendedPublicKey) Fingerprint() (i uint32) {
 	fp := bitcoin.Hash160(e.Key.Bytes(true))
 	rdr := bytes.NewBuffer(fp)
-	binary.Read(rdr, binary.BigEndian, &i)
+	_ = binary.Read(rdr, binary.BigEndian, &i)
 	return
 }
 
@@ -379,7 +379,7 @@ func CKDprv(k *ExtendedPrivateKey, i uint32) (ki *ExtendedPrivateKey) {
 		mac.Write(p.Bytes(true))
 	}
 
-	binary.Write(mac, binary.BigEndian, i)
+	_ = binary.Write(mac, binary.BigEndian, i)
 	x := mac.Sum(nil)
 
 	j := math.NewIntFromBytes(x[:32])

@@ -23,7 +23,7 @@ package tor
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // required
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/base32"
@@ -116,6 +116,7 @@ func (o *Onion) SetCredentials(name, passwd string) {
 }
 
 // Start a new hidden service via a Tor service.
+//nolint:gocyclo // life sometimes is complex...
 func (o *Onion) Start(srv *Service) (err error) {
 	// check if hidden service is already active
 	if o.running {
@@ -274,7 +275,7 @@ func ServiceID(key interface{}) (id string, err error) {
 		if data, err = asn1.Marshal(*pub); err != nil {
 			return
 		}
-		sum := sha1.Sum(data)
+		sum := sha1.Sum(data) //nolint:gosec // good enough for testing
 		id = base32.StdEncoding.EncodeToString(sum[:len(sum)/2])
 	default:
 		err = ErrOnionInvalidKey

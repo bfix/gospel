@@ -3,7 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/bfix/gospel)](https://goreportcard.com/report/github.com/bfix/gospel)
 [![GoDoc](https://godoc.org/github.com/bfix/gospel?status.svg)](https://godoc.org/github.com/bfix/gospel)
 
-Gospel: GO SPEcial Library (v1.2.14)
+Gospel: GO SPEcial Library (v1.2.19)
 ====================================
 
 (c) 2010-2022 Bernd Fix <brf@hoi-polloi.org>   >Y<
@@ -83,7 +83,7 @@ Packages
 Install
 -------
 
-This version (`v1.2.14`) is designed for the Go1.11+ release. One of the next
+This version (`v1.2.19`) is designed for the Go1.11+ release. One of the next
 version will require Go1.18+ to make use of new language features.
 
 If you only want to use the library in your projects, you don't have to

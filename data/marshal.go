@@ -122,6 +122,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 }
 
 // MarshalStream writes an object instance to stream
+//nolint:gocyclo // life sometimes is complex...
 func MarshalStream(wrt io.Writer, obj interface{}) error {
 	var inst reflect.Value
 	path := newPath()
@@ -333,6 +334,7 @@ func Unmarshal(obj interface{}, data []byte) error {
 }
 
 // UnmarshalStream reads an object from strean.
+//nolint:gocyclo // life sometimes is complex...
 func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 	var inst reflect.Value
 	path := newPath()
@@ -693,6 +695,7 @@ func (p *path) push(elem string) {
 }
 
 // pop (remove) last level
+//nolint:unparam // skip false-positive
 func (p *path) pop() (elem string) {
 	num := len(p.list) - 1
 	elem = p.list[num]

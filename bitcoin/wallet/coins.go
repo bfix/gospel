@@ -44,6 +44,7 @@ func GetCoinInfo(symb string) (int, string) {
 	return -1, ""
 }
 
+//nolint:misspell // some coins have strange names...
 var (
 	// CoinList of all all available BIP44 coin types
 	CoinList = []*CoinSpec{

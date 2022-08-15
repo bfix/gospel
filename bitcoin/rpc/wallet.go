@@ -119,7 +119,7 @@ func (s *Session) GetAccount(address string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	label := res.Result.(string)
+	label, _ := res.Result.(string)
 	return label, err
 }
 
@@ -129,7 +129,7 @@ func (s *Session) GetAccountAddress(label string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	addr := res.Result.(string)
+	addr, _ := res.Result.(string)
 	return addr, nil
 }
 
@@ -253,17 +253,12 @@ func (s *Session) KeypoolRefill() error {
 
 // ListAccounts returns Object that has account names as keys and
 // account balances as values.
-func (s *Session) ListAccounts(confirmations int) (map[string]float64, error) {
-	res, err := s.call("listaccounts", []Data{confirmations})
-	if err != nil {
-		return nil, err
+func (s *Session) ListAccounts(confirmations int) (list map[string]float64, err error) {
+	var res *Response
+	if res, err = s.call("listaccounts", []Data{confirmations}); err == nil {
+		list, _ = res.Result.(map[string]float64)
 	}
-	list := make(map[string]float64)
-	data := res.Result.(map[string]interface{})
-	for key, value := range data {
-		list[key] = value.(float64)
-	}
-	return list, nil
+	return
 }
 
 // ListAddressGroupings lists groups of addresses that may have had their

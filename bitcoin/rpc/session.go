@@ -131,6 +131,7 @@ func NewSessionSSL(addr, user, pw string, scert *x509.Certificate) (*Session, er
 		client: &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
+					MinVersion:         tls.VersionTLS12,
 					InsecureSkipVerify: false,
 					VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 						return nil

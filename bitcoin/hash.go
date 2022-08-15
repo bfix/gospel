@@ -21,10 +21,10 @@ package bitcoin
 //----------------------------------------------------------------------
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // required for BTC
 	"crypto/sha256"
 
-	"golang.org/x/crypto/ripemd160"
+	"golang.org/x/crypto/ripemd160" //nolint:staticcheck // required for BTC
 )
 
 // Hash160 computes RIPEMD-160(SHA-256(data))
@@ -62,7 +62,7 @@ func RipeMD160(data []byte) []byte {
 
 // Sha1 computes SHA1(data)
 func Sha1(data []byte) []byte {
-	sha1 := sha1.New()
+	sha1 := sha1.New() //nolint:gosec // required
 	sha1.Write(data)
 	return sha1.Sum(nil)
 }

@@ -119,7 +119,7 @@ func (s *PingService) Respond(ctx context.Context, m Message) (bool, error) {
 		return false, nil
 	}
 	// assemble PONG as response to PING
-	resp := NewPongMsg().(*PongMsg)
+	resp, _ := NewPongMsg().(*PongMsg)
 	resp.TxID = hdr.TxID
 	resp.Sender = hdr.Receiver
 	resp.Receiver = hdr.Sender
@@ -146,7 +146,7 @@ func (s *PingService) NewMessage(mt int) Message {
 // Ping sends a ping to another node and waits for a response (with timeout)
 func (s *PingService) Ping(ctx context.Context, rcv *Address, timeout time.Duration, relays int) error {
 	// assemble request
-	req := NewPingMsg().(*PingMsg)
+	req, _ := NewPingMsg().(*PingMsg)
 	req.TxID = s.node.NextID()
 	req.Sender = s.node.Address()
 	req.Receiver = rcv

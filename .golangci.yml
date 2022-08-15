@@ -27,8 +27,10 @@ linters:
     - dupl
     - errcheck
     - exportloopref
+    - gocyclo
     - gofmt
     - goimports
+    - gosec
     - gosimple
     - govet
     - ineffassign
@@ -48,4 +50,3 @@ linters:
 
 run:
   issues-exit-code: 1
-

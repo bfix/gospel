@@ -222,7 +222,7 @@ func (c *TorConnector) Sample(num int, skip *Address) []*Address {
 	res := make([]*Address, num)
 loop:
 	for i := 0; i < num; {
-		pos := rand.Intn(SampleCache)
+		pos := rand.Intn(SampleCache) //nolint:gosec // good enough for testing
 		addr := c.sample[pos]
 		if addr == nil || addr.Equals(c.node.addr) || addr.Equals(skip) {
 			continue
