@@ -87,7 +87,7 @@ This version (`v1.2.19`) is designed for the Go1.11+ release. One of the next
 version will require Go1.18+ to make use of new language features.
 
 If you only want to use the library in your projects, you don't have to
-install anything. Just include `github.com/bfix/gospel v1.2.14` in your
+install anything. Just include `github.com/bfix/gospel v1.2.19` in your
 `go.mod` file and do a `go mod tidy`.
 
 You can install Gospel locally if desired. Make sure that your Go environment
