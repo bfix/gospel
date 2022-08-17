@@ -292,14 +292,37 @@ func marshalStruct(ctx *marshalContext, x reflect.Value) error {
 // marshal custom data type
 func marshalCustom(ctx *marshalContext, f reflect.Value) (ok bool, err error) {
 	ok = true
+	var v interface{}
 	switch f.Kind() {
+	case reflect.Int, reflect.Int32:
+		v = int32(f.Int())
+	case reflect.Int8:
+		v = int8(f.Int())
+	case reflect.Int16:
+		v = int16(f.Int())
+	case reflect.Int64:
+		v = int64(f.Int())
+	case reflect.Uint, reflect.Uint32:
+		v = uint32(f.Uint())
+	case reflect.Uint8:
+		v = uint8(f.Uint())
 	case reflect.Uint16:
-		e := reflect.ValueOf(uint16(f.Uint()))
-		err = marshalValue(ctx, e)
+		v = uint16(f.Uint())
+	case reflect.Uint64:
+		v = uint64(f.Uint())
+	case reflect.Bool:
+		v = f.Bool()
+	case reflect.String:
+		v = f.String()
 	default:
 		ok = false
 	}
+	if ok {
+		e := reflect.ValueOf(v)
+		err = marshalValue(ctx, e)
+	}
 	return
+
 }
 
 //======================================================================
