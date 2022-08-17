@@ -34,23 +34,22 @@ import (
 
 //######################################################################
 //
-// Serialization of Golang objects of type 'struct{}':
-// Field types can be any of these:
+// Serialization of Golang objects of the following types:
 //
 //    int{8,16,32,64}       -- Signed integer of given size
 //    uint{8,16,32,64}      -- Unsigned integer of given size (little-endian)
-//    []uint8,[]byte        -- variable length byte array
+//    []uint8,[]byte        -- variable length byte array (special handling)
 //    string                -- variable length string (\0 -terminated)
 //    bool                  -- boolean value (single byte, 0=false, true otherwise)
 //    *struct{}, struct{}   -- nested structure
-//    []*struct{}, []struct -- list of structures with allowed fields
+//    []*T, []T             -- array of supported types
 //
 // The serialization can be controlled by field annotations:
 //
 // ---------------------------------------
 // (1) Endianness of integers: tag "order"
 // ---------------------------------------
-// Integer fields (of size > 1) can be tagged for Big-Endian representation
+// Integer objects (of size > 1) can be tagged for Big-Endian representation
 // by using the tag "order" with a value of "big":
 //
 //    field1 int64 `order:"big"`
@@ -79,9 +78,9 @@ import (
 //     instance and can only consider data that has already been read.
 //     Its possible argument is a string (name of the annotated field).
 //
-// N.B.: You can't do math in the size expression (except for the greedy
-//       expression like "*-16"); you need to out-source the calculation
-//       to a method if required.
+// N.B.: You can't do math in the size expression (except for byte arrays
+//       with the greedy expression like "*-16"); you need to out-source
+//       the calculation to a method if required.
 //
 // ------------------------------
 // (3) Optional fields: tag "opt"
@@ -97,7 +96,8 @@ import (
 var (
 	ErrMarshalNil          = errors.New("object is nil")
 	ErrMarshalType         = errors.New("invalid object type")
-	ErrMarshalNoSize       = errors.New("missing size tag on field")
+	ErrMarshalNoSize       = errors.New("missing/invalid size tag on field")
+	ErrMarshalNoOpt        = errors.New("missing/invalid opt tag on field")
 	ErrMarshalSizeMismatch = errors.New("size mismatch during unmarshal")
 	ErrMarshalEmptyIntf    = errors.New("can't handle empty interface")
 	ErrMarshalUnknownType  = errors.New("unknown field type")
@@ -112,8 +112,9 @@ var (
 // Marshal Golang objects to byte arrays.
 //======================================================================
 
-// Marshal creates a byte array from a (reference to an) object.
+// Marshal creates a byte array from an object.
 func Marshal(obj interface{}) ([]byte, error) {
+	// Wrapping stream marshaller with buffer.
 	wrt := new(bytes.Buffer)
 	if err := MarshalStream(wrt, obj); err != nil {
 		return nil, err
@@ -121,206 +122,184 @@ func Marshal(obj interface{}) ([]byte, error) {
 	return wrt.Bytes(), nil
 }
 
-// MarshalStream writes an object instance to stream
-//nolint:gocyclo // life sometimes is complex...
+// MarshalStream writes an object to stream
 func MarshalStream(wrt io.Writer, obj interface{}) error {
-	var inst reflect.Value
-	path := newPath()
-	var marshal func(x reflect.Value) error
-	marshal = func(x reflect.Value) error {
-		for i := 0; i < x.NumField(); i++ {
-			f := x.Field(i)
-			// do not serialize unexported fields
-			if !f.CanSet() {
-				continue
-			}
-			ft := x.Type().Field(i)
-			path.push(ft.Name)
+	inst := reflect.ValueOf(obj)
+	ctx := newMarshalContext(wrt, inst)
+	return marshalValue(ctx, inst)
+}
 
-			// collect annotations
-			tagSize := ft.Tag.Get("size")
-			tagOrder := ft.Tag.Get("order")
-			tagOpt := ft.Tag.Get("opt")
-
-			// check for optional field
-			used, err := isUsed(tagOpt, ft.Name, x, inst)
-			if err != nil {
-				return gerr.New(err, "field '%s'", path.string())
-			}
-			if !used {
-				path.pop()
-				continue
-			}
-
-			switch v := f.Interface().(type) {
-			//----------------------------------------------------------
-			// Strings
-			//----------------------------------------------------------
-			case string:
-				if _, err := wrt.Write([]byte(v)); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				if _, err := wrt.Write([]byte{0}); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-			//----------------------------------------------------------
-			// Booleans
-			//----------------------------------------------------------
-			case bool:
-				var a byte
-				if v {
-					a = 1
-				}
-				if _, err := wrt.Write([]byte{a}); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-			//----------------------------------------------------------
-			// Integers
-			//----------------------------------------------------------
-			case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
-				if err := writeInt(wrt, tagOrder, v); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-			//----------------------------------------------------------
-			// Byte arrays
-			//----------------------------------------------------------
-			case []uint8:
-				if _, err := parseSize(tagSize, ft.Name, x, inst, len(v), -1); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				if _, err := wrt.Write(v); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-
-			//----------------------------------------------------------
-			// Handle other complex types...
-			//----------------------------------------------------------
-			default:
-				switch f.Kind() {
-				//------------------------------------------------------
-				// Interfaces
-				//------------------------------------------------------
-				case reflect.Interface:
-					e := f.Elem()
-					if e.Kind() == reflect.Ptr {
-						e = e.Elem()
-					}
-					if e.IsValid() {
-						if err := marshal(e); err != nil {
-							return err
-						}
-					}
-				//------------------------------------------------------
-				// Pointers
-				//------------------------------------------------------
-				case reflect.Ptr:
-					e := f.Elem()
-					if e.IsValid() {
-						if err := marshal(e); err != nil {
-							return err
-						}
-					}
-				//------------------------------------------------------
-				// Structs
-				//------------------------------------------------------
-				case reflect.Struct:
-					if err := marshal(f); err != nil {
-						return err
-					}
-				//------------------------------------------------------
-				// Slices
-				//------------------------------------------------------
-				case reflect.Slice:
-					count, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), -1)
-					if err != nil {
-						return gerr.New(err, "field '%s'", path.string())
-					}
-					// greedy slice: use existing size
-					if count < 0 {
-						count = f.Len()
-					}
-					for i := 0; i < count; i++ {
-						e := f.Index(i)
-						switch e.Kind() {
-						//----------------------------------------------
-						// Interface elements
-						//----------------------------------------------
-						case reflect.Interface:
-							e = e.Elem()
-							if e.Kind() == reflect.Ptr {
-								e = e.Elem()
-							}
-							if err := marshal(e); err != nil {
-								return err
-							}
-						//----------------------------------------------
-						// Pointer elements
-						//----------------------------------------------
-						case reflect.Ptr:
-							if err := marshal(e.Elem()); err != nil {
-								return err
-							}
-						//----------------------------------------------
-						// Struct elements
-						//----------------------------------------------
-						case reflect.Struct:
-							if err := marshal(e); err != nil {
-								return err
-							}
-						//----------------------------------------------
-						// Intrinsics (strings, integers)
-						//----------------------------------------------
-						default:
-							switch v := e.Interface().(type) {
-							case string:
-								if _, err := wrt.Write([]byte(v)); err != nil {
-									return gerr.New(err, "field '%s'", path.string())
-								}
-								if _, err := wrt.Write([]byte{0}); err != nil {
-									return gerr.New(err, "field '%s'", path.string())
-								}
-							case bool:
-								var a byte
-								if v {
-									a = 1
-								}
-								if _, err := wrt.Write([]byte{a}); err != nil {
-									return gerr.New(err, "field '%s'", path.string())
-								}
-							case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
-								if err := writeInt(wrt, tagOrder, v); err != nil {
-									return gerr.New(err, "field '%s'", path.string())
-								}
-							}
-						}
-					}
-				default:
-					return gerr.New(ErrMarshalUnknownType, "field '%s'", path.string())
-				}
-			}
-			path.pop()
-		}
-		return nil
+// marshal a single value instance
+func marshalValue(ctx *marshalContext, v reflect.Value) error {
+	// try intrinsic types first
+	if ok, err := marshalIntrinsic(ctx, v); ok {
+		return err
 	}
-	// process if object is a '*struct{}', a 'struct{}' or an interface
-	inst = reflect.ValueOf(obj)
-	switch inst.Kind() {
+	// try complex types next
+	if ok, err := marshalComplex(ctx, v); ok {
+		return err
+	}
+	// custom type
+	if ok, err := marshalCustom(ctx, v); ok {
+		return err
+	}
+	// unknown type
+	return gerr.New(ErrMarshalUnknownType,
+		"marshal: field '%s', type '%v', kind '%v'",
+		ctx.string(), v.Type(), v.Kind())
+}
+
+// marshal intrinsic data type
+func marshalIntrinsic(ctx *marshalContext, f reflect.Value) (ok bool, err error) {
+	ok = true
+	tagOrder := ctx.tag("order")
+	switch v := f.Interface().(type) {
+	//----------------------------------------------------------
+	// Strings
+	//----------------------------------------------------------
+	case string:
+		if _, err = ctx.wrt.Write([]byte(v)); err != nil {
+			err = ctx.fail(err)
+			break
+		}
+		if _, err = ctx.wrt.Write([]byte{0}); err != nil {
+			err = ctx.fail(err)
+		}
+	//----------------------------------------------------------
+	// Booleans
+	//----------------------------------------------------------
+	case bool:
+		var a byte
+		if v {
+			a = 1
+		}
+		if _, err = ctx.wrt.Write([]byte{a}); err != nil {
+			err = ctx.fail(err)
+		}
+	//----------------------------------------------------------
+	// Integers
+	//----------------------------------------------------------
+	case uint8, int8, uint16, int16, uint32, int32, uint64, int64, int:
+		if err = writeInt(ctx.wrt, tagOrder, v); err != nil {
+			err = ctx.fail(err)
+		}
+	//----------------------------------------------------------
+	// Byte arrays
+	//----------------------------------------------------------
+	case []uint8:
+		if _, err = ctx.parseSize(len(v)); err != nil {
+			err = ctx.fail(err)
+			break
+		}
+		if _, err = ctx.wrt.Write(v); err != nil {
+			err = ctx.fail(err)
+		}
+	default:
+		ok = false
+	}
+	return
+}
+
+// marshal complex data type
+func marshalComplex(ctx *marshalContext, f reflect.Value) (ok bool, err error) {
+	ok = true
+	switch f.Kind() {
+	//------------------------------------------------------
+	// Interfaces
+	//------------------------------------------------------
 	case reflect.Interface:
-		e := inst.Elem()
+		e := f.Elem()
 		if e.Kind() == reflect.Ptr {
 			e = e.Elem()
 		}
-		return marshal(e)
-	case reflect.Ptr:
-		e := inst.Elem()
 		if e.IsValid() {
-			return marshal(e)
+			ctx.use(e)
+			if err = marshalValue(ctx, e); err != nil {
+				return
+			}
 		}
-		return ErrMarshalNil
+	//------------------------------------------------------
+	// Pointers
+	//------------------------------------------------------
+	case reflect.Ptr:
+		e := f.Elem()
+		if e.IsValid() {
+			ctx.use(e)
+			if err = marshalValue(ctx, e); err != nil {
+				return
+			}
+		}
+	//------------------------------------------------------
+	// Structs
+	//------------------------------------------------------
 	case reflect.Struct:
-		return marshal(inst)
+		if err = marshalStruct(ctx, f); err != nil {
+			return
+		}
+	//------------------------------------------------------
+	// Slices
+	//------------------------------------------------------
+	case reflect.Slice:
+		var count int
+		if count, err = ctx.parseSize(f.Len()); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		// greedy slice: use existing size
+		if count < 0 {
+			count = f.Len()
+		}
+		for i := 0; i < count; i++ {
+			e := f.Index(i)
+			if err = marshalValue(ctx, e); err != nil {
+				return
+			}
+		}
+	default:
+		ok = false
 	}
-	return ErrMarshalType
+	return
+}
+
+// marshalStruct a single value
+func marshalStruct(ctx *marshalContext, x reflect.Value) error {
+	for i := 0; i < x.NumField(); i++ {
+		f := x.Field(i)
+		// do not serialize unexported fields
+		if !f.CanSet() {
+			continue
+		}
+		// append field name to path
+		ft := x.Type().Field(i)
+		ctx.push(ft.Name, f, ft.Tag)
+
+		// check for optional field
+		used, err := ctx.isUsed()
+		if err != nil {
+			return ctx.fail(err)
+		}
+		if used {
+			if err := marshalValue(ctx, f); err != nil {
+				return err
+			}
+		}
+		// remove field name from path
+		ctx.pop()
+	}
+	return nil
+}
+
+// marshal custom data type
+func marshalCustom(ctx *marshalContext, f reflect.Value) (ok bool, err error) {
+	ok = true
+	switch f.Kind() {
+	case reflect.Uint16:
+		e := reflect.ValueOf(uint16(f.Uint()))
+		err = marshalValue(ctx, e)
+	default:
+		ok = false
+	}
+	return
 }
 
 //======================================================================
@@ -334,402 +313,573 @@ func Unmarshal(obj interface{}, data []byte) error {
 }
 
 // UnmarshalStream reads an object from strean.
-//nolint:gocyclo // life sometimes is complex...
 func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
-	var inst reflect.Value
-	path := newPath()
-	var unmarshal func(x reflect.Value) error
-	unmarshal = func(x reflect.Value) error {
-		for i := 0; i < x.NumField(); i++ {
-			f := x.Field(i)
-			// skip unexported fields
-			if !f.CanSet() {
-				continue
-			}
-			ft := x.Type().Field(i)
-			path.push(ft.Name)
+	inst := reflect.ValueOf(obj)
+	ctx := newUnmarshalContext(rdr, pending, inst)
+	return unmarshalValue(ctx, inst)
+}
 
-			// collect annotations
-			tagSize := ft.Tag.Get("size")
-			tagOrder := ft.Tag.Get("order")
-			tagOpt := ft.Tag.Get("opt")
-
-			// check for optional field
-			used, err := isUsed(tagOpt, ft.Name, x, inst)
-			if err != nil {
-				return gerr.New(err, "field '%s'", path.string())
-			}
-			if !used {
-				path.pop()
-				continue
-			}
-
-			switch f.Interface().(type) {
-			//----------------------------------------------------------
-			// Strings
-			//----------------------------------------------------------
-			case string:
-				s := ""
-				b := make([]byte, 1)
-				for {
-					if _, err := rdr.Read(b); err != nil {
-						return gerr.New(err, "field '%s'", path.string())
-					}
-					if b[0] == 0 {
-						break
-					}
-					s += string(b)
-				}
-				f.SetString(s)
-				pending -= len(s) + 1
-			//----------------------------------------------------------
-			// Booleans
-			//----------------------------------------------------------
-			case bool:
-				b := make([]byte, 1)
-				if _, err := rdr.Read(b); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				var a bool
-				if b[0] != 0 {
-					a = true
-				}
-				f.SetBool(a)
-			//----------------------------------------------------------
-			// Integers
-			//----------------------------------------------------------
-			case uint8:
-				var a uint8
-				if err := binary.Read(rdr, binary.LittleEndian, &a); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				f.SetUint(uint64(a))
-				pending--
-			case int8:
-				var a int8
-				if err := binary.Read(rdr, binary.LittleEndian, &a); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				f.SetInt(int64(a))
-				pending--
-			case uint16:
-				var a uint16
-				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				f.SetUint(uint64(a))
-				pending -= 2
-			case int16:
-				var a int16
-				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				f.SetInt(int64(a))
-				pending -= 2
-			case uint32:
-				var a uint32
-				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				f.SetUint(uint64(a))
-				pending -= 4
-			case int32, int:
-				var a int32
-				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				f.SetInt(int64(a))
-				pending -= 4
-			case uint64:
-				var a uint64
-				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				f.SetUint(a)
-				pending -= 8
-			case int64:
-				var a int64
-				if err := readInt(rdr, tagOrder, &a); err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				f.SetInt(a)
-				pending -= 8
-
-			//----------------------------------------------------------
-			// Byte arrays
-			//----------------------------------------------------------
-			case []uint8:
-				size, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), pending)
-				if err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				a := make([]byte, size)
-				n, err := rdr.Read(a)
-				if err != nil {
-					return gerr.New(err, "field '%s'", path.string())
-				}
-				if n != size {
-					return gerr.New(ErrMarshalSizeMismatch, "field '%s'", path.string())
-				}
-				f.SetBytes(a)
-				pending -= n
-
-			//----------------------------------------------------------
-			// Read more complex types.
-			//----------------------------------------------------------
-			default:
-				switch f.Kind() {
-				//------------------------------------------------------
-				// Interfaces
-				//------------------------------------------------------
-				case reflect.Interface:
-					e := f.Elem()
-					if !e.IsValid() {
-						return gerr.New(ErrMarshalEmptyIntf, "field '%s'", path.string())
-					}
-					if err := unmarshal(e); err != nil {
-						return err
-					}
-				//------------------------------------------------------
-				// Pointers
-				//------------------------------------------------------
-				case reflect.Ptr:
-					e := f.Elem()
-					if !e.IsValid() {
-						ep := reflect.New(f.Type().Elem())
-						e = ep.Elem()
-						f.Set(ep)
-					}
-					if err := unmarshal(e); err != nil {
-						return err
-					}
-				//------------------------------------------------------
-				// Structs
-				//------------------------------------------------------
-				case reflect.Struct:
-					if err := unmarshal(f); err != nil {
-						return err
-					}
-				//------------------------------------------------------
-				// Slices
-				//------------------------------------------------------
-				case reflect.Slice:
-					// get size of slice: if the size is zero (empty or nil
-					// array), use the "size" tag to determine the desired
-					// length. The tag value can be "*" for greedy (read
-					// until end of buffer), the name of a (previous) integer
-					// field containing the length or an integer value.
-					count, err := parseSize(tagSize, ft.Name, x, inst, f.Len(), -1)
-					if err != nil {
-						return gerr.New(err, "field '%s'", path.string())
-					}
-					add := (count > f.Len())
-					// If the element type is a pointer, get the type of the
-					// referenced object and remember to use a pointer.
-					et := f.Type().Elem()
-					isPtr := false
-					if et.Kind() == reflect.Ptr {
-						isPtr = true
-						et = et.Elem()
-					}
-					// unmarshal slice elements
-					for i := 0; i < count || count < 0; i++ {
-						// quit on end-of-buffer
-						if pending < 1 {
-							break
-						}
-						// address the slice element. If the element does not
-						// exist, create a new one and append it to the slice.
-						var e reflect.Value
-						if add {
-							// create and add new element
-							ep := reflect.New(et)
-							e = ep.Elem()
-							if isPtr {
-								f.Set(reflect.Append(f, ep))
-							} else {
-								f.Set(reflect.Append(f, e))
-							}
-						}
-						// use existing element
-						e = f.Index(i)
-
-						switch e.Kind() {
-						//----------------------------------------------
-						// Interface elements
-						//----------------------------------------------
-						case reflect.Interface:
-							e = e.Elem()
-							if !e.IsValid() {
-								return gerr.New(ErrMarshalEmptyIntf, "field '%s'", path.string())
-							}
-							if err := unmarshal(e); err != nil {
-								return err
-							}
-						//----------------------------------------------
-						// Pointer elements
-						//----------------------------------------------
-						case reflect.Ptr:
-							if err := unmarshal(e.Elem()); err != nil {
-								return err
-							}
-						//----------------------------------------------
-						// Struct elements
-						//----------------------------------------------
-						case reflect.Struct:
-							if err := unmarshal(e); err != nil {
-								return err
-							}
-						//----------------------------------------------------------
-						// Strings
-						//----------------------------------------------------------
-						case reflect.String:
-							s := ""
-							b := make([]byte, 1)
-							for {
-								if _, err := rdr.Read(b); err != nil {
-									return gerr.New(err, "field '%s'", path.string())
-								}
-								if b[0] == 0 {
-									break
-								}
-								s += string(b)
-							}
-							e.SetString(s)
-							pending -= len(s) + 1
-						//----------------------------------------------------------
-						// Integers
-						//----------------------------------------------------------
-						case reflect.Int8:
-							var a int8
-							if err := binary.Read(rdr, binary.LittleEndian, &a); err != nil {
-								return gerr.New(err, "field '%s'", path.string())
-							}
-							e.SetInt(int64(a))
-							pending--
-						case reflect.Uint16:
-							var a uint16
-							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return gerr.New(err, "field '%s'", path.string())
-							}
-							e.SetUint(uint64(a))
-							pending -= 2
-						case reflect.Int16:
-							var a int16
-							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return gerr.New(err, "field '%s'", path.string())
-							}
-							e.SetInt(int64(a))
-							pending -= 2
-						case reflect.Uint32:
-							var a uint32
-							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return gerr.New(err, "field '%s'", path.string())
-							}
-							e.SetUint(uint64(a))
-							pending -= 4
-						case reflect.Int32, reflect.Int:
-							var a int32
-							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return gerr.New(err, "field '%s'", path.string())
-							}
-							e.SetInt(int64(a))
-							pending -= 4
-						case reflect.Uint64:
-							var a uint64
-							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return gerr.New(err, "field '%s'", path.string())
-							}
-							e.SetUint(a)
-							pending -= 8
-						case reflect.Int64:
-							var a int64
-							if err := readInt(rdr, tagOrder, &a); err != nil {
-								return gerr.New(err, "field '%s'", path.string())
-							}
-							e.SetInt(a)
-							pending -= 8
-						}
-					}
-				default:
-					return gerr.New(ErrMarshalUnknownType, "field '%s'", path.string())
-				}
-			}
-			path.pop()
-		}
-		return nil
+// unmarshal a single value instance
+func unmarshalValue(ctx *unmarshalContext, v reflect.Value) error {
+	// try intrinsic types first
+	if ok, err := unmarshalIntrinsic(ctx, v); ok {
+		return err
 	}
-	// check if object is a '*struct{}'
-	inst = reflect.ValueOf(obj)
-	if inst.Kind() == reflect.Ptr {
-		if e := inst.Elem(); e.Kind() == reflect.Struct {
-			return unmarshal(e)
+	// try complex types next
+	if ok, err := unmarshalComplex(ctx, v); ok {
+		return err
+	}
+	// custom types
+	if ok, err := unmarshalCustom(ctx, v); ok {
+		return err
+	}
+	// unknown type
+	return gerr.New(ErrMarshalUnknownType,
+		"unmarshal: field '%s', type '%v', kind '%v'",
+		ctx.string(), v.Type(), v.Kind())
+}
+
+// unmarshal intrinisc data types
+func unmarshalIntrinsic(ctx *unmarshalContext, f reflect.Value) (ok bool, err error) {
+	ok = true
+	tagOrder := ctx.tag("order")
+	switch f.Interface().(type) {
+	//----------------------------------------------------------
+	// Strings
+	//----------------------------------------------------------
+	case string:
+		s := ""
+		b := make([]byte, 1)
+		for {
+			if _, err = ctx.rdr.Read(b); err != nil {
+				err = ctx.fail(err)
+				return
+			}
+			if b[0] == 0 {
+				break
+			}
+			s += string(b)
+		}
+		f.SetString(s)
+		ctx.pending -= len(s) + 1
+	//----------------------------------------------------------
+	// Booleans
+	//----------------------------------------------------------
+	case bool:
+		b := make([]byte, 1)
+		if _, err = ctx.rdr.Read(b); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		var a bool
+		if b[0] != 0 {
+			a = true
+		}
+		f.SetBool(a)
+		ctx.pending--
+	//----------------------------------------------------------
+	// Integers
+	//----------------------------------------------------------
+	case uint8:
+		var a uint8
+		if err = binary.Read(ctx.rdr, binary.LittleEndian, &a); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		f.SetUint(uint64(a))
+		ctx.pending--
+	case int8:
+		var a int8
+		if err = binary.Read(ctx.rdr, binary.LittleEndian, &a); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		f.SetInt(int64(a))
+		ctx.pending--
+	case uint16:
+		var a uint16
+		if err = readInt(ctx.rdr, tagOrder, &a); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		f.SetUint(uint64(a))
+		ctx.pending -= 2
+	case int16:
+		var a int16
+		if err = readInt(ctx.rdr, tagOrder, &a); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		f.SetInt(int64(a))
+		ctx.pending -= 2
+	case uint32:
+		var a uint32
+		if err = readInt(ctx.rdr, tagOrder, &a); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		f.SetUint(uint64(a))
+		ctx.pending -= 4
+	case int32, int:
+		var a int32
+		if err = readInt(ctx.rdr, tagOrder, &a); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		f.SetInt(int64(a))
+		ctx.pending -= 4
+	case uint64:
+		var a uint64
+		if err = readInt(ctx.rdr, tagOrder, &a); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		f.SetUint(a)
+		ctx.pending -= 8
+	case int64:
+		var a int64
+		if err = readInt(ctx.rdr, tagOrder, &a); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		f.SetInt(a)
+		ctx.pending -= 8
+
+	//----------------------------------------------------------
+	// Byte arrays
+	//----------------------------------------------------------
+	case []uint8:
+		var size int
+		if size, err = ctx.parseSize(f.Len()); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		a := make([]byte, size)
+		var n int
+		if n, err = ctx.rdr.Read(a); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		if n != size {
+			err = ctx.fail(ErrMarshalSizeMismatch)
+		}
+		f.SetBytes(a)
+		ctx.pending -= n
+
+	default:
+		ok = false
+	}
+	return
+}
+
+// unmarshal data struct
+func unmarshalStruct(ctx *unmarshalContext, x reflect.Value) error {
+	for i := 0; i < x.NumField(); i++ {
+		f := x.Field(i)
+		// skip unexported fields
+		if !f.CanSet() {
+			continue
+		}
+		ft := x.Type().Field(i)
+		ctx.push(ft.Name, f, ft.Tag)
+
+		// check for optional field
+		used, err := ctx.isUsed()
+		if err != nil {
+			return ctx.fail(err)
+		}
+		if used {
+			if err := unmarshalValue(ctx, f); err != nil {
+				return err
+			}
+		}
+		ctx.pop()
+	}
+	return nil
+}
+
+// unmarshal complex type
+func unmarshalComplex(ctx *unmarshalContext, f reflect.Value) (ok bool, err error) {
+	ok = true
+	switch f.Kind() {
+	//------------------------------------------------------
+	// Interfaces
+	//------------------------------------------------------
+	case reflect.Interface:
+		e := f.Elem()
+		if !e.IsValid() {
+			err = ctx.fail(err)
+			return
+		}
+		ctx.use(e)
+		if err = unmarshalValue(ctx, e); err != nil {
+			return
+		}
+	//------------------------------------------------------
+	// Pointers
+	//------------------------------------------------------
+	case reflect.Ptr:
+		e := f.Elem()
+		if !e.IsValid() {
+			ep := reflect.New(f.Type().Elem())
+			e = ep.Elem()
+			f.Set(ep)
+		}
+		ctx.use(e)
+		if err = unmarshalValue(ctx, e); err != nil {
+			return
+		}
+	//------------------------------------------------------
+	// Structs
+	//------------------------------------------------------
+	case reflect.Struct:
+		if err = unmarshalStruct(ctx, f); err != nil {
+			return
+		}
+	//------------------------------------------------------
+	// Slices
+	//------------------------------------------------------
+	case reflect.Slice:
+		// get size of slice: if the size is zero (empty or nil
+		// array), use the "size" tag to determine the desired
+		// length. The tag value can be "*" for greedy (read
+		// until end of buffer), the name of a (previous) integer
+		// field containing the length or an integer value.
+		var count int
+		if count, err = ctx.parseSize(f.Len()); err != nil {
+			err = ctx.fail(err)
+			return
+		}
+		add := (count > f.Len())
+		// If the element type is a pointer, get the type of the
+		// referenced object and remember to use a pointer.
+		et := f.Type().Elem()
+		isPtr := false
+		if et.Kind() == reflect.Ptr {
+			isPtr = true
+			et = et.Elem()
+		}
+		// unmarshal slice elements
+		for i := 0; i < count || count < 0; i++ {
+			// quit on end-of-buffer
+			if ctx.pending < 1 {
+				break
+			}
+			// address the slice element. If the element does not
+			// exist, create a new one and append it to the slice.
+			var e reflect.Value
+			if add {
+				// create and add new element
+				ep := reflect.New(et)
+				e = ep.Elem()
+				if isPtr {
+					f.Set(reflect.Append(f, ep))
+				} else {
+					f.Set(reflect.Append(f, e))
+				}
+			}
+			// use existing element
+			e = f.Index(i)
+
+			// unmarshal element
+			if err = unmarshalValue(ctx, e); err != nil {
+				return
+			}
+		}
+	default:
+		ok = false
+	}
+	return
+}
+
+// unmarshal custom data type
+func unmarshalCustom(ctx *unmarshalContext, f reflect.Value) (ok bool, err error) {
+	ok = true
+	var v interface{}
+	switch f.Kind() {
+	case reflect.Int, reflect.Int32:
+		v = *new(int32)
+	case reflect.Int8:
+		v = *new(int8)
+	case reflect.Int16:
+		v = *new(int16)
+	case reflect.Int64:
+		v = *new(int64)
+	case reflect.Uint, reflect.Uint32:
+		v = *new(uint32)
+	case reflect.Uint8:
+		v = *new(uint8)
+	case reflect.Uint16:
+		v = *new(uint16)
+	case reflect.Uint64:
+		v = *new(uint64)
+	case reflect.Bool:
+		v = *new(bool)
+	case reflect.String:
+		v = *new(string)
+	default:
+		ok = false
+	}
+	if ok {
+		n := reflect.New(reflect.TypeOf(v)).Elem()
+		if err = unmarshalValue(ctx, n); err == nil {
+			f.Set(n.Convert(f.Type()))
 		}
 	}
-	return ErrMarshalUnknownType
+	return
 }
 
 //======================================================================
 // Helper types and methods
 //======================================================================
 
-// path keeps track of field "addresses" nested data structures.
-// The top-level struct is anonymous and labeled "@". The following path
-// elements are the field names as defined in the struct.
-type path struct {
-	list []string
+//----------------------------------------------------------------------
+// Context for marshalling operations:
+// Keep track of nested struct fields while traversing objects.
+//----------------------------------------------------------------------
+
+// path element
+type element struct {
+	name  string            // field name
+	value reflect.Value     // field value
+	tags  reflect.StructTag // field tag
+}
+
+// context keeps track of fields in nested data structures.
+// The top-level struct is anonymous and labeled "@".
+type context struct {
+	path []*element
 }
 
 // create a new path with top-level reference set
-func newPath() *path {
-	p := &path{
-		list: make([]string, 0),
+func newContext(inst reflect.Value) *context {
+	p := &context{
+		path: make([]*element, 0),
 	}
-	p.push("@")
+	p.push("@", inst, "")
 	return p
 }
 
 // push (append) next level
-func (p *path) push(elem string) {
-	p.list = append(p.list, elem)
+func (c *context) push(name string, value reflect.Value, tag reflect.StructTag) {
+	e := &element{name, value, tag}
+	c.path = append(c.path, e)
+}
+
+// update current value
+func (c *context) use(v reflect.Value) {
+	c.curr().value = v
+}
+
+// return current element
+func (c *context) curr() *element {
+	return c.path[len(c.path)-1]
+}
+
+// return previous element
+func (c *context) prev() *element {
+	if len(c.path) < 2 {
+		return nil
+	}
+	return c.path[len(c.path)-2]
+}
+
+// return first element
+func (c *context) first() *element {
+	return c.path[0]
 }
 
 // pop (remove) last level
 //nolint:unparam // skip false-positive
-func (p *path) pop() (elem string) {
-	num := len(p.list) - 1
-	elem = p.list[num]
-	p.list = p.list[:num]
+func (c *context) pop() (e *element) {
+	num := len(c.path) - 1
+	e = c.path[num]
+	c.path = c.path[:num]
 	return
 }
 
+// get current tags
+func (c *context) tag(name string) string {
+	return c.curr().tags.Get(name)
+}
+
 // return human-readable path name
-func (p *path) string() string {
-	return strings.Join(p.list, ".")
+func (c *context) string() string {
+	var list []string
+	for _, e := range c.path {
+		list = append(list, e.name)
+	}
+	return strings.Join(list, ".")
+}
+
+// return error instance for current path
+func (c *context) fail(err error, mode string) error {
+	return gerr.New(err, "%s: field '%s'", mode, c.string())
+}
+
+// parse number of slice/array elements
+func (c *context) parseSize(inSize, pending int) (count int, err error) {
+	first := c.first()
+	prev := c.prev()
+	curr := c.curr()
+	tagSize := c.tag("size")
+
+	// process "size" tag for slice/array
+	lts := len(tagSize)
+	if lts == 0 {
+		// if no size annotation is found, return the incoming length
+		return inSize, nil
+	}
+	if tagSize == "*" {
+		if pending >= 0 {
+			count = pending
+			if count > 0 && lts > 1 && tagSize[1] == '-' {
+				var off int64
+				if off, err = strconv.ParseInt(tagSize[2:], 10, 16); err != nil {
+					return 0, err
+				}
+				if count > int(off) {
+					count -= int(off)
+				}
+			}
+		} else {
+			count = -1
+		}
+	} else if tagSize[0] == '(' {
+		// method call
+		mthName := strings.Trim(tagSize, "()")
+		var res []reflect.Value
+		if res, err = callMethod(mthName, curr.name, prev.value, first.value); err != nil {
+			return
+		}
+		if len(res) != 1 || !res[0].CanUint() {
+			err = ErrMarshalMthdResult
+			return
+		}
+		count = int(res[0].Uint())
+	} else {
+		var n int64
+		if n, err = strconv.ParseInt(tagSize, 10, 16); err == nil {
+			count = int(n)
+		} else if prev != nil {
+			err = nil
+			// previous field value
+			ref := prev.value.FieldByName(tagSize)
+			if !ref.CanUint() {
+				err = ErrMarshalFieldRef
+				return
+			}
+			count = int(ref.Uint())
+		} else {
+			err = ErrMarshalNoSize
+			return
+		}
+	}
+	// check actual size for expected size
+	if inSize > 0 && count > 0 && inSize != count {
+		err = ErrMarshalSizeMismatch
+		return
+	}
+	return
+}
+
+// isUsed returns true if an optional field is used
+func (c *context) isUsed() (bool, error) {
+	used := true
+	first := c.first()
+	prev := c.prev()
+	curr := c.curr()
+	tagOpt := c.tag("opt")
+	if len(tagOpt) > 0 {
+		// evaluate condition: must be either variable or function;
+		// defaults to false!
+		if tagOpt[0] == '(' {
+			// method call
+			mthName := strings.Trim(tagOpt, "()")
+			res, err := callMethod(mthName, curr.name, prev.value, first.value)
+			if err != nil {
+				return false, err
+			}
+			if len(res) != 1 {
+				return false, ErrMarshalMthdResult
+			}
+			used = res[0].Bool()
+		} else if prev != nil {
+			ref := prev.value.FieldByName(tagOpt)
+			if ref.Kind() != reflect.Bool {
+				return false, ErrMarshalFieldRef
+			}
+			used = ref.Bool()
+		} else {
+			return true, ErrMarshalNoOpt
+		}
+	}
+	return used, nil
+}
+
+//----------------------------------------------------------------------
+// Context for marshalling operations
+//----------------------------------------------------------------------
+
+// context for marshalling
+type marshalContext struct {
+	*context
+	wrt io.Writer
+}
+
+// create a new marshal context
+func newMarshalContext(wrt io.Writer, inst reflect.Value) *marshalContext {
+	return &marshalContext{
+		context: newContext(inst),
+		wrt:     wrt,
+	}
+}
+
+// fail wrapper for marshalling
+func (c *marshalContext) fail(err error) error {
+	return c.context.fail(err, "marshal")
+}
+
+// parse size for marshal operation
+func (c *marshalContext) parseSize(inSize int) (count int, err error) {
+	return c.context.parseSize(inSize, -1)
 }
 
 //----------------------------------------------------------------------
 
-// read integer based on given endianess
-func readInt(rdr io.Reader, tag string, v interface{}) (err error) {
-	if tag == "big" {
-		err = binary.Read(rdr, binary.BigEndian, v)
-	} else {
-		err = binary.Read(rdr, binary.LittleEndian, v)
-	}
-	return
+// context for unmarshalling
+type unmarshalContext struct {
+	*context
+	rdr     io.Reader
+	pending int
 }
 
-// write integer based on given endianess
-func writeInt(wrt io.Writer, tag string, v interface{}) (err error) {
-	if tag == "big" {
-		err = binary.Write(wrt, binary.BigEndian, v)
-	} else {
-		err = binary.Write(wrt, binary.LittleEndian, v)
+// create a new unmarshal context
+func newUnmarshalContext(rdr io.Reader, pending int, inst reflect.Value) *unmarshalContext {
+	return &unmarshalContext{
+		context: newContext(inst),
+		rdr:     rdr,
+		pending: pending,
 	}
-	return
 }
 
+// fail wrapper for unmarshalling
+func (c *unmarshalContext) fail(err error) error {
+	return c.context.fail(err, "unmarshal")
+}
+
+// parse size for unmarshal operation
+func (c *unmarshalContext) parseSize(inSize int) (count int, err error) {
+	pending := -1
+	switch c.curr().value.Interface().(type) {
+	case []uint8:
+		pending = c.pending
+	}
+	return c.context.parseSize(inSize, pending)
+}
+
+//----------------------------------------------------------------------
+// helper functions
 //----------------------------------------------------------------------
 
 // Get a method from an instance during (un-)marshalling:
@@ -786,88 +936,22 @@ func callMethod(mthName, fldName string, x, inst reflect.Value) (res []reflect.V
 	return
 }
 
-// parse number of slice/array elements
-func parseSize(tagSize, fldName string, x, inst reflect.Value, inSize, pending int) (count int, err error) {
-	// process "size" tag for slice/array
-	lts := len(tagSize)
-	if lts == 0 {
-		// if no size annotation is found, return the incoming length
-		return inSize, nil
-	}
-	if tagSize == "*" {
-		if pending >= 0 {
-			count = pending
-			if count > 0 && lts > 1 && tagSize[1] == '-' {
-				var off int64
-				if off, err = strconv.ParseInt(tagSize[2:], 10, 16); err != nil {
-					return 0, err
-				}
-				if count > int(off) {
-					count -= int(off)
-				}
-			}
-		} else {
-			count = -1
-		}
-	} else if tagSize[0] == '(' {
-		// method call
-		mthName := strings.Trim(tagSize, "()")
-		var res []reflect.Value
-		if res, err = callMethod(mthName, fldName, x, inst); err != nil {
-			return
-		}
-		if len(res) != 1 || !res[0].CanUint() {
-			err = ErrMarshalMthdResult
-			return
-		}
-		count = int(res[0].Uint())
+// read integer based on given endianess
+func readInt(rdr io.Reader, tag string, v interface{}) (err error) {
+	if tag == "big" {
+		err = binary.Read(rdr, binary.BigEndian, v)
 	} else {
-		var n int64
-		if n, err = strconv.ParseInt(tagSize, 10, 16); err == nil {
-			count = int(n)
-		} else {
-			err = nil
-			// previous field value
-			ref := x.FieldByName(tagSize)
-			if !ref.CanUint() {
-				err = ErrMarshalFieldRef
-				return
-			}
-			count = int(ref.Uint())
-		}
-	}
-	// check actual size for expected size
-	if inSize > 0 && count > 0 && inSize != count {
-		err = ErrMarshalSizeMismatch
-		return
+		err = binary.Read(rdr, binary.LittleEndian, v)
 	}
 	return
 }
 
-// isUsed returns true if an optional field is used
-func isUsed(tagOpt, fldName string, x, inst reflect.Value) (bool, error) {
-	used := true
-	if len(tagOpt) > 0 {
-		// evaluate condition: must be either variable or function;
-		// defaults to false!
-		if tagOpt[0] == '(' {
-			// method call
-			mthName := strings.Trim(tagOpt, "()")
-			res, err := callMethod(mthName, fldName, x, inst)
-			if err != nil {
-				return false, err
-			}
-			if len(res) != 1 {
-				return false, ErrMarshalMthdResult
-			}
-			used = res[0].Bool()
-		} else {
-			ref := x.FieldByName(tagOpt)
-			if ref.Kind() != reflect.Bool {
-				return false, ErrMarshalFieldRef
-			}
-			used = ref.Bool()
-		}
+// write integer based on given endianess
+func writeInt(wrt io.Writer, tag string, v interface{}) (err error) {
+	if tag == "big" {
+		err = binary.Write(wrt, binary.BigEndian, v)
+	} else {
+		err = binary.Write(wrt, binary.LittleEndian, v)
 	}
-	return used, nil
+	return
 }
