@@ -94,18 +94,19 @@ import (
 
 // Errors
 var (
-	ErrMarshalNil          = errors.New("object is nil")
-	ErrMarshalType         = errors.New("invalid object type")
-	ErrMarshalNoSize       = errors.New("missing/invalid size tag on field")
-	ErrMarshalNoOpt        = errors.New("missing/invalid opt tag on field")
-	ErrMarshalSizeMismatch = errors.New("size mismatch during unmarshal")
-	ErrMarshalEmptyIntf    = errors.New("can't handle empty interface")
-	ErrMarshalUnknownType  = errors.New("unknown field type")
-	ErrMarshalMthdMissing  = errors.New("missing method")
-	ErrMarshalFieldRef     = errors.New("field reference invalid")
-	ErrMarshalMthdNumArg   = errors.New("method has more than one argument")
-	ErrMarshalMthdArgType  = errors.New("method argument not a string")
-	ErrMarshalMthdResult   = errors.New("invalid method result")
+	ErrMarshalNil           = errors.New("object is nil")
+	ErrMarshalType          = errors.New("invalid object type")
+	ErrMarshalNoSize        = errors.New("missing/invalid size tag on field")
+	ErrMarshalNoOpt         = errors.New("missing/invalid opt tag on field")
+	ErrMarshalSizeMismatch  = errors.New("size mismatch during unmarshal")
+	ErrMarshalEmptyIntf     = errors.New("can't handle empty interface")
+	ErrMarshalUnknownType   = errors.New("unknown field type")
+	ErrMarshalMthdMissing   = errors.New("missing method")
+	ErrMarshalFieldRef      = errors.New("field reference invalid")
+	ErrMarshalMthdNumArg    = errors.New("method has more than one argument")
+	ErrMarshalMthdArgType   = errors.New("method argument not a string")
+	ErrMarshalMthdResult    = errors.New("invalid method result")
+	ErrMarshalParentMissing = errors.New("parent missing")
 )
 
 //======================================================================
@@ -125,12 +126,12 @@ func Marshal(obj interface{}) ([]byte, error) {
 // MarshalStream writes an object to stream
 func MarshalStream(wrt io.Writer, obj interface{}) error {
 	inst := reflect.ValueOf(obj)
-	ctx := newMarshalContext(wrt, inst)
+	ctx := _NewMarshalContext(wrt, inst)
 	return marshalValue(ctx, inst)
 }
 
 // marshal a single value instance
-func marshalValue(ctx *marshalContext, v reflect.Value) error {
+func marshalValue(ctx *_MarshalContext, v reflect.Value) error {
 	// try intrinsic types first
 	if ok, err := marshalIntrinsic(ctx, v); ok {
 		return err
@@ -150,7 +151,7 @@ func marshalValue(ctx *marshalContext, v reflect.Value) error {
 }
 
 // marshal intrinsic data type
-func marshalIntrinsic(ctx *marshalContext, f reflect.Value) (ok bool, err error) {
+func marshalIntrinsic(ctx *_MarshalContext, f reflect.Value) (ok bool, err error) {
 	ok = true
 	tagOrder := ctx.tag("order")
 	switch v := f.Interface().(type) {
@@ -201,7 +202,7 @@ func marshalIntrinsic(ctx *marshalContext, f reflect.Value) (ok bool, err error)
 }
 
 // marshal complex data type
-func marshalComplex(ctx *marshalContext, f reflect.Value) (ok bool, err error) {
+func marshalComplex(ctx *_MarshalContext, f reflect.Value) (ok bool, err error) {
 	ok = true
 	switch f.Kind() {
 	//------------------------------------------------------
@@ -262,7 +263,7 @@ func marshalComplex(ctx *marshalContext, f reflect.Value) (ok bool, err error) {
 }
 
 // marshalStruct a single value
-func marshalStruct(ctx *marshalContext, x reflect.Value) error {
+func marshalStruct(ctx *_MarshalContext, x reflect.Value) error {
 	for i := 0; i < x.NumField(); i++ {
 		f := x.Field(i)
 		// do not serialize unexported fields
@@ -290,7 +291,7 @@ func marshalStruct(ctx *marshalContext, x reflect.Value) error {
 }
 
 // marshal custom data type
-func marshalCustom(ctx *marshalContext, f reflect.Value) (ok bool, err error) {
+func marshalCustom(ctx *_MarshalContext, f reflect.Value) (ok bool, err error) {
 	ok = true
 	var v interface{}
 	switch f.Kind() {
@@ -338,12 +339,12 @@ func Unmarshal(obj interface{}, data []byte) error {
 // UnmarshalStream reads an object from strean.
 func UnmarshalStream(rdr io.Reader, obj interface{}, pending int) error {
 	inst := reflect.ValueOf(obj)
-	ctx := newUnmarshalContext(rdr, pending, inst)
+	ctx := _NewUnmarshalContext(rdr, pending, inst)
 	return unmarshalValue(ctx, inst)
 }
 
 // unmarshal a single value instance
-func unmarshalValue(ctx *unmarshalContext, v reflect.Value) error {
+func unmarshalValue(ctx *_UnmarshalContext, v reflect.Value) error {
 	// try intrinsic types first
 	if ok, err := unmarshalIntrinsic(ctx, v); ok {
 		return err
@@ -363,7 +364,7 @@ func unmarshalValue(ctx *unmarshalContext, v reflect.Value) error {
 }
 
 // unmarshal intrinisc data types
-func unmarshalIntrinsic(ctx *unmarshalContext, f reflect.Value) (ok bool, err error) {
+func unmarshalIntrinsic(ctx *_UnmarshalContext, f reflect.Value) (ok bool, err error) {
 	ok = true
 	tagOrder := ctx.tag("order")
 	switch f.Interface().(type) {
@@ -496,7 +497,7 @@ func unmarshalIntrinsic(ctx *unmarshalContext, f reflect.Value) (ok bool, err er
 }
 
 // unmarshal data struct
-func unmarshalStruct(ctx *unmarshalContext, x reflect.Value) error {
+func unmarshalStruct(ctx *_UnmarshalContext, x reflect.Value) error {
 	for i := 0; i < x.NumField(); i++ {
 		f := x.Field(i)
 		// skip unexported fields
@@ -522,7 +523,7 @@ func unmarshalStruct(ctx *unmarshalContext, x reflect.Value) error {
 }
 
 // unmarshal complex type
-func unmarshalComplex(ctx *unmarshalContext, f reflect.Value) (ok bool, err error) {
+func unmarshalComplex(ctx *_UnmarshalContext, f reflect.Value) (ok bool, err error) {
 	ok = true
 	switch f.Kind() {
 	//------------------------------------------------------
@@ -616,7 +617,7 @@ func unmarshalComplex(ctx *unmarshalContext, f reflect.Value) (ok bool, err erro
 }
 
 // unmarshal custom data type
-func unmarshalCustom(ctx *unmarshalContext, f reflect.Value) (ok bool, err error) {
+func unmarshalCustom(ctx *_UnmarshalContext, f reflect.Value) (ok bool, err error) {
 	ok = true
 	var v interface{}
 	switch f.Kind() {
@@ -661,73 +662,58 @@ func unmarshalCustom(ctx *unmarshalContext, f reflect.Value) (ok bool, err error
 // Keep track of nested struct fields while traversing objects.
 //----------------------------------------------------------------------
 
-// path element
-type element struct {
+// path _Element
+type _Element struct {
 	name  string            // field name
 	value reflect.Value     // field value
 	tags  reflect.StructTag // field tag
 }
 
-// context keeps track of fields in nested data structures.
+// _Context keeps track of fields in nested data structures.
 // The top-level struct is anonymous and labeled "@".
-type context struct {
-	path []*element
+type _Context struct {
+	path []*_Element
+	num  int
 }
 
 // create a new path with top-level reference set
-func newContext(inst reflect.Value) *context {
-	p := &context{
-		path: make([]*element, 0),
+func _NewContext(inst reflect.Value) *_Context {
+	p := &_Context{
+		path: make([]*_Element, 0),
+		num:  0,
 	}
 	p.push("@", inst, "")
 	return p
 }
 
 // push (append) next level
-func (c *context) push(name string, value reflect.Value, tag reflect.StructTag) {
-	e := &element{name, value, tag}
+func (c *_Context) push(name string, value reflect.Value, tag reflect.StructTag) {
+	e := &_Element{name, value, tag}
 	c.path = append(c.path, e)
+	c.num++
 }
 
 // update current value
-func (c *context) use(v reflect.Value) {
-	c.curr().value = v
-}
-
-// return current element
-func (c *context) curr() *element {
-	return c.path[len(c.path)-1]
-}
-
-// return previous element
-func (c *context) prev() *element {
-	if len(c.path) < 2 {
-		return nil
-	}
-	return c.path[len(c.path)-2]
-}
-
-// return first element
-func (c *context) first() *element {
-	return c.path[0]
+func (c *_Context) use(v reflect.Value) {
+	c.path[c.num-1].value = v
 }
 
 // pop (remove) last level
 //nolint:unparam // skip false-positive
-func (c *context) pop() (e *element) {
-	num := len(c.path) - 1
-	e = c.path[num]
-	c.path = c.path[:num]
+func (c *_Context) pop() (e *_Element) {
+	c.num--
+	e = c.path[c.num]
+	c.path = c.path[:c.num]
 	return
 }
 
 // get current tags
-func (c *context) tag(name string) string {
-	return c.curr().tags.Get(name)
+func (c *_Context) tag(name string) string {
+	return c.path[c.num-1].tags.Get(name)
 }
 
 // return human-readable path name
-func (c *context) string() string {
+func (c *_Context) string() string {
 	var list []string
 	for _, e := range c.path {
 		list = append(list, e.name)
@@ -736,15 +722,12 @@ func (c *context) string() string {
 }
 
 // return error instance for current path
-func (c *context) fail(err error, mode string) error {
+func (c *_Context) fail(err error, mode string) error {
 	return gerr.New(err, "%s: field '%s'", mode, c.string())
 }
 
 // parse number of slice/array elements
-func (c *context) parseSize(inSize, pending int) (count int, err error) {
-	first := c.first()
-	prev := c.prev()
-	curr := c.curr()
+func (c *_Context) parseSize(inSize, pending int) (count int, err error) {
 	tagSize := c.tag("size")
 
 	// process "size" tag for slice/array
@@ -772,7 +755,7 @@ func (c *context) parseSize(inSize, pending int) (count int, err error) {
 		// method call
 		mthName := strings.Trim(tagSize, "()")
 		var res []reflect.Value
-		if res, err = callMethod(mthName, curr.name, prev.value, first.value); err != nil {
+		if res, err = c.callMethod(mthName); err != nil {
 			return
 		}
 		if len(res) != 1 || !res[0].CanUint() {
@@ -784,10 +767,10 @@ func (c *context) parseSize(inSize, pending int) (count int, err error) {
 		var n int64
 		if n, err = strconv.ParseInt(tagSize, 10, 16); err == nil {
 			count = int(n)
-		} else if prev != nil {
+		} else if c.num > 1 {
 			err = nil
 			// previous field value
-			ref := prev.value.FieldByName(tagSize)
+			ref := c.path[c.num-2].value.FieldByName(tagSize)
 			if !ref.CanUint() {
 				err = ErrMarshalFieldRef
 				return
@@ -807,11 +790,8 @@ func (c *context) parseSize(inSize, pending int) (count int, err error) {
 }
 
 // isUsed returns true if an optional field is used
-func (c *context) isUsed() (bool, error) {
+func (c *_Context) isUsed() (bool, error) {
 	used := true
-	first := c.first()
-	prev := c.prev()
-	curr := c.curr()
 	tagOpt := c.tag("opt")
 	if len(tagOpt) > 0 {
 		// evaluate condition: must be either variable or function;
@@ -819,7 +799,7 @@ func (c *context) isUsed() (bool, error) {
 		if tagOpt[0] == '(' {
 			// method call
 			mthName := strings.Trim(tagOpt, "()")
-			res, err := callMethod(mthName, curr.name, prev.value, first.value)
+			res, err := c.callMethod(mthName)
 			if err != nil {
 				return false, err
 			}
@@ -827,8 +807,8 @@ func (c *context) isUsed() (bool, error) {
 				return false, ErrMarshalMthdResult
 			}
 			used = res[0].Bool()
-		} else if prev != nil {
-			ref := prev.value.FieldByName(tagOpt)
+		} else if c.num > 1 {
+			ref := c.path[c.num-2].value.FieldByName(tagOpt)
 			if ref.Kind() != reflect.Bool {
 				return false, ErrMarshalFieldRef
 			}
@@ -840,82 +820,17 @@ func (c *context) isUsed() (bool, error) {
 	return used, nil
 }
 
-//----------------------------------------------------------------------
-// Context for marshalling operations
-//----------------------------------------------------------------------
-
-// context for marshalling
-type marshalContext struct {
-	*context
-	wrt io.Writer
-}
-
-// create a new marshal context
-func newMarshalContext(wrt io.Writer, inst reflect.Value) *marshalContext {
-	return &marshalContext{
-		context: newContext(inst),
-		wrt:     wrt,
-	}
-}
-
-// fail wrapper for marshalling
-func (c *marshalContext) fail(err error) error {
-	return c.context.fail(err, "marshal")
-}
-
-// parse size for marshal operation
-func (c *marshalContext) parseSize(inSize int) (count int, err error) {
-	return c.context.parseSize(inSize, -1)
-}
-
-//----------------------------------------------------------------------
-
-// context for unmarshalling
-type unmarshalContext struct {
-	*context
-	rdr     io.Reader
-	pending int
-}
-
-// create a new unmarshal context
-func newUnmarshalContext(rdr io.Reader, pending int, inst reflect.Value) *unmarshalContext {
-	return &unmarshalContext{
-		context: newContext(inst),
-		rdr:     rdr,
-		pending: pending,
-	}
-}
-
-// fail wrapper for unmarshalling
-func (c *unmarshalContext) fail(err error) error {
-	return c.context.fail(err, "unmarshal")
-}
-
-// parse size for unmarshal operation
-func (c *unmarshalContext) parseSize(inSize int) (count int, err error) {
-	pending := -1
-	switch c.curr().value.Interface().(type) {
-	case []uint8:
-		pending = c.pending
-	}
-	return c.context.parseSize(inSize, pending)
-}
-
-//----------------------------------------------------------------------
-// helper functions
-//----------------------------------------------------------------------
-
 // Get a method from an instance during (un-)marshalling:
 // 'inst' refers to the enclosing struct instance that "owns" the field
-// being unmarshalled. 'name' either refers to the name of a method of
+// being (un-)marshalled. 'name' either refers to the name of a method of
 // the instance ("mthname") or a method of a field (or its subfields)
 // previously unmarshalled ("field.mthname", "field.sub. ... .mthdname").
 // 'field' must be part of the enclosing instance (sibling of the unmarshalled
 // field).
-func getMethod(inst reflect.Value, name string) (mth reflect.Value, err error) {
+func (c *_Context) getMethod(inst reflect.Value, name string) (mth reflect.Value, err error) {
 	parts := strings.SplitN(name, ".", 2)
 	if len(parts) == 2 {
-		return getMethod(inst.FieldByName(parts[0]), parts[1])
+		return c.getMethod(inst.FieldByName(parts[0]), parts[1])
 	}
 	if mth = inst.MethodByName(name); !mth.IsValid() {
 		if mth = inst.Addr().MethodByName(name); !mth.IsValid() {
@@ -926,12 +841,17 @@ func getMethod(inst reflect.Value, name string) (mth reflect.Value, err error) {
 }
 
 // call a method (either x.Mthd() or inst.Mthd())
-func callMethod(mthName, fldName string, x, inst reflect.Value) (res []reflect.Value, err error) {
+func (c *_Context) callMethod(mthName string) (res []reflect.Value, err error) {
 	// find method on current struct first
-	mth, err := getMethod(x, mthName)
+	if c.num < 2 {
+		err = ErrMarshalParentMissing
+		return
+	}
+	fldName := c.path[c.num-1].name
+	mth, err := c.getMethod(c.path[c.num-2].value, mthName)
 	if err != nil {
 		// try to find method in enclosing struct instance
-		if mth, err = getMethod(inst, mthName); err != nil {
+		if mth, err = c.getMethod(c.path[0].value, mthName); err != nil {
 			return
 		}
 	}
@@ -958,6 +878,71 @@ func callMethod(mthName, fldName string, x, inst reflect.Value) (res []reflect.V
 	res = mth.Call(args)
 	return
 }
+
+//----------------------------------------------------------------------
+// Context for marshalling operations
+//----------------------------------------------------------------------
+
+// context for marshalling
+type _MarshalContext struct {
+	*_Context
+	wrt io.Writer
+}
+
+// create a new marshal context
+func _NewMarshalContext(wrt io.Writer, inst reflect.Value) *_MarshalContext {
+	return &_MarshalContext{
+		_Context: _NewContext(inst),
+		wrt:      wrt,
+	}
+}
+
+// fail wrapper for marshalling
+func (c *_MarshalContext) fail(err error) error {
+	return c._Context.fail(err, "marshal")
+}
+
+// parse size for marshal operation
+func (c *_MarshalContext) parseSize(inSize int) (count int, err error) {
+	return c._Context.parseSize(inSize, -1)
+}
+
+//----------------------------------------------------------------------
+
+// context for unmarshalling
+type _UnmarshalContext struct {
+	*_Context
+	rdr     io.Reader
+	pending int
+}
+
+// create a new unmarshal context
+func _NewUnmarshalContext(rdr io.Reader, pending int, inst reflect.Value) *_UnmarshalContext {
+	return &_UnmarshalContext{
+		_Context: _NewContext(inst),
+		rdr:      rdr,
+		pending:  pending,
+	}
+}
+
+// fail wrapper for unmarshalling
+func (c *_UnmarshalContext) fail(err error) error {
+	return c._Context.fail(err, "unmarshal")
+}
+
+// parse size for unmarshal operation
+func (c *_UnmarshalContext) parseSize(inSize int) (count int, err error) {
+	pending := -1
+	switch c.path[c.num-1].value.Interface().(type) {
+	case []uint8:
+		pending = c.pending
+	}
+	return c._Context.parseSize(inSize, pending)
+}
+
+//----------------------------------------------------------------------
+// helper functions
+//----------------------------------------------------------------------
 
 // read integer based on given endianess
 func readInt(rdr io.Reader, tag string, v interface{}) (err error) {
