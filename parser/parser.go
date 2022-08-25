@@ -1,5 +1,3 @@
-package parser
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2020 Bernd Fix
@@ -19,6 +17,8 @@ package parser
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package parser
 
 import (
 	"bufio"
@@ -74,6 +74,7 @@ type Callback func(mode int, param *Parameter) bool
 
 // Parser reads data definitions from reader and pass parameters
 // to callback.
+//
 //nolint:gocyclo // complex
 func Parser(rdr *bufio.Reader, cb Callback) error {
 
@@ -353,7 +354,7 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 					}
 				// non-delimiting character: "unread" character
 				// and start new parameter expression
-				default: // nolint:stylecheck // has fallthrough
+				default:
 					{
 						if stack.Len() > 0 {
 							if stack.Peek() != VAR {

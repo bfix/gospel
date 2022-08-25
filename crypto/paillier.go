@@ -44,14 +44,14 @@ type PaillierPrivateKey struct {
 // starts with two random primes 'p' and 'q'; the public key parameter
 // are computed as:
 //
-//   n := p * q
-//   g := random number from interval [0,n^2[
+//	n := p * q
+//	g := random number from interval [0,n^2[
 //
 // The private key parameters are computed as:
 //
-//   n := p * q
-//   l := lcm (p-1,q-1)
-//   u := (((g^l mod n^2)-1)/n) ^-1 mod n
+//	n := p * q
+//	l := lcm (p-1,q-1)
+//	u := (((g^l mod n^2)-1)/n) ^-1 mod n
 //
 // N.B. The division by n is integer based and rounds toward zero!
 func NewPaillierPrivateKey(bits int) (key *PaillierPrivateKey, err error) {
@@ -109,10 +109,11 @@ func (p *PaillierPrivateKey) GetPublicKey() *PaillierPublicKey {
 //
 // The decryption function in the Paillier crypto scheme is:
 //
-//   m = D(c) = ((((c^l mod n^2)-1)/n) * u) mod n
+//	m = D(c) = ((((c^l mod n^2)-1)/n) * u) mod n
 //
 // N.B. As in the key generation process the division by n is integer
-//      based and rounds toward zero!
+//
+//	based and rounds toward zero!
 func (p *PaillierPrivateKey) Decrypt(c *math.Int) (m *math.Int, err error) {
 
 	// initialize variables
@@ -128,7 +129,7 @@ func (p *PaillierPrivateKey) Decrypt(c *math.Int) (m *math.Int, err error) {
 //
 // The encryption function in the Paillier crypto scheme is:
 //
-//   c = E(m) = (g^m * r^n) mod n^2
+//	c = E(m) = (g^m * r^n) mod n^2
 //
 // where 'r' is a random number from the interval [0,n[. This encryption
 // allows different encryption results for the same message, based on

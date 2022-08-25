@@ -1,5 +1,3 @@
-package rpc
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2020 Bernd Fix
@@ -20,16 +18,18 @@ package rpc
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
+package rpc
+
 // AddNode attempts to add or remove a node from the addnode list, or to
 // try a connection to a node once.
 // The node to add as a string in the form of <IP address>:<port>. The IP
 // address may be a hostname resolvable through DNS, an IPv4 address, an
 // IPv4-as-IPv6 address, or an IPv6 address.
 // Command specifies what to do with the IP address:
-// - "add" to add a node to the addnode list. This will not connect
-//   immediately if the outgoing connection slots are full.
-// - "remove" to remove a node from the list. If currently connected,
-//   this will disconnect immediately.
+//   - "add" to add a node to the addnode list. This will not connect
+//     immediately if the outgoing connection slots are full.
+//   - "remove" to remove a node from the list. If currently connected,
+//     this will disconnect immediately.
 func (s *Session) AddNode(addr, command string) error {
 	_, err := s.call("addnode", []Data{addr, command})
 	return err

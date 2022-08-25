@@ -1,5 +1,3 @@
-package ed25519
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2020 Bernd Fix
@@ -19,6 +17,8 @@ package ed25519
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package ed25519
 
 import (
 	"bytes"
@@ -140,7 +140,8 @@ func getBounded(data []byte) *math.Int {
 	return z
 }
 
-//----------------------------------------------------------------------
+// ----------------------------------------------------------------------
+
 // kGenerator is an interface for standard or deterministic computation of the
 // blinding factor 'k' in an EcDSA signature. It always uses SHA512 as a
 // hashing algorithm.
@@ -160,7 +161,7 @@ func newKGenerator(det bool, x *math.Int, h1 []byte) (gen kGenerator, err error)
 	return
 }
 
-//----------------------------------------------------------------------
+// ----------------------------------------------------------------------
 // kGenDet is a RFC6979-compliant generator.
 type kGenDet struct {
 	V, K []byte
@@ -242,7 +243,7 @@ func (k *kGenDet) next() (*math.Int, error) {
 	return kRes, nil
 }
 
-//----------------------------------------------------------------------
+// ----------------------------------------------------------------------
 // kGenStd is a random generator.
 type kGenStd struct {
 }

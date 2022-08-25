@@ -72,9 +72,10 @@ const (
 )
 
 // CheckVersion returns a status code:
-//    -1 if extended data refers to a public key
-//     1 if extended data refers to a private key
-//     0 if version is unknown
+//
+//	-1 if extended data refers to a public key
+//	 1 if extended data refers to a private key
+//	 0 if version is unknown
 func CheckVersion(version uint32) int {
 	switch version {
 	case XpubVersion, UpubVersion, YpubVersion, DrkpVersion, DgubVersion, MtubVersion:

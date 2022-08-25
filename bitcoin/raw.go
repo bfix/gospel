@@ -38,32 +38,31 @@ type DissectedTransaction struct {
 // NewDissectedTransaction dissects a raw transaction into its defining
 // segments. A binary encoded raw transaction looks like this:
 //
-//  ------+-------------+---------+---------------------------------
-//  Level | Field       | length  | Value/Comment
-//  ------+-------------+---------+---------------------------------
-//      0 | VERSION     |    4    | version
-//      0 | N_VIN       |  var    | Number of Vin defs to follow
-//  ------+-------------+---------+---------------------------------
-//      1 | VIN:TXID    |   32    | Transaction ID
-//      1 | VIN:N       |    4    | VOUT number in transaction
-//      1 | VIN:SCRIPT  |         | scriptSig (hex-encoded)
-//  ------+-------------+---------+---------------------------------
-//      2 | SCRIPT:LEN  |   var   | Length of script
-//      2 | SCRIPT:DATA |   <n>   | Script data
-//  ------+-------------+---------+---------------------------------
-//      1 | VIN:SEQ     |         | sequence number
-//  ------+-------------+---------+---------------------------------
-//      0 | N_VOUT      |  var    | Number of Vout defs to follow
-//  ------+-------------+---------+---------------------------------
-//      1 | VOUT:AMOUNT |    8    | Number of Satoshis (1e-8 btc)
-//      1 | VOUT:SCRIPT |         | scriptPubkey
-//  ------+-------------+---------+---------------------------------
-//      2 | SCRIPT:LEN  |   var   | Length of script
-//      2 | SCRIPT:DATA |   <n>   | Script data
-//  ------+-------------+---------+---------------------------------
-//      0 | LOCKTIME    |    4    | locktime
-//  ------+-------------+---------+---------------------------------
-//
+//	------+-------------+---------+---------------------------------
+//	Level | Field       | length  | Value/Comment
+//	------+-------------+---------+---------------------------------
+//	    0 | VERSION     |    4    | version
+//	    0 | N_VIN       |  var    | Number of Vin defs to follow
+//	------+-------------+---------+---------------------------------
+//	    1 | VIN:TXID    |   32    | Transaction ID
+//	    1 | VIN:N       |    4    | VOUT number in transaction
+//	    1 | VIN:SCRIPT  |         | scriptSig (hex-encoded)
+//	------+-------------+---------+---------------------------------
+//	    2 | SCRIPT:LEN  |   var   | Length of script
+//	    2 | SCRIPT:DATA |   <n>   | Script data
+//	------+-------------+---------+---------------------------------
+//	    1 | VIN:SEQ     |         | sequence number
+//	------+-------------+---------+---------------------------------
+//	    0 | N_VOUT      |  var    | Number of Vout defs to follow
+//	------+-------------+---------+---------------------------------
+//	    1 | VOUT:AMOUNT |    8    | Number of Satoshis (1e-8 btc)
+//	    1 | VOUT:SCRIPT |         | scriptPubkey
+//	------+-------------+---------+---------------------------------
+//	    2 | SCRIPT:LEN  |   var   | Length of script
+//	    2 | SCRIPT:DATA |   <n>   | Script data
+//	------+-------------+---------+---------------------------------
+//	    0 | LOCKTIME    |    4    | locktime
+//	------+-------------+---------+---------------------------------
 func NewDissectedTransaction(rawHex string) (dt *DissectedTransaction, err error) {
 	var buf []byte
 	if buf, err = hex.DecodeString(rawHex); err != nil {

@@ -41,12 +41,12 @@ type POP3Session struct {
 
 // POP3Connect establishes a session with POP3 mailbox.
 //
-// - The connections to the service can be either plain (port 110)
-//   or SSL/TLS (port 995)
+//   - The connections to the service can be either plain (port 110)
+//     or SSL/TLS (port 995)
 //
-// - If the server supports STARTTLS and the channel is not already
-//   encrypted (via SSL), the application will use the "STLS" command
-//   to initiate a channel encryption.
+//   - If the server supports STARTTLS and the channel is not already
+//     encrypted (via SSL), the application will use the "STLS" command
+//     to initiate a channel encryption.
 //
 // - Connections can be tunneled through any SOCKS5 proxy (like Tor)
 func POP3Connect(service, proxy string) (sess *POP3Session, err error) {

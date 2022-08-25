@@ -1,5 +1,3 @@
-package data
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2022 Bernd Fix
@@ -19,6 +17,8 @@ package data
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package data
 
 import (
 	"bytes"
@@ -302,7 +302,7 @@ func marshalCustom(ctx *_MarshalContext, f reflect.Value) (ok bool, err error) {
 	case reflect.Int16:
 		v = int16(f.Int())
 	case reflect.Int64:
-		v = int64(f.Int())
+		v = f.Int()
 	case reflect.Uint, reflect.Uint32:
 		v = uint32(f.Uint())
 	case reflect.Uint8:
@@ -310,7 +310,7 @@ func marshalCustom(ctx *_MarshalContext, f reflect.Value) (ok bool, err error) {
 	case reflect.Uint16:
 		v = uint16(f.Uint())
 	case reflect.Uint64:
-		v = uint64(f.Uint())
+		v = f.Uint()
 	case reflect.Bool:
 		v = f.Bool()
 	case reflect.String:
@@ -363,7 +363,7 @@ func unmarshalValue(ctx *_UnmarshalContext, v reflect.Value) error {
 		ctx.string(), v.Type(), v.Kind())
 }
 
-// unmarshal intrinisc data types
+// unmarshal intrinsic data types
 func unmarshalIntrinsic(ctx *_UnmarshalContext, f reflect.Value) (ok bool, err error) {
 	ok = true
 	tagOrder := ctx.tag("order")
@@ -699,6 +699,7 @@ func (c *_Context) use(v reflect.Value) {
 }
 
 // pop (remove) last level
+//
 //nolint:unparam // skip false-positive
 func (c *_Context) pop() (e *_Element) {
 	c.num--
@@ -714,9 +715,9 @@ func (c *_Context) tag(name string) string {
 
 // return human-readable path name
 func (c *_Context) string() string {
-	var list []string
-	for _, e := range c.path {
-		list = append(list, e.name)
+	list := make([]string, len(c.path))
+	for i, e := range c.path {
+		list[i] = e.name
 	}
 	return strings.Join(list, ".")
 }

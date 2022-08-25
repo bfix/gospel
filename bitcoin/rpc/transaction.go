@@ -1,5 +1,3 @@
-package rpc
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2020 Bernd Fix
@@ -19,6 +17,8 @@ package rpc
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package rpc
 
 import (
 	"errors"
@@ -288,8 +288,10 @@ func (s *Session) SendRawTransaction(raw string) error {
 // how the signature hash is computed, and can be "ALL", "NONE", "SINGLE",
 // "ALL|ANYONECANPAY", "NONE|ANYONECANPAY", or "SINGLE|ANYONECANPAY".
 // Returns json object with keys:
-//     hex : raw transaction with signature(s) (hex-encoded string)
-//     complete : 1 if rawtx is completely signed, 0 if signatures are missing.
+//
+//	hex : raw transaction with signature(s) (hex-encoded string)
+//	complete : 1 if rawtx is completely signed, 0 if signatures are missing.
+//
 // If no private keys are given and the wallet is locked, requires that the
 // wallet be unlocked with walletpassphrase first.
 func (s *Session) SignRawTransaction(raw string, ins []Output, keys []string, mode string) (string, bool, error) {

@@ -1,5 +1,3 @@
-package concurrent
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2022 Bernd Fix
@@ -19,6 +17,8 @@ package concurrent
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package concurrent
 
 import (
 	"errors"
@@ -41,7 +41,6 @@ var (
 // is to communicate state changes to listeners instead of sharing the state
 // globally via memory reference ("Do not communicate by sharing memory; instead,
 // share memory by communicating." -- https://go.dev/doc/effective_go.html)
-//
 type Signal interface{}
 
 //----------------------------------------------------------------------
@@ -82,7 +81,6 @@ func (l *Listener) Close() error {
 // listener earlier. It is therefore mandatory that received signals from
 // a listener get handled in a Go routine as well to keep latency low. If
 // a listener violates that promise, it got removed from the list.
-//
 type Signaller struct {
 	inCh   chan Signal        // channel for incoming signals
 	outChs map[*Listener]bool // channels for out-going signals

@@ -46,12 +46,12 @@ import (
 
 // SendMailMessage handles outgoing message to SMTP server.
 //
-// - The connections to the service can be either plain (port 25)
-//   or SSL/TLS (port 465)
+//   - The connections to the service can be either plain (port 25)
+//     or SSL/TLS (port 465)
 //
-// - If the server supports STARTTLS and the channel is not already
-//   encrypted (via SSL), the application will use the "STLS" command
-//   to initiate a channel encryption.
+//   - If the server supports STARTTLS and the channel is not already
+//     encrypted (via SSL), the application will use the "STLS" command
+//     to initiate a channel encryption.
 //
 // - Connections can be tunneled through any SOCKS5 proxy (like Tor)
 func SendMailMessage(host, proxy, fromAddr, toAddr string, body []byte) (err error) {

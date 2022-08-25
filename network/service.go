@@ -33,11 +33,11 @@ import (
 //
 // - GetName(): Return service name (for logging output)
 //
-// - CanHandle (protocol): Check if handler can process given
-//   network protocol (TCP or UDP on IPv4 or IPv6)
+//   - CanHandle (protocol): Check if handler can process given
+//     network protocol (TCP or UDP on IPv4 or IPv6)
 //
-// - IsAllowed (addr): Checkk if remote address is allowed to
-//   be served by the service handler.
+//   - IsAllowed (addr): Checkk if remote address is allowed to
+//     be served by the service handler.
 type Service interface {
 	Process(conn net.Conn)          // main handler routine
 	GetName() string                // get symbolic name of service

@@ -116,6 +116,7 @@ func (o *Onion) SetCredentials(name, passwd string) {
 }
 
 // Start a new hidden service via a Tor service.
+//
 //nolint:gocyclo // life sometimes is complex...
 func (o *Onion) Start(srv *Service) (err error) {
 	// check if hidden service is already active

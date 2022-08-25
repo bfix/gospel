@@ -24,9 +24,9 @@ import (
 	"strings"
 )
 
-// CoinSpec defines a BIP44 registered coin.
-// see: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-//      https://github.com/libbitcoin/libbitcoin-system/wiki/Altcoin-Version-Mappings
+// CoinSpec defines a BIP44 registered coin. See:
+// https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+// https://github.com/libbitcoin/libbitcoin-system/wiki/Altcoin-Version-Mappings
 type CoinSpec struct {
 	ID     int
 	Symbol string

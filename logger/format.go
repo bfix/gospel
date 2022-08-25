@@ -1,5 +1,3 @@
-package logger
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2020 Bernd Fix
@@ -19,6 +17,8 @@ package logger
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package logger
 
 import (
 	"fmt"

@@ -1,5 +1,3 @@
-package ed25519
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-2020 Bernd Fix
@@ -20,6 +18,8 @@ package ed25519
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
+package ed25519
+
 import (
 	"fmt"
 
@@ -27,7 +27,8 @@ import (
 )
 
 // Curve is the Ed25519 elliptic curve (twisted Edwards curve):
-//     a x^2 + y^2 = 1 + d x^2 y^2,  d = -121665/121666, a = -1
+//
+//	a x^2 + y^2 = 1 + d x^2 y^2,  d = -121665/121666, a = -1
 type Curve struct {
 	// P is the generator of the underlying field "F_p"
 	// = 2^255 - 19
@@ -265,16 +266,17 @@ func (p *prjPoint) add(q *prjPoint) *prjPoint {
 
 // Doubling a projective point.
 // (see https://hyperelliptic.org/EFD/g1p/data/twisted/projective/doubling/dbl-2008-bbjlp)
-//     B = (X1+Y1)2
-//     C = X12
-//     D = Y12
-//     E = a*C
-//     F = E+D
-//     H = Z12
-//     J = F-2*H
-//     X3 = (B-C-D)*J
-//     Y3 = F*(E-D)
-//     Z3 = F*J
+//
+//	B = (X1+Y1)2
+//	C = X12
+//	D = Y12
+//	E = a*C
+//	F = E+D
+//	H = Z12
+//	J = F-2*H
+//	X3 = (B-C-D)*J
+//	Y3 = F*(E-D)
+//	Z3 = F*J
 func (p *prjPoint) double() *prjPoint {
 	_b := p.x.Add(p.y)
 	_b = _b.Mul(_b)

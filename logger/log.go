@@ -1,8 +1,6 @@
-package logger
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2020 Bernd Fix
+// Copyright (C) 2011-2022 Bernd Fix
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -19,6 +17,8 @@ package logger
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package logger
 
 import (
 	"fmt"
