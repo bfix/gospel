@@ -72,6 +72,11 @@ func (bf *BloomFilter) BitsSize() uint {
 	return uint((bf.NumBits + 7) / 8)
 }
 
+// Size returns the size of the binary representation
+func (bf *BloomFilter) Size() uint {
+	return uint(7 + len(bf.Bits))
+}
+
 // SameKind checks if two BloomFilter have the same parameters.
 func (bf *BloomFilter) SameKind(bf2 *BloomFilter) bool {
 	return bf.NumBits == bf2.NumBits &&
@@ -179,6 +184,11 @@ func NewSaltedBloomFilter(salt uint32, numExpected int, falsePositiveRate float6
 	}
 	bf.setSalt(salt)
 	return bf
+}
+
+// Size returns the size of the binary representation
+func (bf *SaltedBloomFilter) Size() uint {
+	return bf.BloomFilter.Size() + 4
 }
 
 // Set salt for bloom filter
