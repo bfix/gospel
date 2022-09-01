@@ -23,6 +23,7 @@ package data
 import (
 	"bytes"
 	"crypto/rand"
+	mrand "math/rand"
 	"sort"
 	"testing"
 )
@@ -72,6 +73,68 @@ func TestBloomfilter(t *testing.T) {
 
 	// create BloomFilter
 	bf := NewBloomFilter(n, fpRate)
+
+	// add positives to bloomfilter
+	for _, e := range positives {
+		bf.Add(e)
+	}
+
+	// check lookup of positives
+	count := 0
+	for _, e := range positives {
+		if !bf.Contains(e) {
+			count++
+		}
+	}
+	if count > 0 {
+		t.Fatalf("FAILED with %d false-negatives", count)
+	}
+
+	// check lookup of negatives
+	count = 0
+	for _, e := range negatives {
+		if bf.Contains(e) {
+			count++
+		}
+	}
+	fpReal := float64(count) / float64(n)
+	if fpReal > fpRate {
+		t.Logf("false-positive rate %f > %f", fpReal, fpRate)
+	}
+}
+
+func TestSaltedBloomfilter(t *testing.T) {
+
+	n := 500
+	fpRate := 0.0001
+
+	// generate positives (entries in the set)
+	positives := make(EntryList, n)
+	for i := 0; i < n; i++ {
+		data := make(Entry, 32)
+		if _, err := rand.Read(data); err != nil {
+			t.Fatal(err)
+		}
+		positives[i] = data
+	}
+	sort.Sort(positives)
+
+	// generate negatives (entries outside the set)
+	negatives := make(EntryList, n)
+	for i := 0; i < n; {
+		data := make(Entry, 32)
+		if _, err := rand.Read(data); err != nil {
+			t.Fatal(err)
+		}
+		if !positives.Contains(data) {
+			negatives[i] = data
+			i++
+		}
+	}
+
+	// create BloomFilter
+	salt := uint32(mrand.Int31()) //nolint:gosec // good enough for testing
+	bf := NewSaltedBloomFilter(salt, n, fpRate)
 
 	// add positives to bloomfilter
 	for _, e := range positives {
