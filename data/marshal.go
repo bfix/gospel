@@ -90,11 +90,19 @@ import (
 // bool value. As with size functions, the method can take a single
 // string argument (field name).
 //
+// ------------------------------
+// (4) Initialization method
+// ------------------------------
+// A struct field can have a "init" tag; the tag value must be name
+// of a struct method used to initialize the instance after
+// unmarshalling the binary representation.
+//
 //######################################################################
 
 // Errors
 var (
 	ErrMarshalNil           = errors.New("object is nil")
+	ErrMarshalInvalid       = errors.New("object is invalid")
 	ErrMarshalType          = errors.New("invalid object type")
 	ErrMarshalNoSize        = errors.New("missing/invalid size tag on field")
 	ErrMarshalNoOpt         = errors.New("missing/invalid opt tag on field")
@@ -210,13 +218,15 @@ func marshalComplex(ctx *_MarshalContext, f reflect.Value) (ok bool, err error) 
 	//------------------------------------------------------
 	case reflect.Interface:
 		e := f.Elem()
-		if e.Kind() == reflect.Ptr {
-			e = e.Elem()
-		}
 		if e.IsValid() {
-			ctx.use(e)
-			if err = marshalValue(ctx, e); err != nil {
-				return
+			if e.Kind() == reflect.Ptr {
+				e = e.Elem()
+			}
+			if e.IsValid() {
+				ctx.use(e)
+				if err = marshalValue(ctx, e); err != nil {
+					return
+				}
 			}
 		}
 	//------------------------------------------------------
@@ -513,8 +523,15 @@ func unmarshalStruct(ctx *_UnmarshalContext, x reflect.Value) error {
 			return ctx.fail(err)
 		}
 		if used {
+			// unmarschal data
 			if err := unmarshalValue(ctx, f); err != nil {
 				return err
+			}
+			// check for initialization method
+			if init := ft.Tag.Get("init"); len(init) > 0 {
+				if _, err := ctx.callMethod(init); err != nil {
+					return err
+				}
 			}
 		}
 		ctx.pop()
@@ -532,7 +549,7 @@ func unmarshalComplex(ctx *_UnmarshalContext, f reflect.Value) (ok bool, err err
 	case reflect.Interface:
 		e := f.Elem()
 		if !e.IsValid() {
-			err = ctx.fail(err)
+			err = ctx.fail(ErrMarshalInvalid)
 			return
 		}
 		ctx.use(e)
@@ -545,6 +562,10 @@ func unmarshalComplex(ctx *_UnmarshalContext, f reflect.Value) (ok bool, err err
 	case reflect.Ptr:
 		e := f.Elem()
 		if !e.IsValid() {
+			if !f.CanSet() {
+				err = ctx.fail(ErrMarshalInvalid)
+				return
+			}
 			ep := reflect.New(f.Type().Elem())
 			e = ep.Elem()
 			f.Set(ep)

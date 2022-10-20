@@ -23,6 +23,7 @@ package data
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -139,8 +140,29 @@ type ErrStruct struct {
 }
 
 //----------------------------------------------------------------------
+
+type ImplStruct struct {
+	A uint32
+}
+
+func (s *ImplStruct) Foo() uint32 {
+	return s.A
+}
+
+type NilInterface interface {
+	Foo() uint32
+}
+
+//----------------------------------------------------------------------
 // unit tests
 //----------------------------------------------------------------------
+
+func TestNilInterface(t *testing.T) {
+	var a NilInterface = (*ImplStruct)(nil)
+	if err := Unmarshal(a, []byte{1, 2, 3, 4}); err == nil || errors.Unwrap(err) != ErrMarshalInvalid {
+		t.Fatal("expected ErrMarshalInvalid error")
+	}
+}
 
 func TestNested(t *testing.T) {
 	r := new(MainStruct)
