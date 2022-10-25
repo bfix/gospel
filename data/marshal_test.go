@@ -154,8 +154,50 @@ type NilInterface interface {
 }
 
 //----------------------------------------------------------------------
+
+type InitStruct struct {
+	N   uint16
+	A   []uint16 `size:"N"`
+	sum uint16
+}
+
+func (s *InitStruct) Init() (err error) {
+	for _, v := range s.A {
+		s.sum += v
+	}
+	return nil
+}
+
+type InitWrap struct {
+	X uint32      `order:"big"`
+	Y *InitStruct `init:"Init"`
+}
+
+//----------------------------------------------------------------------
 // unit tests
 //----------------------------------------------------------------------
+
+func TestInit(t *testing.T) {
+	a := new(InitStruct)
+	a.A = []uint16{1, 2, 3, 4, 5, 6, 7}
+	a.N = 7
+	b := &InitWrap{
+		X: 23,
+		Y: a,
+	}
+	data, err := Marshal(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := new(InitWrap)
+	if err = Unmarshal(s, data); err != nil {
+		t.Fatal(err)
+	}
+	if s.Y.sum != 28 {
+		t.Logf("sum = %d\n", s.Y.sum)
+		t.Fatal("invalid sum")
+	}
+}
 
 func TestNilInterface(t *testing.T) {
 	var a NilInterface = (*ImplStruct)(nil)

@@ -523,13 +523,13 @@ func unmarshalStruct(ctx *_UnmarshalContext, x reflect.Value) error {
 			return ctx.fail(err)
 		}
 		if used {
-			// unmarschal data
+			// unmarshal data
 			if err := unmarshalValue(ctx, f); err != nil {
 				return err
 			}
 			// check for initialization method
 			if init := ft.Tag.Get("init"); len(init) > 0 {
-				if _, err := ctx.callMethod(init); err != nil {
+				if _, err := ctx.callFieldMethod(f, init); err != nil {
 					return err
 				}
 			}
@@ -859,6 +859,22 @@ func (c *_Context) getMethod(inst reflect.Value, name string) (mth reflect.Value
 			err = ErrMarshalMthdMissing
 		}
 	}
+	return
+}
+
+// call a method on instance with no arguments (instance-internal)
+func (c *_Context) callFieldMethod(inst reflect.Value, name string) (res []reflect.Value, err error) {
+	// get method (try instance and pointer receiver)
+	var mth reflect.Value
+	if mth = inst.MethodByName(name); !mth.IsValid() {
+		if mth = inst.Addr().MethodByName(name); !mth.IsValid() {
+			err = ErrMarshalMthdMissing
+			return
+		}
+	}
+	// call method
+	var args []reflect.Value
+	res = mth.Call(args)
 	return
 }
 
