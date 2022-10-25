@@ -529,7 +529,12 @@ func unmarshalStruct(ctx *_UnmarshalContext, x reflect.Value) error {
 			}
 			// check for initialization method
 			if init := ft.Tag.Get("init"); len(init) > 0 {
-				if _, err := ctx.callFieldMethod(f, init); err != nil {
+				ret, err := ctx.callFieldMethod(f, init)
+				if err != nil {
+					return err
+				}
+				if len(ret) == 1 && ret[0].CanInterface() {
+					err, _ = ret[0].Interface().(error)
 					return err
 				}
 			}

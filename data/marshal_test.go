@@ -165,7 +165,7 @@ func (s *InitStruct) Init() (err error) {
 	for _, v := range s.A {
 		s.sum += v
 	}
-	return nil
+	return errors.New("SUM failed")
 }
 
 type InitWrap struct {
