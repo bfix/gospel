@@ -165,7 +165,10 @@ func (s *InitStruct) Init() (err error) {
 	for _, v := range s.A {
 		s.sum += v
 	}
-	return errors.New("SUM failed")
+	if s.sum%2 != 0 {
+		err = errors.New("SUM failed")
+	}
+	return
 }
 
 type InitWrap struct {
@@ -178,24 +181,33 @@ type InitWrap struct {
 //----------------------------------------------------------------------
 
 func TestInit(t *testing.T) {
-	a := new(InitStruct)
-	a.A = []uint16{1, 2, 3, 4, 5, 6, 7}
-	a.N = 7
-	b := &InitWrap{
-		X: 23,
-		Y: a,
+	run := func(v []uint16) (*InitWrap, error) {
+		a := new(InitStruct)
+		a.A = v
+		a.N = uint16(len(v))
+		b := &InitWrap{
+			X: 23,
+			Y: a,
+		}
+		data, err := Marshal(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := new(InitWrap)
+		return s, Unmarshal(s, data)
 	}
-	data, err := Marshal(b)
+	// case 1
+	s, err := run([]uint16{1, 2, 3, 4, 5, 6, 7})
 	if err != nil {
-		t.Fatal(err)
-	}
-	s := new(InitWrap)
-	if err = Unmarshal(s, data); err != nil {
 		t.Fatal(err)
 	}
 	if s.Y.sum != 28 {
 		t.Logf("sum = %d\n", s.Y.sum)
 		t.Fatal("invalid sum")
+	}
+	// case 2
+	if _, err = run([]uint16{1, 2, 3, 4, 5, 6, 7, 23}); err == nil {
+		t.Fatal("expected error")
 	}
 }
 

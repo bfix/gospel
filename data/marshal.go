@@ -534,7 +534,9 @@ func unmarshalStruct(ctx *_UnmarshalContext, x reflect.Value) error {
 					return err
 				}
 				if len(ret) == 1 && ret[0].CanInterface() {
-					err, _ = ret[0].Interface().(error)
+					if err, _ = ret[0].Interface().(error); err != nil {
+						err = ctx.fail(err)
+					}
 					return err
 				}
 			}
