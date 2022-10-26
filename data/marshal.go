@@ -510,11 +510,11 @@ func unmarshalIntrinsic(ctx *_UnmarshalContext, f reflect.Value) (ok bool, err e
 func unmarshalStruct(ctx *_UnmarshalContext, x reflect.Value) error {
 	for i := 0; i < x.NumField(); i++ {
 		f := x.Field(i)
+		ft := x.Type().Field(i)
 		// skip unexported fields
 		if !f.CanSet() {
 			continue
 		}
-		ft := x.Type().Field(i)
 		ctx.push(ft.Name, f, ft.Tag)
 
 		// check for optional field
@@ -536,8 +536,8 @@ func unmarshalStruct(ctx *_UnmarshalContext, x reflect.Value) error {
 				if len(ret) == 1 && ret[0].CanInterface() {
 					if err, _ = ret[0].Interface().(error); err != nil {
 						err = ctx.fail(err)
+						return err
 					}
-					return err
 				}
 			}
 		}
