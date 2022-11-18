@@ -3,7 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/bfix/gospel)](https://goreportcard.com/report/github.com/bfix/gospel)
 [![GoDoc](https://godoc.org/github.com/bfix/gospel?status.svg)](https://godoc.org/github.com/bfix/gospel)
 
-Gospel: GO SPEcial Library (v1.2.19)
+Gospel: GO SPEcial Library (v1.2.21)
 ====================================
 
 (c) 2010-2022 Bernd Fix <brf@hoi-polloi.org>   >Y<
@@ -22,13 +22,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 SPDX-License-Identifier: AGPL3.0-or-later
-
-NOTICE
-------
-
-This version is deprected (it will not be maintained except for security
-patches) and is preceeded by Version 2. Use the `github.com/bfix/gospel/v2`
-package for a newer version.
 
 Packages
 --------
@@ -83,11 +76,11 @@ Packages
 Install
 -------
 
-This version (`v1.2.19`) is designed for the Go1.11+ release. One of the next
+This version (`v1.2.21`) is designed for the Go1.11+ release. One of the next
 version will require Go1.18+ to make use of new language features.
 
 If you only want to use the library in your projects, you don't have to
-install anything. Just include `github.com/bfix/gospel v1.2.19` in your
+install anything. Just include `github.com/bfix/gospel v1.2.21` in your
 `go.mod` file and do a `go mod tidy`.
 
 You can install Gospel locally if desired. Make sure that your Go environment
