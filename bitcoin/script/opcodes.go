@@ -149,6 +149,8 @@ const (
 type OpCode struct {
 	// Name is the mnemonic name of the opcode.
 	Name string
+	// Short name
+	Short string
 	// Value is the byte code of the opcode.
 	Value byte
 	// Exec is function that performs the stack operations for the opcode.
@@ -158,79 +160,79 @@ type OpCode struct {
 var (
 	// OpCodes is a list of all valid opcodes in a Bitcoin script.
 	OpCodes = []*OpCode{
-		{"OP_FALSE", OpFALSE, func(r *R) int {
+		{"OP_FALSE", "0", OpFALSE, func(r *R) int {
 			return r.stack.Push(0)
 		}},
-		{"OP_PUSHDATA1", OpPUSHDATA1, func(r *R) int {
+		{"OP_PUSHDATA1", "", OpPUSHDATA1, func(r *R) int {
 			return r.stack.Push(r.script.Stmts[r.pos].Data)
 		}},
-		{"OP_PUSHDATA2", OpPUSHDATA2, func(r *R) int {
+		{"OP_PUSHDATA2", "", OpPUSHDATA2, func(r *R) int {
 			return r.stack.Push(r.script.Stmts[r.pos].Data)
 		}},
-		{"OP_PUSHDATA4", OpPUSHDATA4, func(r *R) int {
+		{"OP_PUSHDATA4", "", OpPUSHDATA4, func(r *R) int {
 			return r.stack.Push(r.script.Stmts[r.pos].Data)
 		}},
-		{"OP_1NEGATE", Op1NEGATE, func(r *R) int {
+		{"OP_1NEGATE", "-1", Op1NEGATE, func(r *R) int {
 			return r.stack.Push(-1)
 		}},
-		{"OP_RESERVED", OpRESERVED, func(r *R) int {
+		{"OP_RESERVED", "{res}", OpRESERVED, func(r *R) int {
 			return RcTxInvalid
 		}},
-		{"OP_TRUE", OpTRUE, func(r *R) int {
+		{"OP_TRUE", "1", OpTRUE, func(r *R) int {
 			return r.stack.Push(1)
 		}},
-		{"OP_2", Op2, func(r *R) int {
+		{"OP_2", "2", Op2, func(r *R) int {
 			return r.stack.Push(2)
 		}},
-		{"OP_3", Op3, func(r *R) int {
+		{"OP_3", "3", Op3, func(r *R) int {
 			return r.stack.Push(3)
 		}},
-		{"OP_4", Op4, func(r *R) int {
+		{"OP_4", "4", Op4, func(r *R) int {
 			return r.stack.Push(4)
 		}},
-		{"OP_5", Op5, func(r *R) int {
+		{"OP_5", "5", Op5, func(r *R) int {
 			return r.stack.Push(5)
 		}},
-		{"OP_6", Op6, func(r *R) int {
+		{"OP_6", "6", Op6, func(r *R) int {
 			return r.stack.Push(6)
 		}},
-		{"OP_7", Op7, func(r *R) int {
+		{"OP_7", "7", Op7, func(r *R) int {
 			return r.stack.Push(7)
 		}},
-		{"OP_8", Op8, func(r *R) int {
+		{"OP_8", "8", Op8, func(r *R) int {
 			return r.stack.Push(8)
 		}},
-		{"OP_9", Op9, func(r *R) int {
+		{"OP_9", "9", Op9, func(r *R) int {
 			return r.stack.Push(9)
 		}},
-		{"OP_10", Op10, func(r *R) int {
+		{"OP_10", "10", Op10, func(r *R) int {
 			return r.stack.Push(10)
 		}},
-		{"OP_11", Op11, func(r *R) int {
+		{"OP_11", "11", Op11, func(r *R) int {
 			return r.stack.Push(11)
 		}},
-		{"OP_12", Op12, func(r *R) int {
+		{"OP_12", "12", Op12, func(r *R) int {
 			return r.stack.Push(12)
 		}},
-		{"OP_13", Op13, func(r *R) int {
+		{"OP_13", "13", Op13, func(r *R) int {
 			return r.stack.Push(13)
 		}},
-		{"OP_14", Op14, func(r *R) int {
+		{"OP_14", "14", Op14, func(r *R) int {
 			return r.stack.Push(14)
 		}},
-		{"OP_15", Op15, func(r *R) int {
+		{"OP_15", "15", Op15, func(r *R) int {
 			return r.stack.Push(15)
 		}},
-		{"OP_16", Op16, func(r *R) int {
+		{"OP_16", "16", Op16, func(r *R) int {
 			return r.stack.Push(16)
 		}},
-		{"OP_NOP", OpNOP, func(r *R) int {
+		{"OP_NOP", "NOP", OpNOP, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_VER", OpVER, func(r *R) int {
+		{"OP_VER", "VER", OpVER, func(r *R) int {
 			return RcTxInvalid
 		}},
-		{"OP_IF", OpIF, func(r *R) int {
+		{"OP_IF", "IF", OpIF, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
@@ -259,7 +261,7 @@ var (
 			}
 			return RcOK
 		}},
-		{"OP_NOTIF", OpNOTIF, func(r *R) int {
+		{"OP_NOTIF", "NOTIF", OpNOTIF, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
@@ -288,13 +290,13 @@ var (
 			}
 			return RcOK
 		}},
-		{"OP_VERIF", OpVERIF, func(r *R) int {
+		{"OP_VERIF", "VERIF", OpVERIF, func(r *R) int {
 			return RcTxInvalid
 		}},
-		{"OP_VERNOTIF", OpVERNOTIF, func(r *R) int {
+		{"OP_VERNOTIF", "VERNOTIF", OpVERNOTIF, func(r *R) int {
 			return RcTxInvalid
 		}},
-		{"OP_ELSE", OpELSE, func(r *R) int {
+		{"OP_ELSE", "ELSE", OpELSE, func(r *R) int {
 			s := len(r.script.Stmts)
 			depth := 0
 			for r.pos++; r.pos < s; r.pos++ {
@@ -316,10 +318,10 @@ var (
 			}
 			return RcUnclosedIf
 		}},
-		{"OP_ENDIF", OpENDIF, func(r *R) int {
+		{"OP_ENDIF", "ENDIF", OpENDIF, func(r *R) int {
 			return RcTxInvalid
 		}},
-		{"OP_VERIFY", OpVERIFY, func(r *R) int {
+		{"OP_VERIFY", "VERIFY", OpVERIFY, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
@@ -329,37 +331,37 @@ var (
 			}
 			return RcNotVerified
 		}},
-		{"OP_RETURN", OpRETURN, func(r *R) int {
+		{"OP_RETURN", "RETURN", OpRETURN, func(r *R) int {
 			return RcNotVerified
 		}},
-		{"OP_TOALTSTACK", OpTOALTSTACK, func(r *R) int {
+		{"OP_TOALTSTACK", "TOALT", OpTOALTSTACK, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.altStack.Push(v)
 		}},
-		{"OP_FROMALTSTACK", OpFROMALTSTACK, func(r *R) int {
+		{"OP_FROMALTSTACK", "FROMALT", OpFROMALTSTACK, func(r *R) int {
 			v, rc := r.altStack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(v)
 		}},
-		{"OP_2DROP", Op2DROP, func(r *R) int {
+		{"OP_2DROP", "2DROP", Op2DROP, func(r *R) int {
 			if _, rc := r.stack.Pop(); rc != RcOK {
 				return rc
 			}
 			_, rc := r.stack.Pop()
 			return rc
 		}},
-		{"OP_2DUP", Op2DUP, func(r *R) int {
+		{"OP_2DUP", "2DUP", Op2DUP, func(r *R) int {
 			return r.stack.Dup(2)
 		}},
-		{"OP_3DUP", Op3DUP, func(r *R) int {
+		{"OP_3DUP", "3DUP", Op3DUP, func(r *R) int {
 			return r.stack.Dup(3)
 		}},
-		{"OP_2OVER", Op2OVER, func(r *R) int {
+		{"OP_2OVER", "2OVER", Op2OVER, func(r *R) int {
 			v, rc := r.stack.PeekAt(3)
 			if rc != RcOK {
 				return rc
@@ -373,7 +375,7 @@ var (
 			}
 			return r.stack.Push(v)
 		}},
-		{"OP_2ROT", Op2ROT, func(r *R) int {
+		{"OP_2ROT", "2ROT", Op2ROT, func(r *R) int {
 			v, rc := r.stack.RemoveAt(5)
 			if rc != RcOK {
 				return rc
@@ -387,7 +389,7 @@ var (
 			}
 			return r.stack.Push(v)
 		}},
-		{"OP_2SWAP", Op2SWAP, func(r *R) int {
+		{"OP_2SWAP", "2SWAP", Op2SWAP, func(r *R) int {
 			v, rc := r.stack.RemoveAt(3)
 			if rc != RcOK {
 				return rc
@@ -401,7 +403,7 @@ var (
 			}
 			return r.stack.Push(v)
 		}},
-		{"OP_IFDUP", OpIFDUP, func(r *R) int {
+		{"OP_IFDUP", "IFDUP", OpIFDUP, func(r *R) int {
 			v, rc := r.stack.Peek()
 			if rc != RcOK {
 				return rc
@@ -411,17 +413,17 @@ var (
 			}
 			return RcOK
 		}},
-		{"OP_DEPTH", OpDEPTH, func(r *R) int {
+		{"OP_DEPTH", "DEPTH", OpDEPTH, func(r *R) int {
 			return r.stack.Push(r.stack.Len())
 		}},
-		{"OP_DROP", OpDROP, func(r *R) int {
+		{"OP_DROP", "DROP", OpDROP, func(r *R) int {
 			_, rc := r.stack.Pop()
 			return rc
 		}},
-		{"OP_DUP", OpDUP, func(r *R) int {
+		{"OP_DUP", "DUP", OpDUP, func(r *R) int {
 			return r.stack.Dup(1)
 		}},
-		{"OP_NIP", OpNIP, func(r *R) int {
+		{"OP_NIP", "NIP", OpNIP, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
@@ -431,14 +433,14 @@ var (
 			}
 			return r.stack.Push(v)
 		}},
-		{"OP_OVER", OpOVER, func(r *R) int {
+		{"OP_OVER", "OVER", OpOVER, func(r *R) int {
 			v, rc := r.stack.PeekAt(1)
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(v)
 		}},
-		{"OP_PICK", OpPICK, func(r *R) int {
+		{"OP_PICK", "PICK", OpPICK, func(r *R) int {
 			n, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
@@ -449,7 +451,7 @@ var (
 			}
 			return r.stack.Push(v)
 		}},
-		{"OP_ROLL", OpROLL, func(r *R) int {
+		{"OP_ROLL", "ROLL", OpROLL, func(r *R) int {
 			n, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
@@ -460,14 +462,14 @@ var (
 			}
 			return r.stack.Push(v)
 		}},
-		{"OP_ROT", OpROT, func(r *R) int {
+		{"OP_ROT", "ROT", OpROT, func(r *R) int {
 			v, rc := r.stack.RemoveAt(2)
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(v)
 		}},
-		{"OP_SWAP", OpSWAP, func(r *R) int {
+		{"OP_SWAP", "SWAP", OpSWAP, func(r *R) int {
 			v1, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
@@ -481,7 +483,7 @@ var (
 			}
 			return r.stack.Push(v2)
 		}},
-		{"OP_TUCK", OpTUCK, func(r *R) int {
+		{"OP_TUCK", "TUCK", OpTUCK, func(r *R) int {
 			v1, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
@@ -498,45 +500,45 @@ var (
 			}
 			return r.stack.Push(v2)
 		}},
-		{"OP_CAT", OpCAT, func(r *R) int {
+		{"OP_CAT", "CAT", OpCAT, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_SUBSTR", OpSUBSTR, func(r *R) int {
+		{"OP_SUBSTR", "SUBSTR", OpSUBSTR, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_LEFT", OpLEFT, func(r *R) int {
+		{"OP_LEFT", "LEFT", OpLEFT, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_RIGHT", OpRIGHT, func(r *R) int {
+		{"OP_RIGHT", "RIGHT", OpRIGHT, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_SIZE", OpSIZE, func(r *R) int {
+		{"OP_SIZE", "SIZE", OpSIZE, func(r *R) int {
 			v, rc := r.stack.Peek()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(len(v.Bytes()))
 		}},
-		{"OP_INVERT", OpINVERT, func(r *R) int {
+		{"OP_INVERT", "INVERT", OpINVERT, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_AND", OpAND, func(r *R) int {
+		{"OP_AND", "AND", OpAND, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_OR", OpOR, func(r *R) int {
+		{"OP_OR", "OR", OpOR, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_XOR", OpXOR, func(r *R) int {
+		{"OP_XOR", "XOR", OpXOR, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_EQUAL", OpEQUAL, func(r *R) int {
+		{"OP_EQUAL", "EQUAL", OpEQUAL, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(cmp == 0)
 		}},
-		{"OP_EQUALVERIFY", OpEQUALVERIFY, func(r *R) int {
+		{"OP_EQUALVERIFY", "EQUALV", OpEQUALVERIFY, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
@@ -546,61 +548,61 @@ var (
 			}
 			return RcTxInvalid
 		}},
-		{"OP_RESERVED1", OpRESERVED1, func(r *R) int {
+		{"OP_RESERVED1", "", OpRESERVED1, func(r *R) int {
 			return RcTxInvalid
 		}},
-		{"OP_RESERVED2", OpRESERVED2, func(r *R) int {
+		{"OP_RESERVED2", "", OpRESERVED2, func(r *R) int {
 			return RcTxInvalid
 		}},
-		{"OP_1ADD", Op1ADD, func(r *R) int {
+		{"OP_1ADD", "1ADD", Op1ADD, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(v.Add(math.ONE))
 		}},
-		{"OP_1SUB", Op1SUB, func(r *R) int {
+		{"OP_1SUB", "1SUB", Op1SUB, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(v.Sub(math.ONE))
 		}},
-		{"OP_2MUL", Op2MUL, func(r *R) int {
+		{"OP_2MUL", "2MUL", Op2MUL, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_2DIV", Op2DIV, func(r *R) int {
+		{"OP_2DIV", "2DIV", Op2DIV, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_NEGATE", OpNEGATE, func(r *R) int {
+		{"OP_NEGATE", "NEG", OpNEGATE, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(v.Neg())
 		}},
-		{"OP_ABS", OpABS, func(r *R) int {
+		{"OP_ABS", "ABS", OpABS, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(v.Abs())
 		}},
-		{"OP_NOT", OpNOT, func(r *R) int {
+		{"OP_NOT", "NOT", OpNOT, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(v.Equals(math.ZERO))
 		}},
-		{"OP_0NOTEQUAL", Op0NOTEQUAL, func(r *R) int {
+		{"OP_0NOTEQUAL", "!=0", Op0NOTEQUAL, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(!v.Equals(math.ZERO))
 		}},
-		{"OP_ADD", OpADD, func(r *R) int {
+		{"OP_ADD", "ADD", OpADD, func(r *R) int {
 			b, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
@@ -611,7 +613,7 @@ var (
 			}
 			return r.stack.Push(a.Add(b))
 		}},
-		{"OP_SUB", OpSUB, func(r *R) int {
+		{"OP_SUB", "SUB", OpSUB, func(r *R) int {
 			b, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
@@ -622,43 +624,43 @@ var (
 			}
 			return r.stack.Push(a.Sub(b))
 		}},
-		{"OP_MUL", OpMUL, func(r *R) int {
+		{"OP_MUL", "MUL", OpMUL, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_DIV", OpDIV, func(r *R) int {
+		{"OP_DIV", "DIV", OpDIV, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_MOD", OpMOD, func(r *R) int {
+		{"OP_MOD", "MOD", OpMOD, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_LSHIFT", OpLSHIFT, func(r *R) int {
+		{"OP_LSHIFT", "LSHIFT", OpLSHIFT, func(r *R) int {
 			return RcDisabledOpcode
 		}},
-		{"OP_RSHIFT", OpRSHIFT, func(r *R) int {
+		{"OP_RSHIFT", "RSHIFT", OpRSHIFT, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_BOOLAND", OpBOOLAND, func(r *R) int {
+		{"OP_BOOLAND", "&&", OpBOOLAND, func(r *R) int {
 			a, b, _, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(!a.Equals(math.ZERO) && !b.Equals(math.ZERO))
 		}},
-		{"OP_BOOLOR", OpBOOLOR, func(r *R) int {
+		{"OP_BOOLOR", "||", OpBOOLOR, func(r *R) int {
 			a, b, _, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(!a.Equals(math.ZERO) || !b.Equals(math.ZERO))
 		}},
-		{"OP_NUMEQUAL", OpNUMEQUAL, func(r *R) int {
+		{"OP_NUMEQUAL", "==", OpNUMEQUAL, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(cmp == 0)
 		}},
-		{"OP_NUMEQUALVERIFY", OpNUMEQUALVERIFY, func(r *R) int {
+		{"OP_NUMEQUALVERIFY", "==V", OpNUMEQUALVERIFY, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
@@ -668,42 +670,42 @@ var (
 			}
 			return RcTxInvalid
 		}},
-		{"OP_NUMNOTEQUAL", OpNUMNOTEQUAL, func(r *R) int {
+		{"OP_NUMNOTEQUAL", "!=", OpNUMNOTEQUAL, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(cmp != 0)
 		}},
-		{"OP_LESSTHAN", OpLESSTHAN, func(r *R) int {
+		{"OP_LESSTHAN", "<", OpLESSTHAN, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(cmp < 0)
 		}},
-		{"OP_GREATERTHAN", OpGREATERTHAN, func(r *R) int {
+		{"OP_GREATERTHAN", ">", OpGREATERTHAN, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(cmp > 0)
 		}},
-		{"OP_LESSTHANOREQUAL", OpLESSTHANOREQUAL, func(r *R) int {
+		{"OP_LESSTHANOREQUAL", "<=", OpLESSTHANOREQUAL, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(cmp <= 0)
 		}},
-		{"OP_GREATERTHANOREQUAL", OpGREATERTHANOREQUAL, func(r *R) int {
+		{"OP_GREATERTHANOREQUAL", ">=", OpGREATERTHANOREQUAL, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(cmp >= 0)
 		}},
-		{"OP_MIN", OpMIN, func(r *R) int {
+		{"OP_MIN", "MIN", OpMIN, func(r *R) int {
 			a, b, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
@@ -713,7 +715,7 @@ var (
 			}
 			return r.stack.Push(b)
 		}},
-		{"OP_MAX", OpMAX, func(r *R) int {
+		{"OP_MAX", "MAX", OpMAX, func(r *R) int {
 			a, b, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
@@ -723,7 +725,7 @@ var (
 			}
 			return r.stack.Push(b)
 		}},
-		{"OP_WITHIN", OpWITHIN, func(r *R) int {
+		{"OP_WITHIN", "[..]", OpWITHIN, func(r *R) int {
 			a, b, _, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
@@ -734,52 +736,52 @@ var (
 			}
 			return r.stack.Push(a.Cmp(i) <= 0 && i.Cmp(b) < 0)
 		}},
-		{"OP_RIPEMD160", OpRIPEMD160, func(r *R) int {
+		{"OP_RIPEMD160", "MD160", OpRIPEMD160, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(bitcoin.RipeMD160(v.Bytes()))
 		}},
-		{"OP_SHA1", OpSHA1, func(r *R) int {
+		{"OP_SHA1", "SHA1", OpSHA1, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(bitcoin.Sha1(v.Bytes()))
 		}},
-		{"OP_SHA256", OpSHA256, func(r *R) int {
+		{"OP_SHA256", "SHA256", OpSHA256, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(bitcoin.Sha256(v.Bytes()))
 		}},
-		{"OP_HASH160", OpHASH160, func(r *R) int {
+		{"OP_HASH160", "HASH160", OpHASH160, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(bitcoin.Hash160(v.Bytes()))
 		}},
-		{"OP_HASH256", OpHASH256, func(r *R) int {
+		{"OP_HASH256", "HASH256", OpHASH256, func(r *R) int {
 			v, rc := r.stack.Pop()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(bitcoin.Hash256(v.Bytes()))
 		}},
-		{"OP_CODESEPARATOR", OpCODESEPARATOR, func(r *R) int {
+		{"OP_CODESEPARATOR", "//", OpCODESEPARATOR, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_CHECKSIG", OpCHECKSIG, func(r *R) int {
+		{"OP_CHECKSIG", "CHECKSIG", OpCHECKSIG, func(r *R) int {
 			valid, rc := r.CheckSig()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(valid)
 		}},
-		{"OP_CHECKSIGVERIFY", OpCHECKSIGVERIFY, func(r *R) int {
+		{"OP_CHECKSIGVERIFY", "CHECKSIGV", OpCHECKSIGVERIFY, func(r *R) int {
 			valid, rc := r.CheckSig()
 			if rc != RcOK {
 				return rc
@@ -789,14 +791,14 @@ var (
 			}
 			return RcInvalidTransfer
 		}},
-		{"OP_CHECKMULTISIG", OpCHECKMULTISIG, func(r *R) int {
+		{"OP_CHECKMULTISIG", "CHECKMSIG", OpCHECKMULTISIG, func(r *R) int {
 			valid, rc := r.CheckMultiSig()
 			if rc != RcOK {
 				return rc
 			}
 			return r.stack.Push(valid)
 		}},
-		{"OP_CHECKMULTISIGVERIFY", OpCHECKMULTISIGVERIFY, func(r *R) int {
+		{"OP_CHECKMULTISIGVERIFY", "CHECKMSIGV", OpCHECKMULTISIGVERIFY, func(r *R) int {
 			valid, rc := r.CheckMultiSig()
 			if rc != RcOK {
 				return rc
@@ -806,10 +808,10 @@ var (
 			}
 			return RcInvalidTransfer
 		}},
-		{"OP_NOP1", OpNOP1, func(r *R) int {
+		{"OP_NOP1", "NOP1", OpNOP1, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_CHECKLOCKTIMEVERIFY", OpCHECKLOCKTIMEVERIFY, func(r *R) int {
+		{"OP_CHECKLOCKTIMEVERIFY", "CHECKLTIMEV", OpCHECKLOCKTIMEVERIFY, func(r *R) int {
 			v, rc := r.stack.Peek()
 			if rc != RcOK || v.Sign() == -1 {
 				return RcTxInvalid
@@ -823,7 +825,7 @@ var (
 			}
 			return RcOK
 		}},
-		{"OP_CHECKSEQUENCEVERIFY", OpCHECKSEQUENCEVERIFY, func(r *R) int {
+		{"OP_CHECKSEQUENCEVERIFY", "CHECKSEQV", OpCHECKSEQUENCEVERIFY, func(r *R) int {
 			v, rc := r.stack.Peek()
 			if rc != RcOK || v.Sign() == -1 {
 				return RcTxInvalid
@@ -839,34 +841,34 @@ var (
 			}
 			return RcOK
 		}},
-		{"OP_NOP4", OpNOP4, func(r *R) int {
+		{"OP_NOP4", "NOP4", OpNOP4, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_NOP5", OpNOP5, func(r *R) int {
+		{"OP_NOP5", "NOP5", OpNOP5, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_NOP6", OpNOP6, func(r *R) int {
+		{"OP_NOP6", "NOP6", OpNOP6, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_NOP7", OpNOP7, func(r *R) int {
+		{"OP_NOP7", "NOP7", OpNOP7, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_NOP8", OpNOP8, func(r *R) int {
+		{"OP_NOP8", "NOP8", OpNOP8, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_NOP9", OpNOP9, func(r *R) int {
+		{"OP_NOP9", "NOP9", OpNOP9, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_NOP10", OpNOP10, func(r *R) int {
+		{"OP_NOP10", "NOP10", OpNOP10, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_PUBKEYHASH", OpPUBKEYHASH, func(r *R) int {
+		{"OP_PUBKEYHASH", "PKHASH", OpPUBKEYHASH, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_PUBKEY", OpPUBKEY, func(r *R) int {
+		{"OP_PUBKEY", "PK", OpPUBKEY, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_INVALIDOPCODE", OpINVALIDOPCODE, func(r *R) int {
+		{"OP_INVALIDOPCODE", "INVALID", OpINVALIDOPCODE, func(r *R) int {
 			return RcInvalidOpcode
 		}},
 	}
@@ -877,6 +879,7 @@ func GetOpcode(v byte) *OpCode {
 	if v > 0 && v < 76 {
 		return &OpCode{
 			Name:  fmt.Sprintf("DATA_%d", int(v)),
+			Short: "",
 			Value: v,
 			Exec: func(r *R) int {
 				return r.stack.Push(r.script.Stmts[r.pos].Data)
