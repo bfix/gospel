@@ -68,7 +68,11 @@ func NewDataStatement(data []byte) *Statement {
 // String returns the string representation of a statement.
 func (s *Statement) String() string {
 	if s.Data != nil {
-		return hex.EncodeToString(s.Data)
+		d := hex.EncodeToString(s.Data)
+		if s.Opcode == OpRETURN {
+			return "OP_RETURN:" + d
+		}
+		return d
 	}
 	return GetOpcode(s.Opcode).Name
 }
@@ -156,6 +160,9 @@ func ParseBin(code []byte) (scr *Script, rc int) {
 	scr = NewScript()
 	// get variable-length data from statement.
 	getData := func(s *Statement, i int) int {
+		if pos+i+1 > length {
+			return RcExceeds
+		}
 		b := make([]byte, i)
 		copy(b, code[pos+1:pos+i+1])
 		j, err := bitcoin.GetUint(b, 0, i)
@@ -199,6 +206,11 @@ func ParseBin(code []byte) (scr *Script, rc int) {
 				if rc = getData(s, 4); rc != RcOK {
 					return
 				}
+			case OpRETURN:
+				num := length - pos - 1
+				s.Data = make([]byte, num)
+				copy(s.Data, code[pos+1:pos+num+1])
+				size += num
 			}
 		}
 		pos += size

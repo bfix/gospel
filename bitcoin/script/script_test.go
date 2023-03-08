@@ -46,7 +46,7 @@ func TestParse(t *testing.T) {
 		if rc != RcOK {
 			t.Fatalf("Parse failed: rc=%s", RcString[rc])
 		}
-		if verbose {
+		if testing.Verbose() {
 			t.Logf("Statements: %v\n", scr.Stmts)
 		}
 		h2 := hex.EncodeToString(scr.Bytes())
@@ -75,5 +75,15 @@ func TestCompile(t *testing.T) {
 			}
 			t.Fatal("Script compile/decompile mismatch")
 		}
+	}
+}
+
+func TestOpReturn(t *testing.T) {
+	scr, rc := Parse("6a0102030405060708")
+	if rc != RcOK {
+		t.Fatalf("Parse failed: rc=%s", RcString[rc])
+	}
+	if testing.Verbose() {
+		t.Logf("Statements: %v\n", scr.Stmts)
 	}
 }
