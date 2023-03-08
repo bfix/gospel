@@ -175,7 +175,7 @@ var (
 		{"OP_1NEGATE", "-1", Op1NEGATE, func(r *R) int {
 			return r.stack.Push(-1)
 		}},
-		{"OP_RESERVED", "{res}", OpRESERVED, func(r *R) int {
+		{"OP_RESERVED", "RESERVED", OpRESERVED, func(r *R) int {
 			return RcTxInvalid
 		}},
 		{"OP_TRUE", "1", OpTRUE, func(r *R) int {
@@ -538,7 +538,7 @@ var (
 			}
 			return r.stack.Push(cmp == 0)
 		}},
-		{"OP_EQUALVERIFY", "EQUALV", OpEQUALVERIFY, func(r *R) int {
+		{"OP_EQUALVERIFY", "EQUAL!", OpEQUALVERIFY, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
@@ -548,10 +548,10 @@ var (
 			}
 			return RcTxInvalid
 		}},
-		{"OP_RESERVED1", "", OpRESERVED1, func(r *R) int {
+		{"OP_RESERVED1", "RESERVED", OpRESERVED1, func(r *R) int {
 			return RcTxInvalid
 		}},
-		{"OP_RESERVED2", "", OpRESERVED2, func(r *R) int {
+		{"OP_RESERVED2", "RESERVED", OpRESERVED2, func(r *R) int {
 			return RcTxInvalid
 		}},
 		{"OP_1ADD", "1ADD", Op1ADD, func(r *R) int {
@@ -660,7 +660,7 @@ var (
 			}
 			return r.stack.Push(cmp == 0)
 		}},
-		{"OP_NUMEQUALVERIFY", "==V", OpNUMEQUALVERIFY, func(r *R) int {
+		{"OP_NUMEQUALVERIFY", "==!", OpNUMEQUALVERIFY, func(r *R) int {
 			_, _, cmp, rc := r.stack.Compare()
 			if rc != RcOK {
 				return rc
@@ -781,7 +781,7 @@ var (
 			}
 			return r.stack.Push(valid)
 		}},
-		{"OP_CHECKSIGVERIFY", "CHECKSIGV", OpCHECKSIGVERIFY, func(r *R) int {
+		{"OP_CHECKSIGVERIFY", "CHECKSIG!", OpCHECKSIGVERIFY, func(r *R) int {
 			valid, rc := r.CheckSig()
 			if rc != RcOK {
 				return rc
@@ -798,7 +798,7 @@ var (
 			}
 			return r.stack.Push(valid)
 		}},
-		{"OP_CHECKMULTISIGVERIFY", "CHECKMSIGV", OpCHECKMULTISIGVERIFY, func(r *R) int {
+		{"OP_CHECKMULTISIGVERIFY", "CHECKMSIG!", OpCHECKMULTISIGVERIFY, func(r *R) int {
 			valid, rc := r.CheckMultiSig()
 			if rc != RcOK {
 				return rc
@@ -811,7 +811,7 @@ var (
 		{"OP_NOP1", "NOP1", OpNOP1, func(r *R) int {
 			return RcOK
 		}},
-		{"OP_CHECKLOCKTIMEVERIFY", "CHECKLTIMEV", OpCHECKLOCKTIMEVERIFY, func(r *R) int {
+		{"OP_CHECKLOCKTIMEVERIFY", "CHECKLOCKTIME!", OpCHECKLOCKTIMEVERIFY, func(r *R) int {
 			v, rc := r.stack.Peek()
 			if rc != RcOK || v.Sign() == -1 {
 				return RcTxInvalid
@@ -825,7 +825,7 @@ var (
 			}
 			return RcOK
 		}},
-		{"OP_CHECKSEQUENCEVERIFY", "CHECKSEQV", OpCHECKSEQUENCEVERIFY, func(r *R) int {
+		{"OP_CHECKSEQUENCEVERIFY", "CHECKSEQ!", OpCHECKSEQUENCEVERIFY, func(r *R) int {
 			v, rc := r.stack.Peek()
 			if rc != RcOK || v.Sign() == -1 {
 				return RcTxInvalid
