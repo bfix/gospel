@@ -67,6 +67,9 @@ func TestCompile(t *testing.T) {
 			t.Fatal(err)
 		}
 		src2 := bin.Decompile()
+		if testing.Verbose() {
+			t.Logf("Statements: %v\n", src2)
+		}
 		if src != src2 {
 			if true {
 				t.Log(">>> " + src)

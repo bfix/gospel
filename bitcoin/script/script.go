@@ -94,9 +94,9 @@ func (s *Script) Bytes() []byte {
 			case 76:
 				_ = buf.WriteByte(byte(ld))
 			case 77:
-				_ = binary.Write(buf, binary.BigEndian, uint16(ld))
+				_ = binary.Write(buf, binary.LittleEndian, uint16(ld))
 			case 78:
-				_ = binary.Write(buf, binary.BigEndian, uint32(ld))
+				_ = binary.Write(buf, binary.LittleEndian, uint32(ld))
 			}
 			_, _ = buf.Write(s.Data)
 		}
@@ -117,28 +117,25 @@ func (s *Script) GetTemplate() (tpl []byte, rc int) {
 // Decompile returns a human-readable Bitcoin script source from a
 // binary script representation.
 func (s *Script) Decompile() string {
-	src := ""
+	var src []string
 	for _, stmt := range s.Stmts {
-		if len(src) > 0 {
-			src += " "
-		}
 		if stmt.Data != nil {
 			if len(stmt.Data) < 5 {
 				v := math.NewIntFromBytes(stmt.Data)
-				src += "#" + v.String()
+				src = append(src, "#"+v.String())
 			} else {
-				src += hex.EncodeToString(stmt.Data)
+				src = append(src, hex.EncodeToString(stmt.Data))
 			}
 		} else {
 			for _, opcode := range OpCodes {
 				if opcode.Value == stmt.Opcode {
-					src += opcode.Name
+					src = append(src, opcode.Name)
 					break
 				}
 			}
 		}
 	}
-	return src
+	return strings.Join(src, " ")
 }
 
 // Add a statement at the end of the script.
@@ -173,11 +170,11 @@ func ParseBin(code []byte) (scr *Script, rc int) {
 			n = int(b)
 		case 2:
 			var v uint16
-			_ = binary.Read(buf, binary.BigEndian, &v)
+			_ = binary.Read(buf, binary.LittleEndian, &v)
 			n = int(v)
 		case 4:
 			var v uint32
-			_ = binary.Read(buf, binary.BigEndian, &v)
+			_ = binary.Read(buf, binary.LittleEndian, &v)
 			n = int(v)
 		}
 
