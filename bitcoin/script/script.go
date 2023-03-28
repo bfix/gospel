@@ -21,11 +21,12 @@ package script
 //----------------------------------------------------------------------
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"strings"
 
-	"github.com/bfix/gospel/bitcoin"
 	"github.com/bfix/gospel/math"
 )
 
@@ -84,23 +85,23 @@ type Script struct {
 
 // Bytes returns a (flat) binary representation of the script
 func (s *Script) Bytes() []byte {
-	bin := make([]byte, 0)
+	buf := new(bytes.Buffer)
 	for _, s := range s.Stmts {
-		bin = append(bin, s.Opcode)
+		_ = buf.WriteByte(s.Opcode)
 		if s.Data != nil {
 			ld := uint(len(s.Data))
 			switch s.Opcode {
 			case 76:
-				bin = append(bin, bitcoin.PutUint(ld, 1)...)
+				_ = buf.WriteByte(byte(ld))
 			case 77:
-				bin = append(bin, bitcoin.PutUint(ld, 2)...)
+				_ = binary.Write(buf, binary.BigEndian, uint16(ld))
 			case 78:
-				bin = append(bin, bitcoin.PutUint(ld, 4)...)
+				_ = binary.Write(buf, binary.BigEndian, uint32(ld))
 			}
-			bin = append(bin, s.Data...)
+			_, _ = buf.Write(s.Data)
 		}
 	}
-	return bin
+	return buf.Bytes()
 }
 
 // GetTemplate returns a template derived from a script. A template only
@@ -163,13 +164,23 @@ func ParseBin(code []byte) (scr *Script, rc int) {
 		if pos+i+1 > length {
 			return RcExceeds
 		}
-		b := make([]byte, i)
-		copy(b, code[pos+1:pos+i+1])
-		j, err := bitcoin.GetUint(b, 0, i)
-		if err != nil {
-			return RcLengthMismatch
+		buf := bytes.NewReader(code[pos+1 : pos+i+1])
+
+		var n int
+		switch i {
+		case 1:
+			b, _ := buf.ReadByte()
+			n = int(b)
+		case 2:
+			var v uint16
+			_ = binary.Read(buf, binary.BigEndian, &v)
+			n = int(v)
+		case 4:
+			var v uint32
+			_ = binary.Read(buf, binary.BigEndian, &v)
+			n = int(v)
 		}
-		n := int(j)
+
 		size += n + i
 		if pos+size > length {
 			return RcExceeds

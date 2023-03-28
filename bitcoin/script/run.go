@@ -56,6 +56,7 @@ const (
 	RcDisabledOpcode
 	RcTxNotSignable
 	RcEmptyScript
+	RcDone
 )
 
 // Human-readable result codes
@@ -88,27 +89,35 @@ var (
 		"Disabled opcode",
 		"Transaction not signable",
 		"Empty script",
+		"Script done",
 	}
 )
 
+type Tx struct {
+	SignedData []byte
+	LockTime   uint64
+	Sequence   uint64
+	Version    int
+}
+
 // R is the Bitcoin script runtime environment
 type R struct {
-	script   *Script                       // list of parsed statements
-	pos      int                           // index of current statement
-	stack    *Stack                        // stack for script operations
-	altStack *Stack                        // alternative stack
-	tx       *bitcoin.DissectedTransaction // associated dissected transaction
+	script   *Script // list of parsed statements
+	pos      int     // index of current statement
+	stack    *Stack  // stack for script operations
+	altStack *Stack  // alternative stack
+	tx       *Tx     // associated transaction
 	CbStep   func(stack *Stack, stmt *Statement, rc int)
 }
 
 // NewRuntime creates a new script parser and execution runtime.
-func NewRuntime() *R {
+func NewRuntime(tx *Tx) *R {
 	return &R{
 		script:   nil,
 		pos:      -1,
 		stack:    NewStack(),
 		altStack: NewStack(),
-		tx:       nil,
+		tx:       tx,
 		CbStep:   nil,
 	}
 }
@@ -119,12 +128,43 @@ func NewRuntime() *R {
 // to be assembled (concatenated) and cleaned up from the prev.sigScript and
 // curr.pkScript (see https://en.bitcoin.it/wiki/OpCHECKSIG); 'tx' is the
 // current transaction in dissected format already prepared for signature.
-func (r *R) ExecScript(script *Script, tx *bitcoin.DissectedTransaction) (bool, int) {
-	if tx.Signable == nil || tx.VinSlot < 0 {
-		return false, RcTxNotSignable
+func (r *R) ExecScript(script *Script) (bool, int) {
+	r.script = script
+	if r.script.Stmts == nil || len(r.script.Stmts) == 0 {
+		return false, RcEmptyScript
 	}
-	r.tx = tx
-	return r.exec(script)
+	r.pos = 0
+	size := len(r.script.Stmts)
+	for r.pos < size {
+		s := r.script.Stmts[r.pos]
+		opc := GetOpcode(s.Opcode)
+		if opc == nil {
+			fmt.Printf("Opcode: %v\n", s.Opcode)
+			return false, RcInvalidOpcode
+		}
+		rc := opc.Exec(r)
+		if r.CbStep != nil {
+			r.CbStep(r.stack, s, rc)
+		}
+		if rc == RcDone {
+			return true, RcOK
+		}
+		if rc != RcOK {
+			return false, rc
+		}
+		r.pos++
+	}
+	if r.stack.Len() == 1 {
+		v, rc := r.stack.Pop()
+		if rc != RcOK {
+			return false, rc
+		}
+		if v.Equals(math.ONE) {
+			return true, RcOK
+		}
+		return false, RcOK
+	}
+	return false, RcInvalidFinalStack
 }
 
 // CheckSig performs a OpCHECKSIG operation on the stack (without pushing a
@@ -206,48 +246,8 @@ func (r *R) CheckMultiSig() (bool, int) {
 	return true, RcOK
 }
 
-// exec executes a sequence of parsed statement of a script.
-func (r *R) exec(script *Script) (bool, int) {
-	r.script = script
-	if r.script.Stmts == nil || len(r.script.Stmts) == 0 {
-		return false, RcEmptyScript
-	}
-	r.pos = 0
-	size := len(r.script.Stmts)
-	for r.pos < size {
-		s := r.script.Stmts[r.pos]
-		opc := GetOpcode(s.Opcode)
-		if opc == nil {
-			fmt.Printf("Opcode: %v\n", s.Opcode)
-			return false, RcInvalidOpcode
-		}
-		rc := opc.Exec(r)
-		if r.CbStep != nil {
-			r.CbStep(r.stack, s, rc)
-		}
-		if rc != RcOK {
-			return false, rc
-		}
-		r.pos++
-	}
-	if r.stack.Len() == 1 {
-		v, rc := r.stack.Pop()
-		if rc != RcOK {
-			return false, rc
-		}
-		if v.Equals(math.ONE) {
-			return true, RcOK
-		}
-		return false, RcOK
-	}
-	return false, RcInvalidFinalStack
-}
-
 // checkSig checks the signature of a prepared transaction.
 func (r *R) checkSig(pkInt, sigInt *math.Int) (bool, int) {
-	if r.tx == nil {
-		return false, RcNoTransaction
-	}
 	// get public key
 	pk, err := bitcoin.PublicKeyFromBytes(pkInt.Bytes())
 	if err != nil {
@@ -258,7 +258,7 @@ func (r *R) checkSig(pkInt, sigInt *math.Int) (bool, int) {
 	hashType := sigData[len(sigData)-1]
 	sigData = sigData[:len(sigData)-1]
 	// compute hash of amended transaction
-	txSign := append(r.tx.Signable, []byte{hashType, 0, 0, 0}...)
+	txSign := append(r.tx.SignedData, []byte{hashType, 0, 0, 0}...)
 	txHash := bitcoin.Hash256(txSign)
 	// decode signature from DER data
 	sig, err := bitcoin.NewSignatureFromASN1(sigData)

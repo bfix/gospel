@@ -2,7 +2,7 @@ package script
 
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2020 Bernd Fix
+// Copyright (C) 2011-2023 Bernd Fix
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -27,7 +27,7 @@ import (
 	"github.com/bfix/gospel/math"
 )
 
-// Bitcoin script opcodes
+// Standard Bitcoin script opcodes
 const (
 	OpFALSE               = 0
 	OpPUSHDATA1           = 76
@@ -327,7 +327,7 @@ var (
 				return rc
 			}
 			if v.Equals(math.ONE) {
-				return RcOK
+				return RcDone
 			}
 			return RcNotVerified
 		}},
@@ -544,7 +544,7 @@ var (
 				return rc
 			}
 			if cmp == 0 {
-				return RcOK
+				return RcDone
 			}
 			return RcTxInvalid
 		}},
@@ -666,7 +666,7 @@ var (
 				return rc
 			}
 			if cmp == 0 {
-				return RcOK
+				return RcDone
 			}
 			return RcTxInvalid
 		}},
@@ -787,7 +787,7 @@ var (
 				return rc
 			}
 			if valid {
-				return RcOK
+				return RcDone
 			}
 			return RcInvalidTransfer
 		}},
@@ -804,7 +804,7 @@ var (
 				return rc
 			}
 			if valid {
-				return RcOK
+				return RcDone
 			}
 			return RcInvalidTransfer
 		}},
@@ -820,10 +820,10 @@ var (
 			var bounds uint64 = 500000000
 			if (vt < bounds && r.tx.LockTime > bounds) ||
 				(vt > bounds && r.tx.LockTime < bounds) ||
-				r.tx.VinSeq[r.tx.VinSlot] == 0xffffffff {
+				r.tx.Sequence == 0xffffffff {
 				return RcTxInvalid
 			}
-			return RcOK
+			return RcDone
 		}},
 		{"OP_CHECKSEQUENCEVERIFY", "CHECKSEQ!", OpCHECKSEQUENCEVERIFY, func(r *R) int {
 			v, rc := r.stack.Peek()
@@ -831,7 +831,7 @@ var (
 				return RcTxInvalid
 			}
 			vt := uint64(v.Int64())
-			inSeq := r.tx.VinSeq[r.tx.VinSlot]
+			inSeq := r.tx.Sequence
 			if vt&(1<<31) == 0 {
 				if r.tx.Version < 2 ||
 					inSeq&(1<<31) != 0 ||
@@ -839,7 +839,7 @@ var (
 					return RcTxInvalid
 				}
 			}
-			return RcOK
+			return RcDone
 		}},
 		{"OP_NOP4", "NOP4", OpNOP4, func(r *R) int {
 			return RcOK
@@ -892,4 +892,36 @@ func GetOpcode(v byte) *OpCode {
 		}
 	}
 	return nil
+}
+
+// GetOpcodeTR returns a opcode for a given byte value in a tapscript.
+func GetOpcodeTR(v byte) *OpCode {
+	// blinded instructions
+	if v == OpRESERVED || v == OpVER || (v >= OpCAT && v <= OpRIGHT) ||
+		(v >= OpINVERT && v <= OpXOR) || (v >= OpEQUALVERIFY && v <= OpRESERVED2) ||
+		v == Op2MUL || v == Op2DIV || (v >= OpMUL && v <= OpRSHIFT) ||
+		(v > 186 && v < 255) {
+		return &OpCode{
+			Name:  "OP_SUCCESSx",
+			Short: "OK",
+			Value: v,
+			Exec: func(r *R) int {
+				return RcDone
+			},
+		}
+	}
+	// new instructions
+	if v == 186 {
+		return &OpCode{
+			Name:  "OP_CHECKSIGADD",
+			Short: "CHECKSIG+",
+			Value: v,
+			Exec: func(r *R) int {
+				// TODO:
+				return RcOK
+			},
+		}
+	}
+	// defauts to standard opcode
+	return GetOpcode(v)
 }

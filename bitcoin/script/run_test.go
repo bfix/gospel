@@ -46,10 +46,13 @@ var (
 			"509a0ae897f58e746c9316b63b8a9b355a95339fd5fb51efdb852103035670a7" +
 			"49d943639eb7bfc65e99167df83f0f98a0e251ac1387d5a5c015a3bb53ae",
 	}
-)
-
-var (
-	r = NewRuntime()
+	tx = &Tx{
+		SignedData: make([]byte, 128),
+		Version:    1,
+		Sequence:   1,
+		LockTime:   0,
+	}
+	r = NewRuntime(tx)
 )
 
 func TestExec(t *testing.T) {
@@ -68,7 +71,7 @@ func TestExec(t *testing.T) {
 	if rc != RcOK {
 		t.Fatalf("Parse failed: rc=%s", RcString[rc])
 	}
-	ok, rc := r.exec(scr)
+	ok, rc := r.ExecScript(scr)
 	if rc != RcOK {
 		if rc == RcNoTransaction {
 			if verbose {
