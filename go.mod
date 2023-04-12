@@ -1,6 +1,6 @@
 module github.com/bfix/gospel
 
-go 1.18
+go 1.20
 
 require (
 	github.com/huin/goupnp v1.0.0
