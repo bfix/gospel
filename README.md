@@ -3,10 +3,10 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/bfix/gospel)](https://goreportcard.com/report/github.com/bfix/gospel)
 [![GoDoc](https://godoc.org/github.com/bfix/gospel?status.svg)](https://godoc.org/github.com/bfix/gospel)
 
-Gospel: GO SPEcial Library (v1.2.21)
+Gospel: GO SPEcial Library (v1.2.22)
 ====================================
 
-(c) 2010-2022 Bernd Fix <brf@hoi-polloi.org>   >Y<
+(c) 2010-2023 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
 Gospel is free software: you can redistribute it and/or modify it
 under the terms of the GNU Affero General Public License as published
@@ -43,13 +43,11 @@ Packages
     * Elliptic curve crypto (Secp256k1)
     * Bitcoin addresses
     * key exchange
-    * raw transactions
     * hash functions (Hash160, Hash256)
     * base58 encoding
 - gospel/bitcoin/wallet:
     * HD key space
     * BIP39 seed words
-- gospel/bitcoin/rpc: JSON-RPC to Bitcoin server
 - gospel/bitcoin/script: Bitcoin script parser/interpreter
 - gospel/bitcoin/tools:
     * passphrase2seed
@@ -76,11 +74,11 @@ Packages
 Install
 -------
 
-This version (`v1.2.21`) is designed for the Go1.11+ release. One of the next
-version will require Go1.18+ to make use of new language features.
+This version (`v1.2.22`) is designed for the Go1.18+ release to make use
+of new language features.
 
 If you only want to use the library in your projects, you don't have to
-install anything. Just include `github.com/bfix/gospel v1.2.21` in your
+install anything. Just include `github.com/bfix/gospel v1.2.22` in your
 `go.mod` file and do a `go mod tidy`.
 
 You can install Gospel locally if desired. Make sure that your Go environment
@@ -128,73 +126,3 @@ export TOR_TEST_HOST="5.6.7.8"
 
 N.B.: You have to make sure that host `5.6.7.8` can access the Tor control
 port and Tor socks proxy ports (see `torrc` settings on the Tor instance).
-
-## Bitcoin-related tests
-
-To successfully run the Bitcoin-JSON-RPC tests, follow these steps:
-
-#### 1. Edit the 'bitcoin.conf' configuration file
-
-Use an ASCII editor to set the RPC variables to appropriate values:
-
-```bash
-server=1
-rpcuser=<username>
-rpcpassword=<password>
-rpctimeout=30
-rpcport=8332
-```
-   
-#### 2. Prepare an encrypted test wallet
-
-Make sure that the encrypted test wallet has some transactions for the
-default account in it, if you want to run all implemented test paths.
-   
-#### 3. Start the Bitcoin daemon for the test wallet
-
-The RPC calls implemented in the library are compliant with Bitcoin
-Core v.0.14.0 and probably result in errors if used with previous
-(or later) versions; tests only work in 'testnet' (enforced).
-
-```bash
-bitcoind -testnet
-```
-
-#### 4. Export environment variables for the RPC tests
-
-If none of these variables are defined, the RPC tests will be
-silently skipped:
-
-```bash
-export BTC_HOST="http://127.0.0.1:8332"
-export BTC_USER="<username>"
-export BTC_PASSWORD="<password>"
-export BTC_WALLET_PP="<your test wallet passphrase>"
-export BTC_WALLET_COPY="/tmp/testwallet.dat"
-```
-   
-The following environment variables are optional and listed with
-their default value; you can replace them with other valid data:
-
-```bash
-export BTC_PRIVKEY=""
-export BTC_BLOCK_HASH="000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"
-```
-    
-N.B.: The variable BTC_PRIVKEY is a string representing a private Bitcoin key
-(like "93DaDjT5M5cBE6ApLhniKL1ct6N55tboJ8BdZYjfu5ZkWENS8VK"). If defined,
-it will be imported into the wallet and triggers a rescanning to evaluate
-its balance -- this could take a long time (see next step).
-
-#### 5. Run the tests
-
-```bash
-go test github.com/bfix/gospel/bitcoin/rpc
-```
-
-If you import a private key the rescanning will timeout the test run and result
-in a failure. Please run the test command with a 'timeout' setting in this case:
-
-```bash
-go test -timeout 3600s github.com/bfix/gospel/bitcoin/rpc
-```
