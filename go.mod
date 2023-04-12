@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/huin/goupnp v1.0.0
 	golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b
-	golang.org/x/text v0.3.8
+	golang.org/x/text v0.7.0
 )
 
 require (
