@@ -37,11 +37,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
 	"github.com/bfix/gospel/crypto"
 	gerr "github.com/bfix/gospel/errors"
 	"github.com/bfix/gospel/logger"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
 )
 
 // SendMailMessage handles outgoing message to SMTP server.
@@ -499,7 +499,7 @@ func ParseSigned(ct, addr string, getInfo MailUserInfo, body io.Reader) (mc *Mai
 				continue
 			}
 			buf := bytes.NewBufferString(mc.Body)
-			if _, err = openpgp.CheckArmoredDetachedSignature(openpgp.EntityList{id}, buf, part); err != nil {
+			if _, err = openpgp.CheckArmoredDetachedSignature(openpgp.EntityList{id}, buf, part, nil); err != nil {
 				return
 			}
 			logger.Println(logger.INFO, "Signature verified OK")
