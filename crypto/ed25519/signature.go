@@ -25,18 +25,19 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"errors"
+	"hash"
 
 	"github.com/bfix/gospel/math"
 )
 
 // Error codes for signing / verifying
 var (
-	ErrSigInvalidPrvKey = errors.New("private key not suitable for EdDSA")
-	ErrSigNotEdDSA      = errors.New("not a EdDSA signature")
-	ErrSigNotEcDSA      = errors.New("not a EcDSA signature")
-	ErrSigInvalidEcDSA  = errors.New("invalid EcDSA signature")
-	ErrSigHashTooSmall  = errors.New("hash value to small")
-	ErrSigInvalid       = errors.New("invalid signature")
+	ErrSigInvalidPrvKey    = errors.New("private key not suitable for EdDSA")
+	ErrSigNotEdDSA         = errors.New("not a EdDSA signature")
+	ErrSigNotEcDSA         = errors.New("not a EcDSA signature")
+	ErrSigInvalidEcDSA     = errors.New("invalid EcDSA signature")
+	ErrSigHashSizeMismatch = errors.New("hash size mismatch")
+	ErrSigInvalid          = errors.New("invalid signature")
 )
 
 //----------------------------------------------------------------------
@@ -136,26 +137,28 @@ func (s *EcSignature) Bytes() []byte {
 // blinding factor 'k' in an EcDSA signature. It always uses SHA512 as a
 // hashing algorithm.
 type kGenerator interface {
-	init(x, n *math.Int, h1 []byte) error
+	init(x, n *math.Int, size int, h []byte, hshNew func() hash.Hash) error
 	next() (*math.Int, error)
 }
 
 // newKGenerator creates a new suitable generator for the binding factor 'k'.
-func newKGenerator(det bool, x, n *math.Int, h1 []byte) (gen kGenerator, err error) {
+func newKGenerator(det bool, x, n *math.Int, size int, h []byte, hsh func() hash.Hash) (gen kGenerator, err error) {
 	if det {
 		gen = &kGenDet{}
 	} else {
 		gen = &kGenStd{}
 	}
-	err = gen.init(x, n, h1)
+	err = gen.init(x, n, size, h, hsh)
 	return
 }
 
 // ----------------------------------------------------------------------
 // kGenDet is a RFC6979-compliant generator.
 type kGenDet struct {
-	V, K []byte
-	n    *math.Int
+	V, K   []byte
+	n      *math.Int
+	size   int
+	hshNew func() hash.Hash
 }
 
 var (
@@ -164,34 +167,37 @@ var (
 )
 
 // init prepares a generator
-func (k *kGenDet) init(x, n *math.Int, h []byte) error {
-	// enforce 512 bit hash value (SHA512)
-	if len(h) != 64 {
-		return ErrSigHashTooSmall
+func (k *kGenDet) init(x, n *math.Int, size int, h []byte, hshNew func() hash.Hash) error {
+	// enforce correct hash value size
+	hshSize := hshNew().Size()
+	if len(h) != hshSize {
+		return ErrSigHashSizeMismatch
 	}
 
 	// initialize hmac'd data
 	// data = int2octets(key) || bits2octets(hash)
-	data := make([]byte, 64)
-	copyBlock(data[:32], x.Bytes())
-	h1i := getBounded(h, n)
-	copyBlock(data[32:], h1i.Bytes())
+	data := make([]byte, 2*size)
+	copyBlock(data[:size], x.Bytes())
+	hi := getBounded(h, n)
+	copyBlock(data[size:], hi.Bytes())
 
 	// initialize K and V
-	k.V = bytes.Repeat(b1, 64)
-	k.K = bytes.Repeat(b0, 64)
+	k.V = bytes.Repeat(b1, hshSize)
+	k.K = bytes.Repeat(b0, hshSize)
 	k.n = n
+	k.size = size
+	k.hshNew = hshNew
 
 	// start sequence for 'V' and 'K':
 	// (1) K = HMAC_K(V || 0x00 || data)
-	hsh := hmac.New(sha512.New, k.K)
+	hsh := hmac.New(hshNew, k.K)
 	hsh.Write(k.V)
 	hsh.Write(b0)
 	hsh.Write(data)
 	k.K = hsh.Sum(nil)
 
 	// (2) V = HMAC_K(V)
-	hsh = hmac.New(sha512.New, k.K)
+	hsh = hmac.New(hshNew, k.K)
 	hsh.Write(k.V)
 	k.V = hsh.Sum(nil)
 
@@ -203,7 +209,7 @@ func (k *kGenDet) init(x, n *math.Int, h []byte) error {
 	k.K = hsh.Sum(nil)
 
 	// (4) V = HMAC_K(V)
-	hsh = hmac.New(sha512.New, k.K)
+	hsh = hmac.New(hshNew, k.K)
 	hsh.Write(k.V)
 	k.V = hsh.Sum(nil)
 
@@ -213,22 +219,26 @@ func (k *kGenDet) init(x, n *math.Int, h []byte) error {
 // next returns the next 'k'
 func (k *kGenDet) next() (*math.Int, error) {
 
-	// (0) V = HMAC_K(V)
-	h := hmac.New(sha512.New, k.K)
-	h.Write(k.V)
-	k.V = h.Sum(nil)
+	t := new(bytes.Buffer)
+	for t.Len() < k.size {
+		// (0) V = HMAC_K(V)
+		h := hmac.New(k.hshNew, k.K)
+		h.Write(k.V)
+		k.V = h.Sum(nil)
+		t.Write(k.V)
+	}
 
 	// extract 'k' from data
-	kRes := getBounded(k.V, k.n)
+	kRes := getBounded(t.Bytes(), k.n)
 
 	// (1) K = HMAC_K(V || 0x00
-	h.Reset()
+	h := hmac.New(k.hshNew, k.K)
 	h.Write(k.V)
 	h.Write(b0)
 	k.K = h.Sum(nil)
 
 	// (2) V = HMAC_K(V)
-	h = hmac.New(sha512.New, k.K)
+	h = hmac.New(k.hshNew, k.K)
 	h.Write(k.V)
 	k.V = h.Sum(nil)
 
@@ -251,7 +261,7 @@ type kGenStd struct {
 }
 
 // init prepares a generator
-func (k *kGenStd) init(x, n *math.Int, h1 []byte) error {
+func (k *kGenStd) init(x, n *math.Int, size int, h []byte, hshNew func() hash.Hash) error {
 	return nil
 }
 
@@ -274,7 +284,7 @@ func (prv *PrivateKey) EcSign(msg []byte) (*EcSignature, error) {
 	// dsaSign creates a deterministic signature (see RFC6979).
 	dsaSign := func(det bool) (r, s *math.Int, err error) {
 		zero := math.NewInt(0)
-		gen, err := newKGenerator(det, prv.D, c.N, hv[:])
+		gen, err := newKGenerator(det, prv.D, c.N, 32, hv[:], sha512.New)
 		if err != nil {
 			return nil, nil, err
 		}

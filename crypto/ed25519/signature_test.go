@@ -22,9 +22,11 @@ package ed25519
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
+	"hash"
 	"os"
 	"testing"
 
@@ -174,6 +176,12 @@ func TestEcDSA(t *testing.T) {
 }
 
 func TestKDetEcDSA(t *testing.T) {
+	type tc struct {
+		hsh func() hash.Hash
+		msg string
+		k   string
+	}
+
 	// RFC 6979, A.2.5. ECDSA, 256 Bits (Prime Field)
 	var (
 		x = []byte{
@@ -184,29 +192,45 @@ func TestKDetEcDSA(t *testing.T) {
 			0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 			0xBC, 0xE6, 0xFA, 0xAD, 0xA7, 0x17, 0x9E, 0x84, 0xF3, 0xB9, 0xCA, 0xC2, 0xFC, 0x63, 0x25, 0x51,
 		}
-		m = "sample"
-		k = []byte{
-			0x5F, 0xA8, 0x1C, 0x63, 0x10, 0x9B, 0xAD, 0xB8, 0x8C, 0x1F, 0x36, 0x7B, 0x47, 0xDA, 0x60, 0x6D,
-			0xA2, 0x8C, 0xAD, 0x69, 0xAA, 0x22, 0xC4, 0xFE, 0x6A, 0xD7, 0xDF, 0x73, 0xA7, 0x17, 0x3A, 0xA5,
+		c = []*tc{
+			//{sha1.New, "sample", "882905F1227FD620FBF2ABF21244F0BA83D0DC3A9103DBBEE43A1FB858109DB4"},
+			{sha256.New224, "sample", "103F90EE9DC52E5E7FB5132B7033C63066D194321491862059967C715985D473"},
+			{sha256.New, "sample", "A6E3C57DD01ABE90086538398355DD4C3B17AA873382B0F24D6129493D8AAD60"},
+			{sha512.New384, "sample", "09F634B188CEFD98E7EC88B1AA9852D734D0BC272F7D2A47DECC6EBEB375AAD4"},
+			{sha512.New, "sample", "5FA81C63109BADB88C1F367B47DA606DA28CAD69AA22C4FE6AD7DF73A7173AA5"},
+			//{sha1.New, "test", "8C9520267C55D6B980DF741E56B4ADEE114D84FBFA2E62137954164028632A2E"},
+			{sha256.New224, "test", "669F4426F2688B8BE0DB3A6BD1989BDAEFFF84B649EEB84F3DD26080F667FAA7"},
+			{sha256.New, "test", "D16B6AE827F17175E040871A1C7EC3500192C4C92677336EC2537ACAEE0008E0"},
+			{sha512.New384, "test", "16AEFFA357260B04B1DD199693960740066C1A8F3E8EDD79070AA914D361B3B8"},
+			{sha512.New, "test", "6915D11632ACA3C40D5D51C08DAF9C555933819548784480E93499000D9F0B7F"},
 		}
 	)
-	hv := sha512.Sum512([]byte(m))
 	sk := math.NewIntFromBytes(x)
 	ni := math.NewIntFromBytes(n)
 
-	// z := getBounded(hv[:])
-	gen, err := newKGenerator(true, sk, ni, hv[:])
-	if err != nil {
-		t.Fatal(err)
-	}
-	ki, err := gen.next()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(k, ki.Bytes()) {
-		t.Logf("k = %s\n", hex.EncodeToString(k))
-		t.Logf(" != %s\n", hex.EncodeToString(ki.Bytes()))
-		t.Fatal("detECDSA: bad 'k'")
+	for _, ce := range c {
+
+		hsh := ce.hsh()
+		hsh.Write([]byte(ce.msg))
+		hv := hsh.Sum(nil)
+
+		gen, err := newKGenerator(true, sk, ni, len(x), hv, ce.hsh)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ki, err := gen.next()
+		if err != nil {
+			t.Fatal(err)
+		}
+		k, err := hex.DecodeString(ce.k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(k, ki.Bytes()) {
+			t.Logf("k = %s\n", hex.EncodeToString(k))
+			t.Logf(" != %s\n", hex.EncodeToString(ki.Bytes()))
+			t.Fatal("detECDSA: bad 'k'")
+		}
 	}
 }
 
