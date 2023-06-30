@@ -130,34 +130,24 @@ func (s *EcSignature) Bytes() []byte {
 	return buf
 }
 
-// getBounded returns integer with same bit length as 'n' from binary data.
-func getBounded(data []byte) *math.Int {
-	z := math.NewIntFromBytes(data)
-	shift := len(data)*8 - c.N.BitLen()
-	if shift > 0 {
-		z = z.Rsh(uint(shift))
-	}
-	return z
-}
-
 // ----------------------------------------------------------------------
 
 // kGenerator is an interface for standard or deterministic computation of the
 // blinding factor 'k' in an EcDSA signature. It always uses SHA512 as a
 // hashing algorithm.
 type kGenerator interface {
-	init(x *math.Int, h1 []byte) error
+	init(x, n *math.Int, h1 []byte) error
 	next() (*math.Int, error)
 }
 
 // newKGenerator creates a new suitable generator for the binding factor 'k'.
-func newKGenerator(det bool, x *math.Int, h1 []byte) (gen kGenerator, err error) {
+func newKGenerator(det bool, x, n *math.Int, h1 []byte) (gen kGenerator, err error) {
 	if det {
 		gen = &kGenDet{}
 	} else {
 		gen = &kGenStd{}
 	}
-	err = gen.init(x, h1)
+	err = gen.init(x, n, h1)
 	return
 }
 
@@ -165,6 +155,7 @@ func newKGenerator(det bool, x *math.Int, h1 []byte) (gen kGenerator, err error)
 // kGenDet is a RFC6979-compliant generator.
 type kGenDet struct {
 	V, K []byte
+	n    *math.Int
 }
 
 var (
@@ -173,9 +164,9 @@ var (
 )
 
 // init prepares a generator
-func (k *kGenDet) init(x *math.Int, h1 []byte) error {
+func (k *kGenDet) init(x, n *math.Int, h []byte) error {
 	// enforce 512 bit hash value (SHA512)
-	if len(h1) != 64 {
+	if len(h) != 64 {
 		return ErrSigHashTooSmall
 	}
 
@@ -183,37 +174,38 @@ func (k *kGenDet) init(x *math.Int, h1 []byte) error {
 	// data = int2octets(key) || bits2octets(hash)
 	data := make([]byte, 64)
 	copyBlock(data[:32], x.Bytes())
-	h1i := getBounded(h1).Mod(c.N)
+	h1i := getBounded(h, n)
 	copyBlock(data[32:], h1i.Bytes())
 
 	// initialize K and V
 	k.V = bytes.Repeat(b1, 64)
 	k.K = bytes.Repeat(b0, 64)
+	k.n = n
 
 	// start sequence for 'V' and 'K':
 	// (1) K = HMAC_K(V || 0x00 || data)
-	h := hmac.New(sha512.New, k.K)
-	h.Write(k.V)
-	h.Write(b0)
-	h.Write(data)
-	k.K = h.Sum(nil)
+	hsh := hmac.New(sha512.New, k.K)
+	hsh.Write(k.V)
+	hsh.Write(b0)
+	hsh.Write(data)
+	k.K = hsh.Sum(nil)
 
 	// (2) V = HMAC_K(V)
-	h = hmac.New(sha512.New, k.K)
-	h.Write(k.V)
-	k.V = h.Sum(nil)
+	hsh = hmac.New(sha512.New, k.K)
+	hsh.Write(k.V)
+	k.V = hsh.Sum(nil)
 
 	// (3) K = HMAC_K(V || 0x01 || data)
-	h.Reset()
-	h.Write(k.V)
-	h.Write(b1)
-	h.Write(data)
-	k.K = h.Sum(nil)
+	hsh.Reset()
+	hsh.Write(k.V)
+	hsh.Write(b1)
+	hsh.Write(data)
+	k.K = hsh.Sum(nil)
 
 	// (4) V = HMAC_K(V)
-	h = hmac.New(sha512.New, k.K)
-	h.Write(k.V)
-	k.V = h.Sum(nil)
+	hsh = hmac.New(sha512.New, k.K)
+	hsh.Write(k.V)
+	k.V = hsh.Sum(nil)
 
 	return nil
 }
@@ -227,7 +219,7 @@ func (k *kGenDet) next() (*math.Int, error) {
 	k.V = h.Sum(nil)
 
 	// extract 'k' from data
-	kRes := getBounded(k.V)
+	kRes := getBounded(k.V, k.n)
 
 	// (1) K = HMAC_K(V || 0x00
 	h.Reset()
@@ -243,13 +235,23 @@ func (k *kGenDet) next() (*math.Int, error) {
 	return kRes, nil
 }
 
+// getBounded returns integer with same bit length as 'n' from binary data.
+func getBounded(data []byte, n *math.Int) *math.Int {
+	z := math.NewIntFromBytes(data)
+	shift := len(data)*8 - n.BitLen()
+	if shift > 0 {
+		z = z.Rsh(uint(shift))
+	}
+	return z
+}
+
 // ----------------------------------------------------------------------
 // kGenStd is a random generator.
 type kGenStd struct {
 }
 
 // init prepares a generator
-func (k *kGenStd) init(x *math.Int, h1 []byte) error {
+func (k *kGenStd) init(x, n *math.Int, h1 []byte) error {
 	return nil
 }
 
@@ -267,12 +269,12 @@ func (prv *PrivateKey) EcSign(msg []byte) (*EcSignature, error) {
 	hv := sha512.Sum512(msg)
 
 	// compute z
-	z := getBounded(hv[:])
+	z := getBounded(hv[:], c.N)
 
 	// dsaSign creates a deterministic signature (see RFC6979).
 	dsaSign := func(det bool) (r, s *math.Int, err error) {
 		zero := math.NewInt(0)
-		gen, err := newKGenerator(det, prv.D, hv[:])
+		gen, err := newKGenerator(det, prv.D, c.N, hv[:])
 		if err != nil {
 			return nil, nil, err
 		}
@@ -316,7 +318,7 @@ func (pub *PublicKey) EcVerify(msg []byte, sig *EcSignature) (bool, error) {
 	// Hash message
 	hv := sha512.Sum512(msg)
 	// compute z
-	z := getBounded(hv[:])
+	z := getBounded(hv[:], c.N)
 	// compute u1, u2
 	si := sig.S.ModInverse(c.N)
 	if si == nil {
