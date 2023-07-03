@@ -220,7 +220,7 @@ func (k *kGenDet) init(x, n *math.Int, size int, h []byte, hshNew func() hash.Ha
 func (k *kGenDet) next() (*math.Int, error) {
 
 	t := new(bytes.Buffer)
-	for t.Len() < k.size {
+	for t.Len()*8 < k.n.BitLen() {
 		// (0) V = HMAC_K(V)
 		h := hmac.New(k.hshNew, k.K)
 		h.Write(k.V)
@@ -245,7 +245,8 @@ func (k *kGenDet) next() (*math.Int, error) {
 	return kRes, nil
 }
 
-// getBounded returns integer with same bit length as 'n' from binary data.
+// getBounded takes as input a sequence of 'len(data)*8' bits and
+// outputs a non-negative integer that is less than 2^(bitLen(n)).
 func getBounded(data []byte, n *math.Int) *math.Int {
 	z := math.NewIntFromBytes(data)
 	shift := len(data)*8 - n.BitLen()
@@ -283,33 +284,30 @@ func (prv *PrivateKey) EcSign(msg []byte) (*EcSignature, error) {
 
 	// dsaSign creates a deterministic signature (see RFC6979).
 	dsaSign := func(det bool) (r, s *math.Int, err error) {
-		zero := math.NewInt(0)
 		gen, err := newKGenerator(det, prv.D, c.N, 32, hv[:], sha512.New)
 		if err != nil {
 			return nil, nil, err
 		}
 		for {
 			// generate next possible 'k'
-			k, err := gen.next()
-			if err != nil {
-				return nil, nil, err
+			var k *math.Int
+			if k, err = gen.next(); err != nil {
+				return
 			}
-			if k.Cmp(c.N) >= 0 {
+			// check 'k' within range [1,c.N-1]
+			if k.Equals(math.ZERO) || k.Cmp(c.N) >= 0 {
 				continue
 			}
 			// compute r = x-coordinate of point k*G; must be non-zero
-			r := c.MultBase(k).X()
-			if r.Cmp(zero) == 0 {
+			if r = c.MultBase(k).X().Mod(c.N); r.Equals(math.ZERO) {
 				continue
 			}
 			// compute non-zero s
 			ki := k.ModInverse(c.N)
-			s := ki.Mul(z.Add(r.Mul(prv.D))).Mod(c.N)
-
-			if s.Cmp(zero) == 0 {
+			if s = ki.Mul(z.Add(r.Mul(prv.D))).Mod(c.N); s.Equals(math.ZERO) {
 				continue
 			}
-			return r, s, nil
+			return
 		}
 	}
 	// assemble signature
@@ -318,8 +316,8 @@ func (prv *PrivateKey) EcSign(msg []byte) (*EcSignature, error) {
 		return nil, err
 	}
 	return &EcSignature{
-		R: r.Mod(c.N),
-		S: s.Mod(c.N),
+		R: r,
+		S: s,
 	}, nil
 }
 
