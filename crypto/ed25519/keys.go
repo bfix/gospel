@@ -115,7 +115,7 @@ func NewPrivateKeyFromD(d *math.Int) *PrivateKey {
 func (prv *PrivateKey) Bytes() []byte {
 	buf := make([]byte, 64)
 	copy(buf[:32], prv.Nonce)
-	copy(buf[32:], prv.D.Bytes())
+	copyBlock(buf[32:], prv.D.Bytes())
 	return buf
 }
 
