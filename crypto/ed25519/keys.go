@@ -115,7 +115,7 @@ func NewPrivateKeyFromD(d *math.Int) *PrivateKey {
 func (prv *PrivateKey) Bytes() []byte {
 	buf := make([]byte, 64)
 	copy(buf[:32], prv.Nonce)
-	copy(buf[32:], prv.Q.Bytes())
+	copy(buf[32:], prv.D.Bytes())
 	return buf
 }
 
@@ -126,9 +126,9 @@ func (prv *PrivateKey) Public() *PublicKey {
 	}
 }
 
-// Mult returns a new private key with d' = n*d
+// Mult returns a new private key with d' = n*d mod N
 func (prv *PrivateKey) Mult(n *math.Int) *PrivateKey {
-	return NewPrivateKeyFromD(prv.D.Mul(n))
+	return NewPrivateKeyFromD(prv.D.Mul(n).Mod(c.N))
 }
 
 // NewKeypair creates a new Ed25519 key pair.
