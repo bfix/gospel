@@ -39,10 +39,9 @@ func TestRateLimiter(t *testing.T) {
 		t.Log("-----------------------------------")
 	}
 
-	// lim := NewRateLimiter(5, 150, 450, 5000, 20000)
-	lim := NewRateLimiter(0, 30, 0, 1440)
-	for i := 0; i < 200; i++ {
-		time.Sleep(time.Second)
+	lim := NewRateLimiter(5, 150, 450, 5000, 20000)
+	for i := 0; i < 100; i++ {
+		time.Sleep(100 * time.Millisecond)
 		stats := lim.Stats()
 		prt(stats)
 		delay := stats.Wait()
