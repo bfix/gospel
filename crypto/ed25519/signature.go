@@ -178,7 +178,7 @@ func (k *kGenDet) init(x, n *math.Int, size int, h []byte, hshNew func() hash.Ha
 	// data = int2octets(key) || bits2octets(hash)
 	data := make([]byte, 2*size)
 	copyBlock(data[:size], x.Bytes())
-	hi := getBounded(h, n)
+	hi := getBounded(h, n).Mod(n)
 	copyBlock(data[size:], hi.Bytes())
 
 	// initialize K and V
@@ -231,7 +231,7 @@ func (k *kGenDet) next() (*math.Int, error) {
 	// extract 'k' from data
 	kRes := getBounded(t.Bytes(), k.n)
 
-	// (1) K = HMAC_K(V || 0x00
+	// (1) K = HMAC_K(V || 0x00)
 	h := hmac.New(k.hshNew, k.K)
 	h.Write(k.V)
 	h.Write(b0)
