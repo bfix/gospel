@@ -3,7 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/bfix/gospel)](https://goreportcard.com/report/github.com/bfix/gospel)
 [![GoDoc](https://godoc.org/github.com/bfix/gospel?status.svg)](https://godoc.org/github.com/bfix/gospel)
 
-Gospel: GO SPEcial Library (v1.2.23)
+Gospel: GO SPEcial Library (v1.2.24)
 ====================================
 
 (c) 2010-2023 Bernd Fix <brf@hoi-polloi.org>   >Y<
@@ -74,11 +74,11 @@ Packages
 Install
 -------
 
-This version (`v1.2.23`) is designed for the Go1.18+ release to make use
+This version (`v1.2.24`) is designed for the Go1.18+ release to make use
 of new language features.
 
 If you only want to use the library in your projects, you don't have to
-install anything. Just include `github.com/bfix/gospel v1.2.23` in your
+install anything. Just include `github.com/bfix/gospel v1.2.24` in your
 `go.mod` file and do a `go mod tidy`.
 
 You can install Gospel locally if desired. Make sure that your Go environment
