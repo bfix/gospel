@@ -121,10 +121,11 @@ func GetXDVersion(coin, mode, network int, pub bool) uint32 {
 		}
 	}
 	// return default
+	vc := VersionCodes["x"]
 	if pub {
-		return XpubVersion
+		return vc.Public
 	}
-	return XprvVersion
+	return vc.Private
 }
 
 // AddrVersion defines address version constants

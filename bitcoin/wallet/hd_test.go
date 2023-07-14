@@ -61,7 +61,7 @@ var (
 
 func init() {
 	seed, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
-	hd = NewHD(seed)
+	hd, _ = NewHD(seed)
 }
 
 func TestHDPublic(t *testing.T) {

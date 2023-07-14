@@ -26,6 +26,7 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -45,45 +46,44 @@ var (
 // ExtendedData objects represent public/private extended keys
 //----------------------------------------------------------------------
 
-// extended data version codes
-const (
-	// Generic versions (P2PKH)
-	XpubVersion = 0x0488b21e
-	XprvVersion = 0x0488ade4
+// VersionCode for public and private keys
+type VersionCode struct {
+	Public  uint32
+	Private uint32
+	Remark  string
+}
 
+// VersionCodes is a list of known HD versions
+var VersionCodes = map[string]VersionCode{
+	// Generic version and m/44'/0'
+	"x": {0x0488b21e, 0x0488ade4, "m/44'/0' or generic"},
+	// m/49'/0'
+	"y": {0x049d7cb2, 0x049d7878, "m/49'/0'"},
+	// Multisig P2WSH in P2SH
+	"Y": {0x0295b43f, 0x0295b005, "MS-P2WSH-P2SH"},
+	// m/84'/0'
+	"z": {0x04b24746, 0x04b2430c, "m/84'/0'"},
+	// Multisig in P2SH
+	"Z": {0x02aa7ed3, 0x02aa7a99, "MS-P2SH"},
 	// Testnet versions
-	UpubVersion = 0x043587cf
-	UprvVersion = 0x04358394
+	"t": {0x043587cf, 0x04358394, "testnet"},
+}
 
-	// Generic versions (P2SH)
-	YpubVersion = 0x049d7cb2
-	YprvVersion = 0x049d7878
-
-	// Dash
-	DrkpVersion = 0x02fe52cc
-
-	// Dogecoin
-	DgubVersion = 0x02facafd
-	DgpvVersion = 0x02fac398
-
-	// Litecoin
-	MtubVersion = 0x01b26ef6
-	MtpvVersion = 0x01b26792
-)
-
-// CheckVersion returns a status code:
+// CheckVersion returns a status code and the "inverse" version (pub<->prv):
 //
 //	-1 if extended data refers to a public key
 //	 1 if extended data refers to a private key
 //	 0 if version is unknown
-func CheckVersion(version uint32) int {
-	switch version {
-	case XpubVersion, UpubVersion, YpubVersion, DrkpVersion, DgubVersion, MtubVersion:
-		return -1
-	case XprvVersion, UprvVersion:
-		return 1
+func CheckVersion(version uint32) (int, uint32) {
+	for _, vc := range VersionCodes {
+		if version == vc.Public {
+			return -1, vc.Private
+		}
+		if version == vc.Private {
+			return 1, vc.Public
+		}
 	}
-	return 0
+	return 0, 0
 }
 
 // ExtendedData is the data structure representing ExtendedKeys
@@ -142,7 +142,7 @@ type ExtendedPublicKey struct {
 	Key  *bitcoin.Point
 }
 
-// ParseExtendedPublicKey converts a xpub string to a public key
+// ParseExtendedPublicKey converts a "?pub" string to a public key
 func ParseExtendedPublicKey(s string) (k *ExtendedPublicKey, err error) {
 	k = new(ExtendedPublicKey)
 	k.Data, err = ParseExtended(s)
@@ -150,7 +150,7 @@ func ParseExtendedPublicKey(s string) (k *ExtendedPublicKey, err error) {
 		return nil, err
 	}
 	// check for valid public key version field
-	if CheckVersion(k.Data.Version) != -1 {
+	if rc, _ := CheckVersion(k.Data.Version); rc != -1 {
 		return nil, ErrHDVersion
 	}
 	k.Key, _, err = bitcoin.NewPointFromBytes(k.Data.Keydata)
@@ -193,14 +193,14 @@ type ExtendedPrivateKey struct {
 	Key  *math.Int
 }
 
-// ParseExtendedPrivateKey converts a xprv string to a private key
+// ParseExtendedPrivateKey converts a "?prv" string to a private key
 func ParseExtendedPrivateKey(s string) (k *ExtendedPrivateKey, err error) {
 	k = new(ExtendedPrivateKey)
 	k.Data, err = ParseExtended(s)
 	if err != nil {
 		return nil, err
 	}
-	if CheckVersion(k.Data.Version) != 1 {
+	if rc, _ := CheckVersion(k.Data.Version); rc != 1 {
 		return nil, ErrHDVersion
 	}
 	k.Key = math.NewIntFromBytes(k.Data.Keydata)
@@ -209,10 +209,11 @@ func ParseExtendedPrivateKey(s string) (k *ExtendedPrivateKey, err error) {
 
 // Public returns the associated public key
 func (k *ExtendedPrivateKey) Public() *ExtendedPublicKey {
+	_, pubVersion := CheckVersion(k.Data.Version)
 	r := new(ExtendedPublicKey)
 	r.Key = bitcoin.MultBase(k.Key)
 	r.Data = NewExtendedData()
-	r.Data.Version = XpubVersion
+	r.Data.Version = pubVersion
 	r.Data.Child = k.Data.Child
 	r.Data.Depth = k.Data.Depth
 	r.Data.ParentFP = k.Data.ParentFP
@@ -240,10 +241,10 @@ type HD struct {
 }
 
 // NewHD initializes a new HD from a seed value.
-func NewHD(seed []byte) *HD {
+func NewHD(seed []byte) (*HD, error) {
 	n := len(seed)
 	if n < 16 || n > 64 {
-		return nil
+		return nil, fmt.Errorf("invalid seed length: %d", n)
 	}
 	mac := hmac.New(sha512.New, []byte("Bitcoin seed"))
 	mac.Write(seed)
@@ -251,20 +252,24 @@ func NewHD(seed []byte) *HD {
 
 	mKey := math.NewIntFromBytes(i[:32])
 	if mKey.Equals(math.ZERO) || mKey.Cmp(c.N) >= 0 {
-		return nil
+		return nil, fmt.Errorf("invalid key value")
 	}
 
+	vc, ok := VersionCodes["x"]
+	if !ok {
+		return nil, fmt.Errorf("unknown version identifier: 'x'")
+	}
 	hd := new(HD)
 	hd.m = new(ExtendedPrivateKey)
 	hd.m.Key = mKey
 	hd.m.Data = NewExtendedData()
-	hd.m.Data.Version = XprvVersion
+	hd.m.Data.Version = vc.Private
 	copy(hd.m.Data.Keydata, hd.m.Key.FixedBytes(33))
 	copy(hd.m.Data.Chaincode, i[32:])
 	hd.m.Data.Child = 0
 	hd.m.Data.Depth = 0
 	hd.m.Data.ParentFP = 0
-	return hd
+	return hd, nil
 }
 
 // MasterPrivate returns the master private key.
