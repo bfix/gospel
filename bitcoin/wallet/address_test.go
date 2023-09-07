@@ -267,9 +267,9 @@ var (
 			version: AddrP2PKH,
 			netw:    NetwMain,
 			addrs: []string{
-				"bitcoincash:qr09zpf9ex5e0yktxuzyn8r300sw0h9adsk82c94pm",
-				"bitcoincash:qp9r70xkgz724gfxurm5de0mmyxr8rffjy95dxflyh",
-				"bitcoincash:qqzpgzkl5ec9khd7w74ajnlycn4p5zgufqnzrgzfrv",
+				"qr09zpf9ex5e0yktxuzyn8r300sw0h9adsk82c94pm",
+				"qp9r70xkgz724gfxurm5de0mmyxr8rffjy95dxflyh",
+				"qqzpgzkl5ec9khd7w74ajnlycn4p5zgufqnzrgzfrv",
 			},
 		},
 		{
