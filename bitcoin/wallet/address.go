@@ -58,7 +58,7 @@ var (
 
 // GetAddrMode returns the numeric value for mode (P2PKH, P2SH, ...)
 func GetAddrMode(label string) int {
-	switch strings.ToUpper(label) {
+	switch label {
 	case "P2PKH":
 		return AddrP2PKH
 	case "P2SH":
@@ -251,5 +251,5 @@ func makeAddressBCH(key *bitcoin.PublicKey, coin, version, network, prefix int) 
 	}
 	res := new(bytes.Buffer)
 	_ = binary.Write(res, binary.BigEndian, crc(values))
-	return "bitcoincash:" + addr + strings.Trim(b32.EncodeToString(res.Bytes()[3:]), "="), nil
+	return addr + strings.Trim(b32.EncodeToString(res.Bytes()[3:]), "="), nil
 }
