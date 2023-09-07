@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2021 Bernd Fix  >Y<
+// Copyright (C) 2011-2023 Bernd Fix  >Y<
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -22,218 +22,377 @@ package wallet
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/bfix/gospel/bitcoin"
 )
 
-// Test Bitcoin address functions
-// ==============================
+func TestAddrP2WPKH(t *testing.T) {
+	// see: https://en.bitcoin.it/wiki/Bech32
+	data, err := hex.DecodeString("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr, err := makeAddressSegWit(data, "bc", AddrP2WPKH, NetwMain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if addr != "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4" {
+		t.Log(addr)
+		t.Fatal("addr mismatch")
+	}
+}
 
-// Serialization format:
-// 	--  4 byte: version bytes (mainnet: 0x0488B21E public, 0x0488ADE4 private; testnet: 0x043587CF public, 0x04358394 private)
-//  --  1 byte: depth: 0x00 for master nodes, 0x01 for level-1 descendants, ....
-//  --  4 bytes: the fingerprint of the parent's key (0x00000000 if master key)
-//  --  4 bytes: child number. This is the number i in xi = xpar/i, with xi the key being serialized. This is encoded in MSB order. (0x00000000 if master key)
-//  -- 32 bytes: the chain code
-//  -- 33 bytes: the public key or private key data (0x02 + X or 0x03 + X for public keys, 0x00 + k for private keys)
-//
-//  pub_main: 0488b21e 00 00000000 00000000 873dff81c02f525623fd1fe5167eac3a55a049de3d314bb42ee227ffed37d508 03+39a36013301597daef41fbe593a02cc513d0b55527ec2df1050e2e8ff49c85c2
-//  prv_main: 0488ade4 00 00000000 00000000 873dff81c02f525623fd1fe5167eac3a55a049de3d314bb42ee227ffed37d508 00+e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35
-
-type TestData struct {
-	IDhex     string
-	IDaddr    string
-	PubHex    string
-	Chain     string
-	SerPubHex string
-	SerPrvHex string
-	SerPubB58 string
-	SerPrvB58 string
+type testData struct {
+	path    string
+	xpub    string
+	coin    int
+	version int
+	netw    int
+	addrs   []string
 }
 
 var (
-	testData = []TestData{
+	words = []string{
+		"sketch", "blast", "judge", "ladder", "answer", "twice",
+		"outer", "fiction", "finish", "dice", "true", "later",
+		"vicious", "engage", "gravity", "diary", "inside", "ignore",
+		"giggle", "surge", "turkey", "outside", "panther", "timber",
+	}
+	seed = "d761a2b872860dc981208a9bf3729d3c7234fb6bcf9446dc59ded41928d83999fc467f3622ed95d69c9d400f961f698abf5210a2529b4f0a1b4ec7557a1c4529"
+	xprv = "xprv9s21ZrQH143K2rimReigYY8rKViMqHYQ2URn6PqRzNRa3Fs75nasDTJwzLkQmNB9PuhNh2U9Vfnxt1WY5qBua21dkJxXtA3byvBPyaJiKRG"
+
+	testdata = []*testData{
+		//----------------------------------------------------------
+		// Bitcoin (P2PKH, P2WPKHinP2SH, P2WPK) (NetwMain)
+		//----------------------------------------------------------
 		{
-			"3442193e1bb70916e914552172cd4e2dbc9df811",
-			"15mKKb2eos1hWa6tisdPwwDC1a5J1y9nma",
-			"0339a36013301597daef41fbe593a02cc513d0b55527ec2df1050e2e8ff49c85c2",
-			"873dff81c02f525623fd1fe5167eac3a55a049de3d314bb42ee227ffed37d508",
-			"0488b21e000000000000000000873dff81c02f525623fd1fe5167eac3a55a049de3d314bb42ee227ffed37d5080339a36013301597daef41fbe593a02cc513d0b55527ec2df1050e2e8ff49c85c2",
-			"0488ade4000000000000000000873dff81c02f525623fd1fe5167eac3a55a049de3d314bb42ee227ffed37d50800e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35",
-			"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
-			"xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi",
+			path:    "m/44'/0'/0'/0",
+			xpub:    "xpub6E8YMhNAYXN7ida8ydegYYCvTSRmjAzvLTkpg3fqF4mbVQ5ygzc97fEbBNUEFcbtBXVsWjMUoTfP4fBQUiurBSzE1tV19ayw86mnAMbAEr2",
+			coin:    0,
+			version: AddrP2PKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"1GNBLXbeQW3XiS9NBuAFUbUVWtdeBAW7Ks",
+				"1BT99WDMk8LynsYdy5yVfvQyNeigMSJ6af",
+				"18N1oUMgjmDxCb14ZYgJBvnvRwAZVZkqVh",
+			},
 		},
 		{
-			"bd16bee53961a47d6ad888e29545434a89bdfe95",
-			"1JEoxevbLLG8cVqeoGKQiAwoWbNYSUyYjg",
-			"03cbcaa9c98c877a26977d00825c956a238e8dddfbd322cce4f74b0b5bd6ace4a7",
-			"60499f801b896d83179a4374aeb7822aaeaceaa0db1f85ee3e904c4defbd9689",
-			"0488b21e00000000000000000060499f801b896d83179a4374aeb7822aaeaceaa0db1f85ee3e904c4defbd968903cbcaa9c98c877a26977d00825c956a238e8dddfbd322cce4f74b0b5bd6ace4a7",
-			"0488ade400000000000000000060499f801b896d83179a4374aeb7822aaeaceaa0db1f85ee3e904c4defbd9689004b03d6fc340455b363f51020ad3ecca4f0850280cf436c70c727923f6db46c3e",
-			"xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB",
-			"xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U",
+			path:    "m/49'/0'/0'/0",
+			xpub:    "ypub6YzfSXyntdLnruYh5nbmnxtvVoQbDw52JepTtDpS5a1TBxY6GuSveKwfx3aXWCDv6LqHWmQPwQSrBq1pc9Ro3wjjXJXPCY7tN4GqhLSML4H",
+			coin:    0,
+			version: AddrP2WPKHinP2SH,
+			netw:    NetwMain,
+			addrs: []string{
+				"32FjpH9aEdrsoT7PBHuWsVZJQ1zzmRS7yp",
+				"3HrttpWmv3TNmQGSyoujTccZYXqhXMMXXh",
+				"3DRpWwqdDVmqdTMtFEzNiyW12vvr2M3JHj",
+			},
+		},
+		{
+			path:    "m/84'/0'/0'/0",
+			xpub:    "zpub6t3DJ2MnEfmGZmyC5j9psWscdDDWgnbY9EeKS5UxeEBPr7HHmSsQmwsGm7fW5mtvX5j1sk3qYzxA5R9xN4ZqoVR2WFXNUUaWdY9ktiQC2Rt",
+			coin:    0,
+			version: AddrP2WPKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"bc1qfd2vv0ezx40e525x4m008u02a68sxlahvd0u20",
+				"bc1qx4c27a4z70kpt70sz5syd7q3cjas23l8qsmaqp",
+				"bc1qztt29vrmj82jrtujxah85pxjxxsvn62mgx2fg5",
+			},
+		},
+		//----------------------------------------------------------
+		// Litecoin (P2PKH) (NetwMain)
+		//----------------------------------------------------------
+		{
+			path:    "m/44'/2'/0'/0",
+			xpub:    "xpub6FLSDas21s8MHLfKKUyh2fgNKFzboV71BBF2TMWwwiJ9Q3q6Sciw4FXXxywLwY3psCUx1rgbyb5MtQxhtgCzESDEi2RMsyUu6iA9UqkP6Xn",
+			coin:    2,
+			version: AddrP2PKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"LPpE1LKHJ3urKcexYzUGg29AqqPPmaRYfS",
+				"LPiLNJxeQJdbNFU7PoPC1MkBBADCz2T6dm",
+				"LYsmBRnSP9gt1ZCmuJHX9JYJTTSLfzFSrr",
+			},
+		},
+		//----------------------------------------------------------
+		// Dogecoin (P2PKH) (NetwMain)
+		//----------------------------------------------------------
+		{
+			path:    "m/44'/3'/0'/0",
+			xpub:    "dgub8uPNgcUAVx9LYQbFzCEhXbofX3EKZQu3S4soeg2uMg39J2auUCBZVxigd75FHvwyWoCFdrqw78o4AtdZ87MSq1uqmxCvYyymnEAzmPKeJwh",
+			coin:    3,
+			version: AddrP2PKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"DFCvQ2fiAcypiz79Uc1pKnPGB3zyBapcof",
+				"DGrPRX29ucppn3wSCCBiXpf956g2wWdXf2",
+				"DTuZDuC7z9QtCKfC5yGuGLyPPJX18eWzg8",
+			},
+		},
+		//----------------------------------------------------------
+		// Dash (P2PKH) (NetwMain)
+		//----------------------------------------------------------
+		{
+			path:    "m/44'/5'/0'/0",
+			xpub:    "drkpS2VHVB4LqrEYwahzHoekQn8ZC1jJxFiYMkXvpVJxAAxFz6FcDiPKZA2qKS9pb1LDLjbtA4iuXpYssiZ2WgoVvqxVKeWZHybyWseEVxnDNR7",
+			coin:    5,
+			version: AddrP2PKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"XjpM1S5ijJ7SV7NGzQL2psZYKFvPkm4WET",
+				"XvQwicQbChzMa1UEU6hudNuHAQJUDJ3J5z",
+				"Xsx5nfMs8XyVnPYWzFcLKgJJ1bM7Y7zJX7",
+			},
+		},
+		//----------------------------------------------------------
+		// Namecoin (P2PKH) (NetwMain)
+		//----------------------------------------------------------
+		{
+			path:    "m/44'/7'/0'/0",
+			xpub:    "xpub6DoCUxVGdMNrrmxJL2qYmbWcxMUF2nMX4MGE5kdaV2AaR5PFXVKMfVeZ9R217ex9z9CY4J15yL1K2fU14tsSC248U5Z4qPpnzKHXKzkShCN",
+			coin:    7,
+			version: AddrP2PKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"Myn4hTwq74yVYFcfZdox7zBJChjD7pe62S",
+				"N6voiyaKrWMnPcBkwD4iyp91VtPiS9K4zA",
+				"NG5TJ7oEyLUC5XRBJNypefpnsyD5rj3FNi",
+			},
+		},
+		//----------------------------------------------------------
+		// Digibyte (P2PKH,P2WPKHinP2SH,P2WPKH) (NetwMain)
+		//----------------------------------------------------------
+		{
+			path:    "m/44'/20'/0'/0",
+			xpub:    "xpub6F8a29k7hbo1tabHPuRrynK8jBH2NJPWjVzyxsZJGPjVCqbQCSizn4UNsuB8W82ACr94dEbBa8QUkhitvtQqoj94hb9mAxEKakGVDvCZQp9",
+			coin:    20,
+			version: AddrP2PKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"D5kyuUeGW8tehUuyLmCEqyyQLAEpi8N1KH",
+				"DNbBpZ7euKXUUHAGY2JBTFH353pHwyv29X",
+				"DEYDg68hggMGGrWCCkqpdpRFo8GtWYo8Ps",
+			},
+		},
+		{
+			path:    "m/49'/20'/0'/0",
+			xpub:    "ypub6ZE3Ch8McCBR1zhr5dLR1NECkXac3BodVA8Jp3auSDxM2SrEiFS9Q7NKpa8QvnkjoWSS6vBuF82tJQfPDqVoMrH63EoBxLUgV3X1rEcUJea",
+			coin:    20,
+			version: AddrP2WPKHinP2SH,
+			netw:    NetwMain,
+			addrs: []string{
+				"ScSW6s7aekqdTpnWFvCwgdq6v7uULZyCoR",
+				"Sk41EPXz8EwN2n7ZrFLdcrUA5qgMNrKSZU",
+				"SiYe3tupyeka8uAicYpA5QA1nMUwtUtWSe",
+			},
+		},
+		{
+			path:    "m/84'/20'/0'/0",
+			xpub:    "zpub6trsrUqRjGgQ487C1gmR8R3WifqdfHaiNsnsF9XYNUZAwivfAMWdBZrHVXiKWmWYcyaXNMLVQcKrwryMZhLegT53BUAjdnEYehHXJCPcTAq",
+			coin:    20,
+			version: AddrP2WPKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"dgb1qlvl7ka8cakj332rthdx5yvfkrjlc9z6sn3faeh",
+				"dgb1q5u8pxydx30pkd5zhhrwukrpt2mqdt2nmfap4cf",
+				"dgb1q7eucwwyztd7m2cmgm0sqaw4nh5u46ak7rxmuun",
+			},
+		},
+		//----------------------------------------------------------
+		// Vertcoin (P2PKH,P2WPKHinP2SH,P2WPKH) (NetwMain)
+		//----------------------------------------------------------
+		{
+			path:    "m/44'/28'/0'/0",
+			xpub:    "xpub6F2hZN9fs9mqsM1oTyGLcjYihh6xjjf5rzZaYvGYRXJY5Y43gV5UWaVL6mhpLGy6CDsrbg7D8fgLxv1Duv5EBeCA8vwjNfGyfPCkjPVo83g",
+			coin:    28,
+			version: AddrP2PKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"VtSpg52AY5k33VoKjz1zNvaVSyfryBEeJb",
+				"VhbY94Va9kW8kEDKwBx5qgospmQ7NhPvDS",
+				"Vwc66CTe1SBi8M8gCso6HEWyEbpx2J1oZk",
+			},
+		},
+		{
+			path:    "m/49'/28'/0'/0",
+			xpub:    "xpub6FHDPcB4fiie725sZqFD2641Y2vFSkoZ3c36kRQ26dDtHie1cQhr2VrjbYgYicDmeccFhshYUhkrwmZinmvYPyutJJ3Pm5Ck6boyu6QeTYT",
+			coin:    28,
+			version: AddrP2WPKHinP2SH,
+			netw:    NetwMain,
+			addrs: []string{
+				"3LQvZbae7mHvjNVV3AxjvaCohRLTJi2yBj",
+				"3Hvjzfz9PQRzJfQBeKKj8kFoBd5Pt8Bwhk",
+				"3FoEmcuSwpHu7jNB8z4fPeteVfiYqw3CpV",
+			},
+		},
+		{
+			path:    "m/84'/28'/0'/0",
+			xpub:    "xpub6EmQfEi8DSi9fGCYPNKiznCCDycEt2nXEeDK8XfYWbcvnfK7G1iF1UhxHqfYwJ3u6zBYMN8yvU3wvEqjE6aMGcvbZ4ZnfHD7A9PYs8uRzAs",
+			coin:    28,
+			version: AddrP2WPKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"vtc1q0e9cp24vd5yfcw9a9m06ww0pc8t2ftu9unpk03",
+				"vtc1qk5vg36emrls25cljqhp997p0gtkvrzlprct5an",
+				"vtc1qwcw7705m4u3h97vy5u2msus6gn75e4w72zv8qq",
+			},
+		},
+		//----------------------------------------------------------
+		// ZCash (P2PKH) (NetwMain)
+		//----------------------------------------------------------
+		{
+			path:    "m/44'/133'/0'/0",
+			xpub:    "xpub6FHRtWCLBuxiaDgCYAGtec9MdDoSCSwSHCcW41mSGAH2ciMuKs5L1dWdAGqKpeWsBbixqH5MUebXR6JEEsdyKdjauE8kBg35uC2YFscmE8u",
+			coin:    133,
+			version: AddrP2PKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"t1UH9hfYFjRjPpZjRjgVQT7cTwUekgaBUV3",
+				"t1MrKJrrXBtPG7cJXUgCSEtbNgkt1b73Vpb",
+				"t1cq8Q8kDwrwpp5P1gTf2fAXFy1pcb4Tv6E",
+			},
+		},
+		//----------------------------------------------------------
+		// BitcoinCash (P2PKH,P2WPKHinP2SH,P2WPKH) (NetwMain)
+		//----------------------------------------------------------
+		{
+			path:    "m/44'/145'/0'/0",
+			xpub:    "xpub6Dwp81H62AeMQdABvdKCmTtzagoUBxyebQU4tfhH6467QnSepzN87Y2sGgSbwWwyXNyjEWRjyu5mSjWmVp5ZxSE9B4H49oGyRczSZPNQtZ4",
+			coin:    145,
+			version: AddrP2PKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"bitcoincash:qr09zpf9ex5e0yktxuzyn8r300sw0h9adsk82c94pm",
+				"bitcoincash:qp9r70xkgz724gfxurm5de0mmyxr8rffjy95dxflyh",
+				"bitcoincash:qqzpgzkl5ec9khd7w74ajnlycn4p5zgufqnzrgzfrv",
+			},
+		},
+		{
+			path:    "m/49'/145'/0'/0",
+			xpub:    "ypub6YQ3oQnVh3AXy2sdiZ4sguhNLV8eZp8ifVfAYnAnv1LWkEs8UnKcUdJbZHHJhtFMNqWd3T6YufJ9NFZYRqjoJ7AucHEnF21V86gJtM8cQMK",
+			coin:    145,
+			version: AddrP2WPKHinP2SH,
+			netw:    NetwMain,
+			addrs: []string{
+				"39AhdB7euaHGrxUpJAHVe4WS1ccRspi1Wr",
+				"37BkU5wzVGRHxP4i7Vspp4h5jKuDnALNuW",
+				"3B87eHgk6H6QxBZNKz8RcjxWMLKdGXsU7C",
+			},
+		},
+		{
+			path:    "m/84'/145'/0'/0",
+			xpub:    "zpub6tyomv3Hh7DbrXfGwHLSdgJqcDPtBnysLUGBn98cF4L8GicbSaDu3YQQEKMwXVqMgJsgHVPkxEyn38vmAG7JWLfy7xRA2gAVMY9aAVin2vz",
+			coin:    145,
+			version: AddrP2WPKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"bc1qm2747f3l92f8cplkfgatajzsumnlr4agu0as97",
+				"bc1qzc2csynw50gggs2wa6gkezxptpms3kwj5cjvm4",
+				"bc1qm2wekscdsaxl2fqstvzf7eh89zl60t5d6wkvkn",
+			},
+		},
+		//----------------------------------------------------------
+		// BitcoinGold (P2PKH,P2WPKHinP2SH,P2WPKH) (NetwMain)
+		//----------------------------------------------------------
+		{
+			path:    "m/44'/156'/0'/0",
+			xpub:    "xpub6FKmGqCHQ9B8TJApnGyfpHprWMQNj2chDnvuQ6VqokyPFq3DbroAQGj8XGJuxTMqbgH8SHBTURc87ptnYe8TWDcPiGD6kFE5vJcqJe1MP2m",
+			coin:    156,
+			version: AddrP2PKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"GKJiXkT4jw35tirbrWNbg6mrQ7e3bjxps8",
+				"GJpWLy6rAni6LrHGMVQtdNMwnfQP6YXcnp",
+				"GQee2mtTxn2BvGivKVpgB8nE1hUzYRKyYX",
+			},
+		},
+		{
+			path:    "m/49'/156'/0'/0",
+			xpub:    "ypub6ZPapZb2XhNLQ1e5DeAUQMfwfB7Gfv95nVw91wNgRd9W1Skab2VzrTyhz4JAKbqBEThaNqTheTBHhvCFeq1SGpBGL9hN1U61A1YioWxS7qu",
+			coin:    156,
+			version: AddrP2WPKHinP2SH,
+			netw:    NetwMain,
+			addrs: []string{
+				"AReJZiyQ71Fp5rBzz94yzfDtSFF2ShAkkr",
+				"AR5KraC6hkQ1vYDHTTD9i1UjDUfJPEEGgx",
+				"AV4CiYBnC6mVtmSgoEZDuJF3BeV33ctrwC",
+			},
+		},
+		{
+			path:    "m/84'/156'/0'/0",
+			xpub:    "zpub6sFMAk1YgUdX5EtNevXBXkjPhqtqnUSDtABAxtWH6MsKVqPaBiaXpt31STMAbejMV5RSs78AYqd3XmpgEnbn171dZNMBGF67BWe4zJYKMbM",
+			coin:    156,
+			version: AddrP2WPKH,
+			netw:    NetwMain,
+			addrs: []string{
+				"btg1qhz0rez3v2366n0rwqdekdfp8s745puqkshmtjx",
+				"btg1qn7svv7nghkcxqs3t6kz9dw2xhlms4yym6jp7hl",
+				"btg1qkc0255mmwr7muc0mm067a3lty069jf3jjdasah",
+			},
 		},
 	}
-
-	versionMainPublic  = "0488b21e"
-	versionMainPrivate = "0488ade4"
 )
 
-func TestAddress(t *testing.T) {
-	for _, d := range testData {
-		idhex, err := hex.DecodeString(d.IDhex)
-		if err != nil {
-			t.Fatal("test data failure")
-		}
-		idaddr, err := bitcoin.Base58Decode(d.IDaddr)
-		if err != nil {
-			t.Fatal("test data failure")
-		}
-		if !bytes.Equal(idaddr[1:len(idhex)+1], idhex) {
-			t.Fatal("test data mismatch")
-		}
-		pub, err := hex.DecodeString(d.PubHex)
-		if err != nil {
-			t.Fatal("test data failure")
-		}
-		pubkey, err := bitcoin.PublicKeyFromBytes(pub)
-		if err != nil {
-			t.Fatal("test data failure")
-		}
-		if !pubkey.Q.IsOnCurve() {
-			t.Fatal("public point not on curve")
-		}
+func TestMakeAddress(t *testing.T) {
+	// generate HD wallet
+	s1, check := WordsToSeed(words, "")
+	if len(check) > 0 {
+		t.Fatal(check)
+	}
+	s2, err := hex.DecodeString(seed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(s1, s2) {
+		t.Fatal("seed mismatch")
+	}
+	hd, err = NewHD(s1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prv := hd.MasterPrivate().String()
+	if prv != xprv {
+		t.Fatal("xprv mismatch")
+	}
 
-		addr := MakeAddress(pubkey, 0, AddrP2PKH, AddrMain)
-		if addr != d.IDaddr {
-			t.Fatalf("makeaddress failed: '%s' != '%s'\n", addr, d.IDaddr)
-		}
-		pubkeyhex := hex.EncodeToString(pubkey.Bytes())
-		if pubkeyhex != d.SerPubHex[90:] {
-			t.Fatal("pubkey mismatch")
-		}
-		if d.Chain != d.SerPubHex[26:90] {
-			t.Fatal("chain mismatch")
-		}
-		if versionMainPublic != d.SerPubHex[:8] {
-			t.Fatal("version mismatch")
-		}
-		b, err := hex.DecodeString(d.SerPubHex)
+	// test addresses
+	for _, test := range testdata {
+		t.Log(test.path)
+		pub, err := hd.Public(test.path)
 		if err != nil {
-			t.Fatal("test data failure")
+			t.Fatal(err)
 		}
-		b = append(b, prefix(b)...)
-		pubser := bitcoin.Base58Encode(b)
-		if pubser != d.SerPubB58 {
-			t.Fatal("test data failure")
+		pub.Data.Version = GetXDVersion(test.coin, test.version, test.netw, true)
+
+		if pub.String() != test.xpub {
+			t.Log(test.xpub)
+			t.Log(pub.String())
+			t.Fatal("xpub mismatch")
 		}
-		prv, err := hex.DecodeString(d.SerPrvHex[90:])
-		if err != nil {
-			t.Fatal("test data failure")
-		}
-		if len(prv) == 33 {
-			if prv[0] != 0 {
-				t.Fatal("no leading zero")
+		pubhd := NewHDPublic(pub, test.path)
+		for i, addr := range test.addrs {
+			epk, err := pubhd.Public(test.path + fmt.Sprintf("/%d", i))
+			if err != nil {
+				t.Fatal(err)
 			}
-			prv = prv[1:]
-		}
-		prvkey, err := bitcoin.PrivateKeyFromBytes(prv)
-		if err != nil {
-			t.Fatal("privatekeyfrombytes failed")
-		}
-		q := bitcoin.MultBase(prvkey.D)
-		if !q.Equals(pubkey.Q) {
-			t.Fatal("pub/private mismatch")
-		}
-		if d.Chain != d.SerPubHex[26:90] {
-			t.Fatal("chain mismatch")
-		}
-		if versionMainPrivate != d.SerPrvHex[:8] {
-			t.Fatal("version mismatch")
-		}
-		b, err = hex.DecodeString(d.SerPrvHex)
-		if err != nil {
-			t.Fatal("test data failure")
-		}
-		b = append(b, prefix(b)...)
-		prvser := bitcoin.Base58Encode(b)
-		if prvser != d.SerPrvB58 {
-			t.Fatal("test data failure")
+			pk, err := bitcoin.PublicKeyFromBytes(epk.Data.Keydata)
+			if err != nil {
+				t.Fatal(err)
+			}
+			a, err := MakeAddress(pk, test.coin, test.version, test.netw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if a != addr {
+				t.Logf("%s != %s\n", a, addr)
+				t.Fatal("addr mismatch")
+			}
+
 		}
 	}
-}
-
-var (
-	tPrivKey = "L35JWBbB2nXH6pEzmTGjTnQkRS4fWT7tRKyQhfH9oW9JqffVMgVL"
-	tAddr    = "14Wf6fPLEawQq5zSaCkAJ1Upgaekvy1Hiy"
-)
-
-func TestPrivKeyAddress(t *testing.T) {
-	b, err := bitcoin.Base58Decode(tPrivKey)
-	if err != nil {
-		t.Fatal("Base58 decoder failed.: " + err.Error())
-	}
-	prv, err := bitcoin.PrivateKeyFromBytes(b[1:34])
-	if err != nil {
-		t.Fatal("PrivateKeyFromBytes failed: " + err.Error())
-	}
-	addr := MakeAddress(&prv.PublicKey, 0, AddrP2PKH, AddrMain)
-	if addr != tAddr {
-		t.Fatal("address mismatch")
-	}
-}
-
-func TestBCHAddress(t *testing.T) {
-	pk := "0316b88b26b842eb141031cb3d29e2bb4ccccf595cfa7bb895cbbaa3f1536223d1"
-	tAddr := "qpnfc27ttwqky82emu6mvwtqphg94y4ahc957hjwhp"
-
-	pub, err := hex.DecodeString(pk)
-	if err != nil {
-		t.Fatal("test data failure")
-	}
-	pubkey, err := bitcoin.PublicKeyFromBytes(pub)
-	if err != nil {
-		t.Fatal("test data failure")
-	}
-	if !pubkey.Q.IsOnCurve() {
-		t.Fatal("public point not on curve")
-	}
-	addr := MakeAddress(pubkey, 145, AddrP2PKH, AddrMain)
-	if addr != tAddr {
-		t.Fatalf("failed: '%s' != '%s'\n", addr, tAddr)
-	}
-}
-
-func TestETHAddress(t *testing.T) {
-	pk := "034a5823d9d25a434ae893518e121c39fbdcb7ec688974ab23994ddbdb776152d3"
-	tAddr := "0xa5b14fd4d99bd75ae22897fb827d76e3310e36f8"
-
-	pub, err := hex.DecodeString(pk)
-	if err != nil {
-		t.Fatal("test data failure")
-	}
-	pubkey, err := bitcoin.PublicKeyFromBytes(pub)
-	if err != nil {
-		t.Fatal("test data failure")
-	}
-	if !pubkey.Q.IsOnCurve() {
-		t.Fatal("public point not on curve")
-	}
-	addr := MakeAddress(pubkey, 60, AddrP2PKH, AddrMain)
-	if addr != tAddr {
-		t.Fatalf("failed: '%s' != '%s'\n", addr, tAddr)
-	}
-}
-
-func prefix(b []byte) []byte {
-	sha256 := sha256.New()
-	sha256.Write(b)
-	h := sha256.Sum(nil)
-	sha256.Reset()
-	sha256.Write(h)
-	cs := sha256.Sum(nil)
-	return cs[:4]
 }

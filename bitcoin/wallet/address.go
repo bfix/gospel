@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2021 Bernd Fix  >Y<
+// Copyright (C) 2011-2023 Bernd Fix  >Y<
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -25,19 +25,20 @@ import (
 	"encoding/base32"
 	"encoding/binary"
 	"encoding/hex"
-	"math/big"
+	"errors"
 	"strings"
 
 	"github.com/bfix/gospel/bitcoin"
+	"github.com/bfix/gospel/bitcoin/script"
 	"golang.org/x/crypto/sha3"
 )
 
 // Address constants
 const (
 	// Mainnet/Testnet/Regnet
-	AddrMain = 0
-	AddrTest = 1
-	AddrReg  = 2
+	NetwMain = 0
+	NetwTest = 1
+	NetwReg  = 2
 
 	// Address usage
 	AddrP2PKH        = 0
@@ -48,49 +49,94 @@ const (
 	AddrP2WSHinP2SH  = 5
 )
 
-// Addresser is a function prototype for address conversion functions
-type Addresser func(pk *bitcoin.PublicKey, coin, version, network, prefix int) string
+// Errors
+var (
+	ErrMkAddrPrefix         = errors.New("unknown prefix")
+	ErrMkAddrVersion        = errors.New("unknown version")
+	ErrMkAddrNotImplemented = errors.New("not implemented")
+)
 
-// MakeAddress computes an address from public key for the "real" Bitcoin network
-func MakeAddress(key *bitcoin.PublicKey, coin, version, network int) string {
-
-	// get info for selected coin/version/network
-	var prefix int = -1
-	var conv Addresser = nil
-	for _, addr := range AddrList {
-		if addr.CoinID == coin {
-			conv = addr.Conv
-			v := addr.Formats[network]
-			if v != nil {
-				w := v.Versions[version]
-				if w != nil {
-					prefix = int(w.Version)
-					break
-				}
-			}
-		}
+// GetAddrMode returns the numeric value for mode (P2PKH, P2SH, ...)
+func GetAddrMode(label string) int {
+	switch strings.ToUpper(label) {
+	case "P2PKH":
+		return AddrP2PKH
+	case "P2SH":
+		return AddrP2SH
+	case "P2WPKH":
+		return AddrP2WPKH
+	case "P2WSH":
+		return AddrP2WSH
+	case "P2WPKHinP2SH":
+		return AddrP2WPKHinP2SH
+	case "P2WSHinP2SH":
+		return AddrP2WSHinP2SH
 	}
+	return -1
+}
+
+// Addresser is a function prototype for address conversion functions
+type Addresser func(pk *bitcoin.PublicKey, coin, version, network, prefix int) (string, error)
+
+// MakeAddress computes an address from a public key for given coin, version
+// and network. All cryptocoins based on the Bitcoin curve (secp256k1) are
+// supported.
+func MakeAddress(key *bitcoin.PublicKey, coin, version, network int) (string, error) {
+	// get prefix (and optional addresser)
+	prefix, hrp, conv := getPrefix(coin, version, network)
+
 	// call a custom conversion function
 	if conv != nil {
 		return conv(key, coin, version, network, prefix)
 	}
 	// if no prefix is found, we can't create address
 	if prefix == -1 {
-		return ""
+		return "", ErrMkAddrPrefix
 	}
+	// sanity check: only certain versions allowed
+	switch version {
+	case AddrP2PKH, AddrP2WPKH, AddrP2WPKHinP2SH:
+		return makeAddress(key.Bytes(), hrp, version, prefix)
+	default:
+		return "", ErrMkAddrVersion
+	}
+}
 
-	// Generic address conversion:
-	// get data for address
+// MakeAddressScript creates an address for a P2SH script
+func MakeAddressScript(scr *script.Script, coin, version, network int) (string, error) {
+	// get prefix (and optional addresser)
+	prefix, hrp, _ := getPrefix(coin, version, network)
+
+	// if no prefix is found, we can't create address
+	if prefix == -1 {
+		return "", ErrMkAddrPrefix
+	}
+	// sanity check: only P2SH allowed
+	if version != AddrP2SH {
+		return "", ErrMkAddrVersion
+	}
+	return makeAddress(scr.Bytes(), hrp, version, prefix)
+}
+
+func makeAddress(obj []byte, hrp string, version, prefix int) (string, error) {
+	// handle segwit addresses separately
+	if version == AddrP2WPKH || version == AddrP2WSH {
+		return makeAddressSegWit(obj, hrp, version, prefix)
+	}
+	// Generic address calculation:
 	var data []byte
 	switch version {
-	case AddrP2PKH:
-		data = key.Bytes()
-	case AddrP2SH:
+	case AddrP2PKH, AddrP2SH:
+		data = obj
+	case AddrP2WPKHinP2SH:
 		redeem := append([]byte(nil), 0)
 		redeem = append(redeem, 0x14)
-		kh := bitcoin.Hash160(key.Bytes())
+		kh := bitcoin.Hash160(obj)
 		redeem = append(redeem, kh...)
 		data = redeem
+	default:
+		// can't create address for unknown version
+		return "", ErrMkAddrVersion
 	}
 	var addr []byte
 	if prefix > 255 {
@@ -101,347 +147,86 @@ func MakeAddress(key *bitcoin.PublicKey, coin, version, network int) string {
 	addr = append(addr, kh...)
 	cs := bitcoin.Hash256(addr)
 	addr = append(addr, cs[:4]...)
-	return bitcoin.Base58Encode(addr)
+	return bitcoin.Base58Encode(addr), nil
 }
 
-// GetXDVersion returns the extended data version for a given coin mode
-func GetXDVersion(coin, mode, network int, pub bool) uint32 {
-	for _, addr := range AddrList {
-		if addr.CoinID == coin {
-			v := addr.Formats[network]
-			if v != nil {
-				w := v.Versions[mode]
-				if w != nil {
-					if pub {
-						return w.PubVersion
-					}
-					return w.PrvVersion
-				}
-			}
-		}
+func makeAddressSegWit(obj []byte, hrp string, version, prefix int) (string, error) {
+	// compute address data
+	var data []byte
+	switch version {
+	case AddrP2WPKH:
+		data = bitcoin.Hash160(obj)
+	case AddrP2WSH:
+	default:
+		return "", ErrMkAddrVersion
 	}
-	// return default
-	vc := VersionCodes["x"]
-	if pub {
-		return vc.Public
+	// encode data to 5-bit sequence and add leading witness version
+	buf := new(bytes.Buffer)
+	buf.WriteByte(0) // witness version
+	buf.Write(Bech32Bit5(data))
+
+	// compute checksum and append to buffer
+	crc := Bech32CRC(hrp, buf.Bytes())
+	buf.Write(crc)
+
+	// encode to Bech32 charset
+	b32enc := "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+	addr := ""
+	for _, v := range buf.Bytes() {
+		addr += string(b32enc[v])
 	}
-	return vc.Private
+	return hrp + "1" + addr, nil
 }
-
-// AddrVersion defines address version constants
-type AddrVersion struct {
-	Version    uint16 // version byte (address prefix)
-	PubVersion uint32 // BIP32 key version (public)
-	PrvVersion uint32 // BIP32 key version (private)
-}
-
-// AddrFormat defines formatting information for addresses
-type AddrFormat struct {
-	Bech32     string
-	WifVersion byte
-	Versions   []*AddrVersion
-}
-
-// AddrSpec defines a coin address format.
-type AddrSpec struct {
-	CoinID  int
-	Formats []*AddrFormat
-	Conv    Addresser
-}
-
-var (
-	// AddrList for selected coins
-	// (see page source for "https://iancoleman.io/bip39/")
-	AddrList = []*AddrSpec{
-		//--------------------------------------------------------------
-		// BTC (Bitcoin)
-		//--------------------------------------------------------------
-		{0, []*AddrFormat{
-			// Mainnet
-			{"bc", 0x80, []*AddrVersion{
-				{0x00, 0x0488b21e, 0x0488ade4}, // P2PKH
-				{0x05, 0x049d7cb2, 0x049d7878}, // P2SH
-				{0x00, 0x04b24746, 0x04b2430c}, // P2WPKH
-				{0x05, 0x02aa7ed3, 0x02aa7a99}, // P2WSH
-				{0x05, 0x049d7cb2, 0x049d7878}, // P2WPKHinP2SH
-				{0x05, 0x0295b43f, 0x0295b005}, // P2WSHinP2SH
-			}},
-			// Testnet
-			{"tb", 0xef, []*AddrVersion{
-				{0x6f, 0x043587cf, 0x04358394}, // P2PKH
-				{0xc4, 0x043587cf, 0x04358394}, // P2SH
-				{0x6f, 0x045f1cf6, 0x045f18bc}, // P2WPKH
-				{0xc4, 0x02575483, 0x02575048}, // P2WSH
-				{0xc4, 0x044a5262, 0x044a4e28}, // P2WPKHinP2SH
-				{0xc4, 0x024289ef, 0x024285b5}, // P2WSHinP2SH
-			}},
-			// Regnet
-			{"bcrt", 0xef, []*AddrVersion{
-				{0x6f, 0x043587cf, 0x04358394}, // P2PKH
-				{0xc4, 0x043587cf, 0x04358394}, // P2SH
-				{0x6f, 0x045f1cf6, 0x045f18bc}, // P2WPKH
-				{0xc4, 0x02575483, 0x02575048}, // P2WSH
-				{0xc4, 0x044a5262, 0x044a4e28}, // P2WPKHinP2SH
-				{0xc4, 0x024289ef, 0x024285b5}, // P2WSHinP2SH
-			}},
-		}, nil},
-		//--------------------------------------------------------------
-		// LTC (Litecoin)
-		//--------------------------------------------------------------
-		{2, []*AddrFormat{
-			// Mainnet
-			{"ltc", 0xb0, []*AddrVersion{
-				{0x30, 0x0488b21e, 0x0488ade4}, // P2PKH
-				{0x32, 0x01b26ef6, 0x01b26792}, // P2SH
-				{0x30, 0x04b24746, 0x04b2430c}, // P2WPKH
-				nil,                            // P2WSH
-				{0x32, 0x01b26ef6, 0x01b26792}, // P2WPKHinP2SH
-				nil,                            // P2WSHinP2SH
-			}},
-			// Testnet
-			{"litecointestnet", 0xef, []*AddrVersion{
-				{0x6f, 0x043587cf, 0x04358394}, // P2PKH
-				{0xc4, 0x043587cf, 0x04358394}, // P2SH
-				{0x6f, 0x043587cf, 0x04358394}, // P2WPKH
-				nil,                            // P2WSH
-				{0xc4, 0x043587cf, 0x04358394}, // P2WPKHinP2SH
-				nil,                            // P2WSHinP2SH
-			}},
-			// Regnet
-			nil,
-		}, nil},
-		//--------------------------------------------------------------
-		// DOGE
-		//--------------------------------------------------------------
-		{3, []*AddrFormat{
-			// Mainnet
-			{"", 0x9e, []*AddrVersion{
-				{0x1e, 0x02facafd, 0x02fac398}, // P2PKH
-				{0x16, 0x02facafd, 0x02fac398}, // P2SH
-				nil,                            // P2WPKH
-				nil,                            // P2WSH
-				nil,                            // P2WPKHinP2SH
-				nil,                            // P2WSHinP2SH
-			}},
-			// Testnet
-			{"dogecointestnet", 0xf1, []*AddrVersion{
-				{0x71, 0x043587cf, 0x04358394}, // P2PKH
-				{0xc4, 0x043587cf, 0x04358394}, // P2SH
-				{0x71, 0x043587cf, 0x04358394}, // P2WPKH
-				nil,                            // P2WSH
-				{0xc4, 0x043587cf, 0x04358394}, // P2WPKHinP2SH
-				nil,                            // P2WSHinP2SH
-			}},
-			// Regnet
-			nil,
-		}, nil},
-		//--------------------------------------------------------------
-		// DASH
-		//--------------------------------------------------------------
-		{5, []*AddrFormat{
-			// Mainnet
-			{"", 0xcc, []*AddrVersion{
-				{0x4c, 0x02fe52cc, 0x0488ade4}, // P2PKH
-				{0x10, 0x02fe52cc, 0x0488ade4}, // P2SH
-				nil,                            // P2WPKH
-				nil,                            // P2WSH
-				nil,                            // P2WPKHinP2SH
-				nil,                            // P2WSHinP2SH
-			}},
-			// Testnet
-			{"", 0xef, []*AddrVersion{
-				{0x8c, 0x043587cf, 0x04358394}, // P2PKH
-				{0x13, 0x043587cf, 0x04358394}, // P2SH
-				nil,                            // P2WPKH
-				nil,                            // P2WSH
-				nil,                            // P2WPKHinP2SH
-				nil,                            // P2WSHinP2SH
-			}},
-			// Regnet
-			nil,
-		}, nil},
-		//--------------------------------------------------------------
-		// NMC (Namecoin)
-		//--------------------------------------------------------------
-		{7, []*AddrFormat{
-			// Mainnet
-			{"", 0xb4, []*AddrVersion{
-				{0x34, 0x0488b21e, 0x0488ade4}, // P2PKH
-				{0x0d, 0x0488b21e, 0x0488ade4}, // P2SH
-				nil,                            // P2WPKH
-				nil,                            // P2WSH
-				nil,                            // P2WPKHinP2SH
-				nil,                            // P2WSHinP2SH
-			}},
-			// Testnet
-			nil,
-			// Regnet
-			nil,
-		}, nil},
-		//--------------------------------------------------------------
-		// DGB (Digibyte)
-		//--------------------------------------------------------------
-		{20, []*AddrFormat{
-			// Mainnet
-			{"dgb", 0x80, []*AddrVersion{
-				{0x1e, 0x0488b21e, 0x0488ade4}, // P2PKH
-				{0x3f, 0x049d7cb2, 0x049d7878}, // P2SH
-				{0x1e, 0x04b24746, 0x04b2430c}, // P2WPKH
-				nil,                            // P2WSH
-				{0x3f, 0x049d7cb2, 0x049d7878}, // P2WPKHinP2SH
-				nil,                            // P2WSHinP2SH
-			}},
-			// Testnet
-			nil,
-			// Regnet
-			nil,
-		}, nil},
-		//--------------------------------------------------------------
-		// VTC (Vertcoin)
-		//--------------------------------------------------------------
-		{28, []*AddrFormat{
-			// Mainnet
-			{"", 0x80, []*AddrVersion{
-				{0x47, 0x0488b21e, 0x0488ade4}, // P2PKH
-				{0x05, 0x049d7cb2, 0x049d7878}, // P2SH
-				{0x47, 0x0488b21e, 0x0488ade4}, // P2WPKH
-				nil,                            // P2WSH
-				{0x47, 0x0488b21e, 0x0488ade4}, // P2WPKHinP2SH
-				nil,                            // P2WSHinP2SH
-			}},
-			// Testnet
-			nil,
-			// Regnet
-			nil,
-		}, nil},
-		//--------------------------------------------------------------
-		// ETH (Ethereum)
-		//--------------------------------------------------------------
-		{60, []*AddrFormat{
-			// Mainnet
-			nil,
-			// Testnet
-			nil,
-			// Regnet
-			nil,
-		}, makeAddressETH},
-		//--------------------------------------------------------------
-		// ETC (Ethereum Classic)
-		//--------------------------------------------------------------
-		{61, []*AddrFormat{
-			// Mainnet
-			nil,
-			// Testnet
-			nil,
-			// Regnet
-			nil,
-		}, makeAddressETH},
-		//--------------------------------------------------------------
-		// ZEC (ZCash)
-		//--------------------------------------------------------------
-		{133, []*AddrFormat{
-			// Mainnet
-			{"", 0x80, []*AddrVersion{
-				{0x1cb8, 0x0488b21e, 0x0488ade4}, // P2PKH
-				{0x1cbd, 0x0488b21e, 0x0488ade4}, // P2SH
-				nil,                              // P2WPKH
-				nil,                              // P2WSH
-				nil,                              // P2WPKHinP2SH
-				nil,                              // P2WSHinP2SH
-			}},
-			// Testnet
-			nil,
-			// Regnet
-			nil,
-		}, nil},
-		//--------------------------------------------------------------
-		// BCH
-		//--------------------------------------------------------------
-		{145, []*AddrFormat{
-			// Mainnet
-			{"", 0x80, []*AddrVersion{
-				{0x00, 0x0488b21e, 0x0488ade4}, // P2PKH
-				{0x05, 0x0488b21e, 0x0488ade4}, // P2SH
-				{0x00, 0x04b24746, 0x04b2430c}, // P2WPKH
-				{0x05, 0x02aa7ed3, 0x02aa7a99}, // P2WSH
-				{0x05, 0x049d7cb2, 0x049d7878}, // P2WPKHinP2SH
-				{0x05, 0x0295b43f, 0x0295b005}, // P2WSHinP2SH
-			}},
-			// Testnet
-			{"", 0xef, []*AddrVersion{
-				{0x6f, 0x0488b21e, 0x0488ade4}, // P2PKH
-				{0xc4, 0x0488b21e, 0x0488ade4}, // P2SH
-				{0x6f, 0x045f1cf6, 0x045f18bc}, // P2WPKH
-				{0xc4, 0x02575483, 0x02575048}, // P2WSH
-				{0xc4, 0x044a5262, 0x044a4e28}, // P2WPKHinP2SH
-				{0xc4, 0x024289ef, 0x024285b5}, // P2WSHinP2SH
-			}},
-			// Regnet
-			{"", 0xef, []*AddrVersion{
-				{0x6f, 0x043587cf, 0x04358394}, // P2PKH
-				{0xc4, 0x043587cf, 0x04358394}, // P2SH
-				{0x6f, 0x045f1cf6, 0x045f18bc}, // P2WPKH
-				{0xc4, 0x02575483, 0x02575048}, // P2WSH
-				{0xc4, 0x044a5262, 0x044a4e28}, // P2WPKHinP2SH
-				{0xc4, 0x024289ef, 0x024285b5}, // P2WSHinP2SH
-			}},
-		}, makeAddressBCH},
-		//--------------------------------------------------------------
-		// BTG
-		//--------------------------------------------------------------
-		{156, []*AddrFormat{
-			// Mainnet
-			{"btg", 0x80, []*AddrVersion{
-				{0x26, 0x0488b21e, 0x0488ade4}, // P2PKH
-				{0x17, 0x049d7cb2, 0x049d7878}, // P2SH
-				{0x26, 0x04b24746, 0x04b2430c}, // P2WPKH
-				nil,                            // P2WSH
-				{0x17, 0x049d7cb2, 0x049d7878}, // P2WPKHinP2SH
-				nil,                            // P2WSHinP2SH
-			}},
-			// Testnet
-			nil,
-			// Regnet
-			nil,
-		}, nil},
-	}
-)
 
 //======================================================================
-// custom address conversion functions
+// custom address calculation functions
 //======================================================================
 
 // ETH (Ethereum) address
-func makeAddressETH(key *bitcoin.PublicKey, coin, version, network, prefix int) string {
+func makeAddressETH(key *bitcoin.PublicKey, coin, version, network, prefix int) (string, error) {
 	pkData := key.Q.Bytes(false)
 	hsh := sha3.NewLegacyKeccak256()
 	hsh.Write(pkData[1:])
 	val := hsh.Sum(nil)
-	return "0x" + hex.EncodeToString(val[12:])
+	return "0x" + hex.EncodeToString(val[12:]), nil
 }
 
 // BCH (Bitcoin Cash) address
-func makeAddressBCH(key *bitcoin.PublicKey, coin, version, network, prefix int) string {
-
-	// bit5 splits a byte array into 5-bit chunks
-	bit5 := func(data []byte) []byte {
-		size := len(data) * 8
-		v := new(big.Int).SetBytes(data)
-		pad := size % 5
-		if pad != 0 {
-			v = new(big.Int).Lsh(v, uint(5-pad))
-		}
-		num := (size + 4) / 5
-		res := make([]byte, num)
-		for i := num - 1; i >= 0; i-- {
-			res[i] = byte(v.Int64() & 31)
-			v = new(big.Int).Rsh(v, 5)
-		}
-		return res
+func makeAddressBCH(key *bitcoin.PublicKey, coin, version, network, prefix int) (string, error) {
+	// segwit handling is generic
+	if version == AddrP2WPKHinP2SH || version == AddrP2WPKH {
+		return makeAddress(key.Bytes(), "bc", version, prefix)
 	}
+	// special handling for P2PKH addresses
+	// get data for address
+	var data []byte
+	switch version {
+	case AddrP2PKH:
+		data = key.Bytes()
+	case AddrP2WPKHinP2SH:
+		redeem := append([]byte(nil), 0)
+		redeem = append(redeem, 0x14)
+		kh := bitcoin.Hash160(key.Bytes())
+		redeem = append(redeem, kh...)
+		data = redeem
+	default:
+		return "", ErrMkAddrVersion
+	}
+	var buf []byte
+	if prefix > 255 {
+		buf = append(buf, byte((prefix>>8)&0xff))
+	}
+	buf = append(buf, byte(prefix&0xff))
+	kh := bitcoin.Hash160(data)
+	buf = append(buf, kh...)
 
-	// polymod computes a CRC for 5-bit sequences
-	polymod := func(values []byte) uint64 {
+	b32 := base32.NewEncoding("qpzry9x8gf2tvdw0s3jn54khce6mua7l")
+	addr := strings.Trim(b32.EncodeToString(buf), "=")
+	values := make([]byte, 54)
+	copy(values, []byte{2, 9, 20, 3, 15, 9, 14, 3, 1, 19, 8, 0})
+	copy(values[12:], Bech32Bit5(buf))
+
+	crc := func(values []byte) uint64 {
 		var c uint64 = 1
 		for _, d := range values {
 			c0 := c >> 35
@@ -464,34 +249,7 @@ func makeAddressBCH(key *bitcoin.PublicKey, coin, version, network, prefix int) 
 		}
 		return c ^ 1
 	}
-
-	// get data for address
-	var data []byte
-	switch version {
-	case AddrP2PKH:
-		data = key.Bytes()
-	case AddrP2SH:
-		redeem := append([]byte(nil), 0)
-		redeem = append(redeem, 0x14)
-		kh := bitcoin.Hash160(key.Bytes())
-		redeem = append(redeem, kh...)
-		data = redeem
-	}
-	var buf []byte
-	if prefix > 255 {
-		buf = append(buf, byte((prefix>>8)&0xff))
-	}
-	buf = append(buf, byte(prefix&0xff))
-	kh := bitcoin.Hash160(data)
-	buf = append(buf, kh...)
-
-	b32 := base32.NewEncoding("qpzry9x8gf2tvdw0s3jn54khce6mua7l")
-	addr := strings.Trim(b32.EncodeToString(buf), "=")
-	values := make([]byte, 54)
-	copy(values, []byte{2, 9, 20, 3, 15, 9, 14, 3, 1, 19, 8, 0})
-	copy(values[12:], bit5(buf))
-	crc := polymod(values)
 	res := new(bytes.Buffer)
-	_ = binary.Write(res, binary.BigEndian, crc)
-	return addr + strings.Trim(b32.EncodeToString(res.Bytes()[3:]), "=")
+	_ = binary.Write(res, binary.BigEndian, crc(values))
+	return "bitcoincash:" + addr + strings.Trim(b32.EncodeToString(res.Bytes()[3:]), "="), nil
 }
