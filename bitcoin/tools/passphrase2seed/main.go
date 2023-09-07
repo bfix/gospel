@@ -72,26 +72,25 @@ func main() {
 	fmt.Printf("<<< BIP-32 Master/Root Prv: %s\n", sk)
 
 	type task struct {
-		id   string
+		av   *wallet.AddrVersion
 		name string
 		path string
 	}
 	var tasks = []task{
-		{"x", "BIP-44", "m/44'/0'/0'"},
-		{"y", "BIP-49", "m/49'/0'/0'"},
-		{"z", "BIP-84", "m/84'/0'/0'"},
+		{wallet.AddrList[0].Formats[0].Versions[0], "BIP-44", "m/44'/0'/0'"},
+		{wallet.AddrList[0].Formats[0].Versions[4], "BIP-49", "m/49'/0'/0'"},
+		{wallet.AddrList[0].Formats[0].Versions[2], "BIP-84", "m/84'/0'/0'"},
 	}
 
 	for _, t := range tasks {
 		// create a HD wallet for the given seed
 		fmt.Printf("<<< %s\n", t.name)
-		vc := wallet.VersionCodes[t.id]
 		bsk, err := hd.Private(t.path)
 		if err != nil {
 			fmt.Println("<<< ERROR: " + err.Error())
 			continue
 		}
-		bsk.Data.Version = vc.Private
+		bsk.Data.Version = t.av.PrvVersion
 		fmt.Printf("<<<     %s\n", bsk)
 
 		bpk, err := hd.Public(t.path)
@@ -99,7 +98,7 @@ func main() {
 			fmt.Println("<<< ERROR: " + err.Error())
 			continue
 		}
-		bpk.Data.Version = vc.Public
+		bpk.Data.Version = t.av.PubVersion
 		fmt.Printf("<<<     %s\n", bpk)
 	}
 }
