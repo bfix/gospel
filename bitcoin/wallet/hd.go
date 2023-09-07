@@ -46,41 +46,28 @@ var (
 // ExtendedData objects represent public/private extended keys
 //----------------------------------------------------------------------
 
-// VersionCode for public and private keys
-type VersionCode struct {
-	Public  uint32
-	Private uint32
-	Remark  string
-}
-
-// VersionCodes is a list of known HD versions
-var VersionCodes = map[string]VersionCode{
-	// Generic version and m/44'/0'
-	"x": {0x0488b21e, 0x0488ade4, "m/44'/0' or generic"},
-	// m/49'/0'
-	"y": {0x049d7cb2, 0x049d7878, "m/49'/0'"},
-	// Multisig P2WSH in P2SH
-	"Y": {0x0295b43f, 0x0295b005, "MS-P2WSH-P2SH"},
-	// m/84'/0'
-	"z": {0x04b24746, 0x04b2430c, "m/84'/0'"},
-	// Multisig in P2SH
-	"Z": {0x02aa7ed3, 0x02aa7a99, "MS-P2SH"},
-	// Testnet versions
-	"t": {0x043587cf, 0x04358394, "testnet"},
-}
-
 // CheckVersion returns a status code and the "inverse" version (pub<->prv):
 //
 //	-1 if extended data refers to a public key
 //	 1 if extended data refers to a private key
 //	 0 if version is unknown
 func CheckVersion(version uint32) (int, uint32) {
-	for _, vc := range VersionCodes {
-		if version == vc.Public {
-			return -1, vc.Private
-		}
-		if version == vc.Private {
-			return 1, vc.Public
+	for _, as := range AddrList {
+		for _, af := range as.Formats {
+			if af == nil {
+				continue
+			}
+			for _, av := range af.Versions {
+				if av == nil {
+					continue
+				}
+				if version == av.PubVersion {
+					return -1, av.PrvVersion
+				}
+				if version == av.PrvVersion {
+					return 1, av.PubVersion
+				}
+			}
 		}
 	}
 	return 0, 0
@@ -255,15 +242,11 @@ func NewHD(seed []byte) (*HD, error) {
 		return nil, fmt.Errorf("invalid key value")
 	}
 
-	vc, ok := VersionCodes["x"]
-	if !ok {
-		return nil, fmt.Errorf("unknown version identifier: 'x'")
-	}
 	hd := new(HD)
 	hd.m = new(ExtendedPrivateKey)
 	hd.m.Key = mKey
 	hd.m.Data = NewExtendedData()
-	hd.m.Data.Version = vc.Private
+	hd.m.Data.Version = 0x0488ade4 // generic xpub version
 	copy(hd.m.Data.Keydata, hd.m.Key.FixedBytes(33))
 	copy(hd.m.Data.Chaincode, i[32:])
 	hd.m.Data.Child = 0

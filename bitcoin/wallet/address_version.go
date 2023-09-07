@@ -36,12 +36,11 @@ func GetXDVersion(coin, mode, network int, pub bool) uint32 {
 			}
 		}
 	}
-	// return default
-	vc := VersionCodes["x"]
+	// return default (generic)
 	if pub {
-		return vc.Public
+		return 0x0488b21e
 	}
-	return vc.Private
+	return 0x0488ade4
 }
 
 func getPrefix(coin, version, network int) (prefix int, hrp string, conv Addresser) {
