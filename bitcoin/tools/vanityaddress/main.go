@@ -2,7 +2,7 @@ package main
 
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2021 Bernd Fix
+// Copyright (C) 2011-2023 Bernd Fix  >Y<
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -22,7 +22,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -39,7 +39,7 @@ func main() {
 	prefixes := flag.Args()
 	num := len(prefixes)
 	if num == 0 {
-		fmt.Println("No prefixes specified -- done.")
+		log.Println("No prefixes specified -- done.")
 		return
 	}
 	// pre-compile regexp for given prefixes
@@ -54,7 +54,10 @@ func main() {
 	start := time.Now()
 	for i := 0; ; i++ {
 		priv := bitcoin.GenerateKeys(true)
-		addr := wallet.MakeAddress(&priv.PublicKey, 0, wallet.AddrP2PKH, wallet.AddrMain)
+		addr, err := wallet.MakeAddress(&priv.PublicKey, 0, wallet.AddrP2PKH, wallet.NetwMain)
+		if err != nil {
+			log.Fatal(err)
+		}
 		test := addr
 		if !caseSensitive {
 			test = strings.ToLower(test)
@@ -63,7 +66,7 @@ func main() {
 			if r.MatchString(test) {
 				elapsed := time.Since(start)
 				kd := bitcoin.ExportPrivateKey(priv, false)
-				fmt.Printf("%s [%s] (%d tries, %s elapsed)\n", addr, kd, i, elapsed)
+				log.Printf("%s [%s] (%d tries, %s elapsed)\n", addr, kd, i, elapsed)
 				i = 0
 				start = time.Now()
 			}
