@@ -339,7 +339,6 @@ func coordAsBytes(v *math.Int) []byte {
 
 // helper: reconstruct y-coordinate of Point
 func computeY(x *math.Int, m uint) (y *math.Int, err error) {
-	err = nil
 	y2 := pAdd(pCub(x), c.B)
 	y, err = math.SqrtModP(y2, c.P)
 	if err == nil {

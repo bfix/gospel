@@ -23,7 +23,7 @@ package tor
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -138,7 +138,7 @@ func TestDial(t *testing.T) {
 		t.Fatal(err)
 	}
 	var data []byte
-	if data, err = ioutil.ReadAll(conn); err != nil {
+	if data, err = io.ReadAll(conn); err != nil {
 		t.Fatal(err)
 	}
 	// check for Tor exit node
@@ -161,7 +161,7 @@ func TestDialOnion(t *testing.T) {
 	if _, err = conn.Write([]byte("GET /\n\n")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = ioutil.ReadAll(conn); err != nil {
+	if _, err = io.ReadAll(conn); err != nil {
 		t.Fatal(err)
 	}
 	// close connection
@@ -228,7 +228,7 @@ func TestOnion(t *testing.T) {
 		t.Fatal(err)
 	}
 	var data []byte
-	if data, err = ioutil.ReadAll(conn); err != nil {
+	if data, err = io.ReadAll(conn); err != nil {
 		t.Fatal(err)
 	}
 	res := strings.TrimSpace(string(data))

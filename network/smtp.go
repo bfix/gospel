@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net"
 	"net/mail"
@@ -310,7 +309,7 @@ func ParseMailMessage(msg io.Reader, getInfo MailUserInfo) (mc *MailContent, err
 		mc.Mode = modePLAIN
 		mc.Key = nil
 		var data []byte
-		if data, err = ioutil.ReadAll(m.Body); err != nil {
+		if data, err = io.ReadAll(m.Body); err != nil {
 			return
 		}
 		mc.Body = string(data)
@@ -352,12 +351,12 @@ func ParsePlain(ct string, body io.Reader) (mc *MailContent, err error) {
 		switch {
 		case strings.HasPrefix(ct, "text/plain;"):
 			var data []byte
-			if data, err = ioutil.ReadAll(part); err != nil {
+			if data, err = io.ReadAll(part); err != nil {
 				return
 			}
 			mc.Body = string(data)
 		case strings.HasPrefix(ct, "application/pgp-keys;"):
-			if mc.Key, err = ioutil.ReadAll(part); err != nil {
+			if mc.Key, err = io.ReadAll(part); err != nil {
 				return
 			}
 		default:
@@ -388,7 +387,7 @@ func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (mc *
 		switch {
 		case strings.HasPrefix(ct, "application/pgp-encrypted"):
 			var buf []byte
-			if buf, err = ioutil.ReadAll(part); err != nil {
+			if buf, err = io.ReadAll(part); err != nil {
 				return
 			}
 			logger.Printf(logger.DBG, "application/pgp-encrypted: '%s'\n", strings.TrimSpace(string(buf)))
@@ -428,7 +427,7 @@ func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (mc *
 				if id == nil {
 					mc.Mode = modeUSIGNENC
 					var content []byte
-					if content, err = ioutil.ReadAll(md.UnverifiedBody); err != nil {
+					if content, err = io.ReadAll(md.UnverifiedBody); err != nil {
 						return
 					}
 					mc.Body = string(content)
@@ -440,7 +439,7 @@ func ParseEncrypted(ct, addr string, getInfo MailUserInfo, body io.Reader) (mc *
 					return
 				}
 				var content []byte
-				if content, err = ioutil.ReadAll(md.UnverifiedBody); err != nil {
+				if content, err = io.ReadAll(md.UnverifiedBody); err != nil {
 					return
 				}
 				if md.SignatureError != nil {
@@ -488,7 +487,7 @@ func ParseSigned(ct, addr string, getInfo MailUserInfo, body io.Reader) (mc *Mai
 		switch {
 		case strings.HasPrefix(ct, "text/plain;"):
 			var data []byte
-			if data, err = ioutil.ReadAll(part); err != nil {
+			if data, err = io.ReadAll(part); err != nil {
 				return
 			}
 			mc.Body = string(data)

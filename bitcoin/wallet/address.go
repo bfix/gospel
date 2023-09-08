@@ -121,7 +121,7 @@ func MakeAddressScript(scr *script.Script, coin, version, network int) (string, 
 func makeAddress(obj []byte, hrp string, version, prefix int) (string, error) {
 	// handle segwit addresses separately
 	if version == AddrP2WPKH || version == AddrP2WSH {
-		return makeAddressSegWit(obj, hrp, version, prefix)
+		return makeAddressSegWit(obj, hrp, version)
 	}
 	// Generic address calculation:
 	var data []byte
@@ -150,7 +150,7 @@ func makeAddress(obj []byte, hrp string, version, prefix int) (string, error) {
 	return bitcoin.Base58Encode(addr), nil
 }
 
-func makeAddressSegWit(obj []byte, hrp string, version, prefix int) (string, error) {
+func makeAddressSegWit(obj []byte, hrp string, version int) (string, error) {
 	// compute address data
 	var data []byte
 	switch version {

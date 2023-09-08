@@ -35,7 +35,7 @@ func TestAddrP2WPKH(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr, err := makeAddressSegWit(data, "bc", AddrP2WPKH, NetwMain)
+	addr, err := makeAddressSegWit(data, "bc", AddrP2WPKH)
 	if err != nil {
 		t.Fatal(err)
 	}

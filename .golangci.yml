@@ -16,6 +16,25 @@ linters-settings:
   nolintlint:
     require-explanation: true
     require-specific: true
+  depguard:
+    rules:
+      main:
+        files:
+          - $all
+          - "!$test"
+        allow:
+          - $gostd
+          - github.com/bfix
+          - github.com/ProtonMail/go-crypto
+          - github.com/huin/goupnp
+      test:
+        files:
+          - "$test"
+        allow:
+          - $gostd
+          - github.com/bfix
+          - github.com/ProtonMail/go-crypto
+          - github.com/huin/goupnp
 
 linters:
   disable-all: true
