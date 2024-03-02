@@ -35,7 +35,7 @@ func TestAddrP2WPKH(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr, err := makeAddressSegWit(data, "bc", AddrP2WPKH)
+	addr, err := makeAddressSegWit(bytes.NewBuffer(data), "bc", AddrP2WPKH)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +351,7 @@ func TestMakeAddress(t *testing.T) {
 	if !bytes.Equal(s1, s2) {
 		t.Fatal("seed mismatch")
 	}
-	hd, err = NewHD(s1)
+	hd, err := NewHD(s1)
 	if err != nil {
 		t.Fatal(err)
 	}

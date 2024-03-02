@@ -55,16 +55,16 @@ var (
 			"xprvA41z7zogVVwxVSgdKUHDy1SKmdb533PjDz7J6N6mV6uS3ze1ai8FHa8kmHScGpWmj4WggLyQjgPie1rFSruoUihUZREPSL39UNdE3BBDu76",
 		},
 	}
-
-	hd *HD
 )
 
-func init() {
+func testHD() *HD {
 	seed, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
-	hd, _ = NewHD(seed)
+	hd, _ := NewHD(seed)
+	return hd
 }
 
 func TestHDPublic(t *testing.T) {
+	hd := testHD()
 	path := pathData[2][0]
 	pub, err := hd.Public(path)
 	if err != nil {
@@ -100,19 +100,23 @@ func TestParseExtended(t *testing.T) {
 func TestM(t *testing.T) {
 	xprv := "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
 	xpub := "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+	hd := testHD()
 	prv := hd.m
 	prvS := prv.String()
 	if prvS != xprv {
+		t.Logf("prv: %s\n", xprv)
 		t.Fatalf("prv mismatch: %s\n", prvS)
 	}
 	pub := prv.Public()
 	pubS := pub.String()
 	if pubS != xpub {
+		t.Logf("pub: %s\n", xpub)
 		t.Fatalf("pub mismatch: %s\n", pubS)
 	}
 }
 
 func TestPath(t *testing.T) {
+	hd := testHD()
 	for i, p := range pathData {
 		prv, err := hd.Private(p[0])
 		if err != nil {

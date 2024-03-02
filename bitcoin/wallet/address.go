@@ -26,6 +26,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"math/big"
 	"strings"
 
 	"github.com/bfix/gospel/bitcoin"
@@ -51,9 +52,9 @@ const (
 
 // Errors
 var (
-	ErrMkAddrPrefix         = errors.New("unknown prefix")
-	ErrMkAddrVersion        = errors.New("unknown version")
-	ErrMkAddrNotImplemented = errors.New("not implemented")
+	ErrMkAddrPrefix         = errors.New("unknown address prefix")
+	ErrMkAddrVersion        = errors.New("unknown address version")
+	ErrMkAddrNotImplemented = errors.New("address not implemented")
 )
 
 // GetAddrMode returns the numeric value for mode (P2PKH, P2SH, ...)
@@ -78,47 +79,49 @@ func GetAddrMode(label string) int {
 // Addresser is a function prototype for address conversion functions
 type Addresser func(pk *bitcoin.PublicKey, coin, version, network, prefix int) (string, error)
 
-// MakeAddress computes an address from a public key for given coin, version
-// and network. All cryptocoins based on the Bitcoin curve (secp256k1) are
-// supported.
-func MakeAddress(key *bitcoin.PublicKey, coin, version, network int) (string, error) {
+// MakeAddress generates a new address based on the object it is based on.
+// The object can be a public key for given coin, version and network or
+// a Bitcoin script (classic).
+// All cryptocoins based on the Bitcoin curve (secp256k1) are supported.
+func MakeAddress(obj any, coin, version, network int) (string, error) {
 	// get prefix (and optional addresser)
 	prefix, hrp, conv := getPrefix(coin, version, network)
 
-	// call a custom conversion function
-	if conv != nil {
-		return conv(key, coin, version, network, prefix)
-	}
 	// if no prefix is found, we can't create address
 	if prefix == -1 {
 		return "", ErrMkAddrPrefix
 	}
-	// sanity check: only certain versions allowed
-	switch version {
-	case AddrP2PKH, AddrP2WPKH, AddrP2WPKHinP2SH:
-		return makeAddress(key.Bytes(), hrp, version, prefix)
-	default:
-		return "", ErrMkAddrVersion
+	// handle address based on generating object type
+	switch x := obj.(type) {
+	case *bitcoin.PublicKey:
+		// call a custom conversion function
+		if conv != nil {
+			return conv(x, coin, version, network, prefix)
+		}
+		// sanity check: only certain versions allowed
+		switch version {
+		case AddrP2PKH, AddrP2WPKH, AddrP2WPKHinP2SH:
+			return makeAddress(x, hrp, version, prefix)
+		default:
+			return "", ErrMkAddrVersion
+		}
+
+	case *script.Script:
+		// sanity check: only P2SH allowed
+		if version != AddrP2SH {
+			return "", ErrMkAddrVersion
+		}
+		return makeAddress(x, hrp, version, prefix)
 	}
+	// address not handled
+	return "", ErrMkAddrNotImplemented
 }
 
-// MakeAddressScript creates an address for a P2SH script
-func MakeAddressScript(scr *script.Script, coin, version, network int) (string, error) {
-	// get prefix (and optional addresser)
-	prefix, hrp, _ := getPrefix(coin, version, network)
-
-	// if no prefix is found, we can't create address
-	if prefix == -1 {
-		return "", ErrMkAddrPrefix
-	}
-	// sanity check: only P2SH allowed
-	if version != AddrP2SH {
-		return "", ErrMkAddrVersion
-	}
-	return makeAddress(scr.Bytes(), hrp, version, prefix)
+type Serializable interface {
+	Bytes() []byte
 }
 
-func makeAddress(obj []byte, hrp string, version, prefix int) (string, error) {
+func makeAddress(obj Serializable, hrp string, version, prefix int) (string, error) {
 	// handle segwit addresses separately
 	if version == AddrP2WPKH || version == AddrP2WSH {
 		return makeAddressSegWit(obj, hrp, version)
@@ -127,11 +130,11 @@ func makeAddress(obj []byte, hrp string, version, prefix int) (string, error) {
 	var data []byte
 	switch version {
 	case AddrP2PKH, AddrP2SH:
-		data = obj
+		data = obj.Bytes()
 	case AddrP2WPKHinP2SH:
 		redeem := append([]byte(nil), 0)
 		redeem = append(redeem, 0x14)
-		kh := bitcoin.Hash160(obj)
+		kh := bitcoin.Hash160(obj.Bytes())
 		redeem = append(redeem, kh...)
 		data = redeem
 	default:
@@ -150,13 +153,14 @@ func makeAddress(obj []byte, hrp string, version, prefix int) (string, error) {
 	return bitcoin.Base58Encode(addr), nil
 }
 
-func makeAddressSegWit(obj []byte, hrp string, version int) (string, error) {
+func makeAddressSegWit(obj Serializable, hrp string, version int) (string, error) {
 	// compute address data
 	var data []byte
 	switch version {
 	case AddrP2WPKH:
-		data = bitcoin.Hash160(obj)
+		data = bitcoin.Hash160(obj.Bytes())
 	case AddrP2WSH:
+		fallthrough
 	default:
 		return "", ErrMkAddrVersion
 	}
@@ -195,7 +199,7 @@ func makeAddressETH(key *bitcoin.PublicKey, coin, version, network, prefix int) 
 func makeAddressBCH(key *bitcoin.PublicKey, coin, version, network, prefix int) (string, error) {
 	// segwit handling is generic
 	if version == AddrP2WPKHinP2SH || version == AddrP2WPKH {
-		return makeAddress(key.Bytes(), "bc", version, prefix)
+		return makeAddress(key, "bc", version, prefix)
 	}
 	// special handling for P2PKH addresses
 	// get data for address
@@ -252,4 +256,65 @@ func makeAddressBCH(key *bitcoin.PublicKey, coin, version, network, prefix int) 
 	res := new(bytes.Buffer)
 	_ = binary.Write(res, binary.BigEndian, crc(values))
 	return addr + strings.Trim(b32.EncodeToString(res.Bytes()[3:]), "="), nil
+}
+
+//----------------------------------------------------------------------
+// Helper functions for Bech32
+//----------------------------------------------------------------------
+
+// Bech32Bit5 splits a byte array into 5-bit chunks
+func Bech32Bit5(data []byte) []byte {
+	size := len(data) * 8
+	v := new(big.Int).SetBytes(data)
+	pad := size % 5
+	if pad != 0 {
+		v = new(big.Int).Lsh(v, uint(5-pad))
+	}
+	num := (size + 4) / 5
+	res := make([]byte, num)
+	for i := num - 1; i >= 0; i-- {
+		res[i] = byte(v.Int64() & 31)
+		v = new(big.Int).Rsh(v, 5)
+	}
+	return res
+}
+
+func Bech32CRC(hrp string, data []byte) (crc []byte) {
+	buf := new(bytes.Buffer)
+	buf.Write(bech32ExpandHRP(hrp))
+	buf.Write(data)
+	buf.Write([]byte{0, 0, 0, 0, 0, 0})
+	pm := bech32Polymod(buf.Bytes()) ^ 1
+	crc = make([]byte, 6)
+	for i := range crc {
+		crc[i] = byte((pm >> (5 * (5 - i))) & 31)
+	}
+	return
+}
+
+func bech32Polymod(data []byte) (chk uint32) {
+	gen := []uint32{0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3}
+	chk = 1
+	for _, v := range data {
+		b := (chk >> 25)
+		chk = (chk&0x1ffffff)<<5 ^ uint32(v)
+		for i, g := range gen {
+			if (b>>i)&1 == 1 {
+				chk ^= g
+			}
+		}
+	}
+	return chk
+}
+
+func bech32ExpandHRP(hrp string) (buf []byte) {
+	n := len(hrp)
+	buf = make([]byte, 2*n+1)
+	buf[n] = 0
+	for i, c := range hrp {
+		b := byte(c)
+		buf[i] = b >> 5
+		buf[i+n+1] = b & 31
+	}
+	return
 }
