@@ -20,6 +20,8 @@
 
 package data
 
+import "sync/atomic"
+
 // GeneratorChannel is used as a link between the generator boilerplate
 // and a generator function.
 type GeneratorChannel[T any] chan T
@@ -73,7 +75,7 @@ type GeneratorFunction[T any] func(GeneratorChannel[T])
 type Generator[T any] struct {
 	out    chan T
 	ctrl   chan int
-	active bool
+	active atomic.Bool
 }
 
 // NewGenerator runs the generator function in a go-routine.
@@ -85,7 +87,7 @@ func NewGenerator[T any](gen GeneratorFunction[T]) *Generator[T] {
 	g := new(Generator[T])
 	g.out = make(chan T)
 	g.ctrl = make(chan int)
-	g.active = true
+	g.active.Store(true)
 	var null T
 	go func() {
 		ch := make(GeneratorChannel[T])
@@ -97,25 +99,25 @@ func NewGenerator[T any](gen GeneratorFunction[T]) *Generator[T] {
 				if !ok {
 					break loop
 				}
-				if !g.active {
+				if !g.active.Load() {
 					ch.Done()
 					break loop
 				}
 				g.out <- x
 				ch <- null
 			case <-g.ctrl:
-				g.active = false
+				g.active.Store(false)
 			}
 		}
 		close(g.out)
-		g.active = false
+		g.active.Store(false)
 	}()
 	return g
 }
 
 // Run returns a (read) channel from the generator.
 func (g *Generator[T]) Run() <-chan T {
-	if !g.active {
+	if !g.active.Load() {
 		panic("inactive generator can't be run")
 	}
 	return g.out
@@ -123,10 +125,17 @@ func (g *Generator[T]) Run() <-chan T {
 
 // Stop the generator (no more values expected).
 func (g *Generator[T]) Stop() {
-	if !g.active {
-		panic("inactive generator can't be stopped")
+	if !g.active.Load() {
+		return
 	}
-	<-g.out
-	g.ctrl <- 0
-	<-g.out
+
+	var done atomic.Bool
+	done.Store(false)
+	go func() {
+		g.ctrl <- 0
+		done.Store(true)
+	}()
+	for !done.Load() {
+		<-g.out
+	}
 }
