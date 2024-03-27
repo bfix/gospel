@@ -74,7 +74,7 @@ SPDX-License-Identifier: AGPL3.0-or-later
 
 ## Install
 
-This version (`v1.2.28`) is designed for the Go1.20+ release to make use
+This version (`v1.2.28`) is designed for the Go1.22+ release to make use
 of new language features.
 
 If you only want to use the library in your projects, you don't have to
