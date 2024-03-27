@@ -1,10 +1,5 @@
 
-[![Build Status](https://travis-ci.org/bfix/gospel.svg?branch=master)](https://travis-ci.org/bfix/gospel)
-[![Go Report Card](https://goreportcard.com/badge/github.com/bfix/gospel)](https://goreportcard.com/report/github.com/bfix/gospel)
-[![GoDoc](https://godoc.org/github.com/bfix/gospel?status.svg)](https://godoc.org/github.com/bfix/gospel)
-
-Gospel: GO SPEcial Library (v1.2.25)
-====================================
+# Gospel: GO SPEcial Library (v1.2.28)
 
 (c) 2011-2023 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
@@ -23,66 +18,72 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 SPDX-License-Identifier: AGPL3.0-or-later
 
-Packages
---------
+[![Build Status](https://travis-ci.org/bfix/gospel.svg?branch=master)](https://travis-ci.org/bfix/gospel)
+[![Go Report Card](https://goreportcard.com/badge/github.com/bfix/gospel)](https://goreportcard.com/report/github.com/bfix/gospel)
+[![GoDoc](https://godoc.org/github.com/bfix/gospel?status.svg)](https://godoc.org/github.com/bfix/gospel)
+
+## Packages
 
 - gospel/network: Network-related functionality
-    * services
-    * packet handling
-    * SOCKS5 connection handler
-    * SMTP/POP3 mail handling
+  - services
+  - packet handling
+  - SOCKS5 connection handler
+  - SMTP/POP3 mail handling
 - gospel/network/p2p:
-    * P2P core library
+  - P2P core library
 - gospel/network/tor:
-    * Tor controller
-    * hidden services (onion handling)
-    * Tor utilities
+  - Tor controller
+  - hidden services (onion handling)
+  - Tor utilities
 - gospel/network/tor/tools:
-    * TorAuthCookie
+  - TorAuthCookie
 - gospel/bitcoin:
-    * Elliptic curve crypto (Secp256k1)
-    * Bitcoin addresses (and derived coins)
-    * key exchange
-    * hash functions (Hash160, Hash256)
-    * base58 encoding
+  - Elliptic curve crypto (Secp256k1)
+  - Bitcoin addresses (and derived coins)
+  - key exchange
+  - hash functions (Hash160, Hash256)
+  - base58 encoding
 - gospel/bitcoin/wallet:
-    * HD key space
-    * BIP39 seed words
+  - HD key space
+  - BIP39 seed words
 - gospel/bitcoin/script: Bitcoin script parser/interpreter
 - gospel/bitcoin/tools:
-    * passphrase2seed
-    * vanityaddress
+  - passphrase2seed
+  - vanityaddress
 - gospel/math: Mathematical helpers
-    * Fast Fourier Transformation
-    * Arbitrary precision integers with chainable methods
+  - Fast Fourier Transformation
+  - Arbitrary precision integers with chainable methods
 - gospel/crypto: cryptographic helpers
-    * secret sharing
-    * prime fields
-    * PRNG
-    * Paillier crypto scheme
-    * cryptographic counters
+  - secret sharing
+  - prime fields
+  - PRNG
+  - Paillier crypto scheme
+  - cryptographic counters
 - gospel/crypto/ed25519:
-    * general purpose Ed25519 crypto
+  - general purpose Ed25519 crypto
 - gospel/logger: logging facilities
 - gospel/concurrent:
-    * Signaller (signal dispatcher)
+  - Signaller (signal relay)
+  - Dispatcher (Workload distribution to go-routine)
 - gospel/data:
-    * Marshal/Unmarshal Golang objects
-    * Bloom filter
+  - Marshal/Unmarshal Golang objects
+  - Bloom filter
+  - Generators
+  - S-expressions
 - gospel/parser: Read/access/write nested data structures
 
-Install
--------
+## Install
 
-This version (`v1.2.25`) is designed for the Go1.20+ release to make use
+This version (`v1.2.28`) is designed for the Go1.20+ release to make use
 of new language features.
 
 If you only want to use the library in your projects, you don't have to
-install anything. Just include `github.com/bfix/gospel v1.2.25` in your
+install anything. Just include `github.com/bfix/gospel v1.2.28` in your
 `go.mod` file and do a `go mod tidy`.
 
-You can install Gospel locally if desired. Make sure that your Go environment
-- especially ${GOPATH} - is set up and enter the following commands:
+You can install Gospel locally if desired. Make sure that your Go
+environment - especially ${GOPATH} - is set up and enter the
+following commands:
 
 ```bash
 git clone get https://github.com/bfix/gospel
@@ -90,10 +91,9 @@ cd gospel
 go mod tidy
 ```
 
-Test notes
-----------
+## Test notes
 
-## Network-related tests
+### Network-related tests
 
 #### 1. Tor-related tests
 
