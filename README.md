@@ -1,5 +1,5 @@
 
-# Gospel: GO SPEcial Library (v1.2.28)
+# Gospel: GO SPEcial Library (v1.2.29)
 
 Copyright (c) 2011-present, Bernd Fix <brf@hoi-polloi.org>   >Y<
 
@@ -75,11 +75,11 @@ SPDX-License-Identifier: AGPL3.0-or-later
 
 ## Install
 
-This version (`v1.2.28`) is designed for the Go1.22+ release to make use
+This version (`v1.2.29`) is designed for the Go1.22+ release to make use
 of new language features.
 
 If you only want to use the library in your projects, you don't have to
-install anything. Just include `github.com/bfix/gospel v1.2.28` in your
+install anything. Just include `github.com/bfix/gospel v1.2.29` in your
 `go.mod` file and do a `go mod tidy`.
 
 You can install Gospel locally if desired. Make sure that your Go
