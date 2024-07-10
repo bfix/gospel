@@ -2,7 +2,7 @@ package tor
 
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-2023 Bernd Fix  >Y<
+// Copyright (C) 2011-present, Bernd Fix  >Y<
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published

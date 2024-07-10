@@ -1,7 +1,7 @@
 
 # Gospel: GO SPEcial Library (v1.2.28)
 
-(c) 2011-2023 Bernd Fix <brf@hoi-polloi.org>   >Y<
+Copyright (c) 2011-present, Bernd Fix <brf@hoi-polloi.org>   >Y<
 
 Gospel is free software: you can redistribute it and/or modify it
 under the terms of the GNU Affero General Public License as published
@@ -69,6 +69,7 @@ SPDX-License-Identifier: AGPL3.0-or-later
   - Marshal/Unmarshal Golang objects
   - Bloom filter
   - Generators
+  - Permutations
   - S-expressions
 - gospel/parser: Read/access/write nested data structures
 
