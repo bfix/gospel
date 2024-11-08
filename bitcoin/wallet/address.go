@@ -87,16 +87,15 @@ func MakeAddress(obj any, coin, version, network int) (string, error) {
 	// get prefix (and optional addresser)
 	prefix, hrp, conv := getPrefix(coin, version, network)
 
-	// if no prefix is found, we can't create address
-	if prefix == -1 {
-		return "", ErrMkAddrPrefix
-	}
 	// handle address based on generating object type
 	switch x := obj.(type) {
 	case *bitcoin.PublicKey:
 		// call a custom conversion function
 		if conv != nil {
 			return conv(x, coin, version, network, prefix)
+		}
+		if prefix == -1 {
+			return "", ErrMkAddrPrefix
 		}
 		// sanity check: only certain versions allowed
 		switch version {
@@ -108,7 +107,7 @@ func MakeAddress(obj any, coin, version, network int) (string, error) {
 
 	case *script.Script:
 		// sanity check: only P2SH allowed
-		if version != AddrP2SH {
+		if version != AddrP2SH || prefix == -1 {
 			return "", ErrMkAddrVersion
 		}
 		return makeAddress(x, hrp, version, prefix)
