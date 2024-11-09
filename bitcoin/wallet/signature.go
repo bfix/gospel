@@ -34,6 +34,7 @@ import (
 var (
 	ErrSigRecoverFail = errors.New("invalid key recovery from signature")
 	ErrSigInvalidHdr  = errors.New("invalid signature header")
+	ErrSigFailed      = errors.New("failed to create signature")
 
 	msgHdr = []byte("Bitcoin Signed Message:\n")
 )
@@ -140,6 +141,40 @@ func VerifyBitcoinMsg(addr, b64sig, msg string) (ok bool, err error) {
 	return
 }
 
+// SignBitcoinMsg returns a base64-encoded Bitcoin signature for a given
+// message and private key.
+// CAVEAT: This only works for P2PKH addresses.
+func SignBitcoinMsg(pk *bitcoin.PrivateKey, msg string) (b64sig string, err error) {
+	// create signature
+	data := formatMessageForSigning(msg)
+	hash := bitcoin.Hash256(data)
+	sig := bitcoin.Sign(pk, hash)
+
+	// compute recovery ID for the signature
+	var recId, i byte = 0xff, 0
+	for i = 0; i < 4; i++ {
+		k, ok := recoverFromSignatureHash(i, sig, hash, pk.IsCompressed)
+		if ok && k.Q.Equals(pk.Q) {
+			recId = i
+			break
+		}
+	}
+	if recId == 0xff {
+		err = ErrSigFailed
+		return
+	}
+	hdr := recId + 27
+	if pk.IsCompressed {
+		hdr += 4
+	}
+	buf := new(bytes.Buffer)
+	buf.WriteByte(hdr)
+	buf.Write(sig.R.Bytes())
+	buf.Write(sig.S.Bytes())
+	b64sig = base64.StdEncoding.EncodeToString(buf.Bytes())
+	return
+}
+
 //----------------------------------------------------------------------
 // helper functions
 //----------------------------------------------------------------------
@@ -147,10 +182,13 @@ func VerifyBitcoinMsg(addr, b64sig, msg string) (ok bool, err error) {
 // recoverFromSignature returns the public key of the signing key used to
 // generate the Bitcoin signature for a message.
 func recoverFromSignature(recId byte, sig *bitcoin.Signature, msg string, compr bool) (pk *bitcoin.PublicKey, ok bool) {
-
-	// create message hash from formatted message
 	hash := bitcoin.Hash256(formatMessageForSigning(msg))
+	return recoverFromSignatureHash(recId, sig, hash, compr)
+}
 
+// recoverFromSignatureHash returns the public key of the signing key used to
+// generate the Bitcoin signature for a message hash.
+func recoverFromSignatureHash(recId byte, sig *bitcoin.Signature, hash []byte, compr bool) (pk *bitcoin.PublicKey, ok bool) {
 	// reconstruct public key from signature
 	n := bitcoin.GetCurve().N
 	p := bitcoin.GetCurve().P
