@@ -130,7 +130,7 @@ func NewRuntime(tx *Tx) *R {
 // current transaction in dissected format already prepared for signature.
 func (r *R) ExecScript(script *Script) (bool, int) {
 	r.script = script
-	if r.script.Stmts == nil || len(r.script.Stmts) == 0 {
+	if len(r.script.Stmts) == 0 {
 		return false, RcEmptyScript
 	}
 	r.pos = 0
