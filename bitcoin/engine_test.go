@@ -40,7 +40,7 @@ func TestEngine(t *testing.T) {
 func TestHash(t *testing.T) {
 	i := nRnd(math.ONE)
 	h := i.Bytes()
-	j := convertHash(h)
+	j := ConvertHash(h)
 	if i.Cmp(j) != 0 {
 		t.Fatal("convertHash failed")
 	}

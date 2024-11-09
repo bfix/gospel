@@ -22,14 +22,33 @@ package bitcoin
 
 import (
 	"encoding/asn1"
+	"errors"
 	"math/big"
 
 	"github.com/bfix/gospel/math"
 )
 
+var (
+	ErrSigInvalid = errors.New("invalid ECDSA signature")
+)
+
 // Signature is a Bitcoin signature in scripts.
 type Signature struct {
 	R, S *math.Int
+}
+
+func NewSignatureFromBytes(b []byte) (sig *Signature, err error) {
+	if len(b) != 64 {
+		return nil, ErrSigInvalid
+	}
+	n := GetCurve().N
+	r := math.NewIntFromBytes(b[:32])
+	s := math.NewIntFromBytes(b[32:])
+	if r.Equals(math.ZERO) || r.Cmp(n) >= 0 || s.Equals(math.ZERO) || s.Cmp(n) >= 0 {
+		err = ErrSigInvalid
+		return
+	}
+	return &Signature{r, s}, nil
 }
 
 // NewSignatureFromASN1 returns a signature from an ASN.1-encoded sequence.
@@ -74,7 +93,7 @@ func Sign(key *PrivateKey, hash []byte) *Signature {
 			}
 		}
 		// compute value of 's := (rd + e)/k'
-		e := convertHash(hash)
+		e := ConvertHash(hash)
 		sig.S = nMul(nMul(key.D, sig.R).Add(e), invK)
 		if sig.S.Sign() != 0 {
 			break
@@ -95,7 +114,7 @@ func Verify(key *PublicKey, hash []byte, sig *Signature) bool {
 		return false
 	}
 	// check signature
-	e := convertHash(hash)
+	e := ConvertHash(hash)
 	w := nInv(sig.S)
 
 	u1 := e.Mul(w)
@@ -113,7 +132,7 @@ func Verify(key *PublicKey, hash []byte, sig *Signature) bool {
 
 // convert hash value to integer
 // [http://www.secg.org/download/aid-780/sec1-v2.pdf]
-func convertHash(hash []byte) *math.Int {
+func ConvertHash(hash []byte) *math.Int {
 	// trim hash value (if required)
 	maxSize := (c.N.BitLen() + 7) / 8
 	if len(hash) > maxSize {

@@ -261,6 +261,26 @@ func makeAddressBCH(key *bitcoin.PublicKey, coin, version, network, prefix int) 
 // Helper functions for Bech32
 //----------------------------------------------------------------------
 
+func Bech32(prefix string, data []byte) string {
+
+	// encode data to 5-bit sequence and add leading witness version
+	buf := new(bytes.Buffer)
+	buf.WriteByte(0) // witness version
+	buf.Write(Bech32Bit5(data))
+
+	// compute checksum and append to buffer
+	crc := Bech32CRC(prefix, buf.Bytes())
+	buf.Write(crc)
+
+	// encode to Bech32 charset
+	b32enc := "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+	addr := ""
+	for _, v := range buf.Bytes() {
+		addr += string(b32enc[v])
+	}
+	return prefix + "1" + addr
+}
+
 // Bech32Bit5 splits a byte array into 5-bit chunks
 func Bech32Bit5(data []byte) []byte {
 	size := len(data) * 8
