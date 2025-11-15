@@ -143,6 +143,6 @@ func SplitNetworkEndpoint(networkendp string) (network string, endp string, err 
 	case "tcp", "tcp4", "tcp6", "udp", "udp4", "udp6":
 		return
 	}
-	err = gerr.New(ErrNetInvalidNetwork, network)
+	err = gerr.New(ErrNetInvalidNetwork, "%s", network)
 	return
 }

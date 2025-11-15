@@ -182,7 +182,7 @@ func (sess *POP3Session) Close() (err error) {
 // containing a single dot.
 func (sess *POP3Session) Exec(cmd string, expectData bool) ([]string, error) {
 	if len(cmd) > 0 {
-		if err := sess.conn.PrintfLine(cmd); err != nil {
+		if err := sess.conn.PrintfLine("%s", cmd); err != nil {
 			return nil, err
 		}
 	}

@@ -162,7 +162,7 @@ func Socks5ConnectTimeout(proto string, addr string, port int, proxy string, tim
 		return
 	}
 	if data[1] != 0 {
-		err = gerr.New(ErrSocksProxyFailed, socksState[data[1]])
+		err = gerr.New(ErrSocksProxyFailed, "%s", socksState[data[1]])
 		conn.Close()
 		return
 	}

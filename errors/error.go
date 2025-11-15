@@ -41,7 +41,7 @@ func (e *Error) Error() string {
 }
 
 // New creates a new Error instance
-func New(err error, format string, args ...interface{}) *Error {
+func New(err error, format string, args ...any) *Error {
 	return &Error{
 		Err: err,
 		Ctx: fmt.Sprintf(format, args...),
