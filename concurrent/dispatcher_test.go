@@ -33,6 +33,7 @@ import (
 )
 
 type TestDispatchable struct {
+	busy  atomic.Int32
 	best  atomic.Int32
 	check func(i int64) (int32, []byte)
 }
@@ -40,9 +41,10 @@ type TestDispatchable struct {
 func NewTestDispatchable() *TestDispatchable {
 	d := new(TestDispatchable)
 	d.best.Store(257)
+	d.busy.Store(0)
 
 	d.check = func(i int64) (int32, []byte) {
-		pp := []byte(fmt.Sprintf("%d", i))
+		pp := fmt.Appendf(nil, "%d", i)
 		buf, _ := scrypt.Key(pp, []byte("test"), 65536, 8, 1, 32)
 		h := sha256.Sum256(buf)
 		v := math.NewIntFromBytes(h[:])
@@ -58,11 +60,13 @@ func (d *TestDispatchable) Worker(ctx context.Context, n int, taskCh chan int64,
 			return
 
 		case i := <-taskCh:
+			d.busy.Add(1)
 			j, _ := d.check(i)
 			if j < d.best.Load() {
 				d.best.Store(j)
 				resCh <- i
 			}
+			d.busy.Add(-1)
 		}
 	}
 }
@@ -71,6 +75,10 @@ func (d *TestDispatchable) Eval(result int64) bool {
 	j, h := d.check(result)
 	fmt.Printf("got: %d -- [%d] %s\n", result, j, hex.EncodeToString(h))
 	return j < 250
+}
+
+func (d *TestDispatchable) Busy() int {
+	return int(d.busy.Load())
 }
 
 func TestWorker(t *testing.T) {

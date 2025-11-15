@@ -24,6 +24,7 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // Dispatchable interface
@@ -34,14 +35,17 @@ type Dispatchable[T, R any] interface {
 
 	// Eval receives results from workers
 	Eval(result R) bool
+
+	// Busy returns the number of busy workes
+	Busy() int
 }
 
 // Dispatcher managing worker go-routines
 type Dispatcher[T, R any] struct {
-	taskCh  chan T
-	resCh   chan R
-	ctrl    chan int
-	running atomic.Bool
+	taskCh chan T
+	resCh  chan R
+	ctrl   chan int
+	state  atomic.Int32
 }
 
 // NewDispatcher runs a new dispatcher with given number of workers and
@@ -63,14 +67,20 @@ func NewDispatcher[T, R any](ctx context.Context, numWorker int, disp Dispatchab
 	}
 
 	// run dispatcher loop
-	d.running.Store(true)
+	d.state.Store(1)
 	go func() {
 		// clean-up on exit
 		defer func() {
-			d.running.Store(false)
-			wg.Wait()
+			// no new tasks possible
+			d.state.Store(0)
+			// wait while workers are busy
+			for disp.Busy() > 0 {
+				time.Sleep(time.Second)
+			}
 			close(d.taskCh)
 			close(d.resCh)
+			wg.Wait()
+			d.state.Store(-1)
 		}()
 
 		ctxD, cancel := context.WithCancel(ctx)
@@ -98,7 +108,7 @@ func NewDispatcher[T, R any](ctx context.Context, numWorker int, disp Dispatchab
 
 // Process a task. Returns false if the dispatcher is closed.
 func (d *Dispatcher[T, R]) Process(task T) bool {
-	if !d.running.Load() {
+	if d.state.Load() != 1 {
 		return false
 	}
 	d.taskCh <- task
@@ -108,4 +118,11 @@ func (d *Dispatcher[T, R]) Process(task T) bool {
 // Quit dispatcher run
 func (d *Dispatcher[T, R]) Quit() {
 	d.ctrl <- 0
+}
+
+// Wait for dispatcher to terminate
+func (d *Dispatcher[T, R]) Wait() {
+	for d.state.Load() != -1 {
+		time.Sleep(5 * time.Second)
+	}
 }
