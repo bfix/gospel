@@ -75,7 +75,9 @@ loop:
 		switch {
 		case tDiff > 3600*24*7:
 			// cut off tail
-			next.prev = nil
+			if next != nil {
+				next.prev = nil
+			}
 			lim.first = next
 			// drop out-of-range entries (one week)
 			for e != nil {
