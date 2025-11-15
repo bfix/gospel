@@ -26,7 +26,7 @@ import (
 
 func TestIntBytes(t *testing.T) {
 	c := TWO.Pow(256)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		a := NewIntRnd(c)
 		b := NewIntFromBytes(a.Bytes())
 		if !a.Equals(b) {
@@ -63,7 +63,7 @@ func TestExtendedEuclid(t *testing.T) {
 func TestSqrt(t *testing.T) {
 	p := NewIntRndPrimeBits(10)
 	count := 0
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		g := NewIntRnd(p)
 		if g.Legendre(p) == 1 {
 			count++

@@ -142,6 +142,18 @@ func (i *Int) ProbablyPrime(n int) bool {
 	return i.v.ProbablyPrime(n)
 }
 
+// NextProbablePrime returns the smallest prime larger than i,
+func (i *Int) NextProbablePrime(n int) (j *Int) {
+	j = i
+	for {
+		j = j.Add(ONE)
+		if j.ProbablyPrime(n) {
+			break
+		}
+	}
+	return
+}
+
 // Add two Ints
 func (i *Int) Add(j *Int) *Int {
 	return &Int{v: new(big.Int).Add(i.v, j.v)}
