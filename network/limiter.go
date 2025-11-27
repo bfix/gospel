@@ -21,6 +21,7 @@
 package network
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -125,7 +126,7 @@ loop:
 }
 
 // Pass waits for a rate limit-compliant delay before passing a new request
-func (lim *RateLimiter) Pass() {
+func (lim *RateLimiter) Pass(ctx context.Context) {
 	// only one request at a time
 	lim.lock.Lock()
 	lim.intern = true
@@ -136,16 +137,37 @@ func (lim *RateLimiter) Pass() {
 
 	// get current rate statistics
 	stats := lim.Stats()
-	delay := stats.Wait()
 	// delay for given time
-	if delay > 0 {
-		logger.Printf(logger.DBG, "RateLimit: Delaying for %d seconds", delay)
-		time.Sleep(time.Duration(delay) * time.Second)
+	if wait := time.Duration(stats.Wait()) * time.Second; wait > 0 {
+		logger.Printf(logger.DBG, "RateLimit: Delaying for %s", delay)
+		if !lim.Delay(ctx, wait) {
+			logger.Println(logger.DBG, "RateLimit: aborted wait")
+			return
+		}
 	}
 	// prepend new request at beginning of list
 	e := newEntry()
 	e.prev = lim.last
 	lim.last = e
+}
+
+// Delay for a specified wait time.
+func (lim *RateLimiter) Delay(ctx context.Context, wait time.Duration) bool {
+	if wait > 0 {
+		clk := time.NewTimer(wait)
+		for {
+			select {
+			case <-ctx.Done():
+				// aborted
+				return false
+			case <-clk.C:
+				// done waiting
+				return true
+			}
+		}
+	}
+	// all good (no delay)
+	return true
 }
 
 //----------------------------------------------------------------------

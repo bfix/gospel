@@ -21,6 +21,7 @@
 package network
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -40,15 +41,11 @@ func TestRateLimiter(t *testing.T) {
 	}
 
 	lim := NewRateLimiter(5, 150, 450, 5000, 20000)
-	for i := 0; i < 100; i++ {
+	ctx := context.Background()
+	for range 100 {
 		time.Sleep(100 * time.Millisecond)
 		stats := lim.Stats()
 		prt(stats)
-		delay := stats.Wait()
-		t.Logf("Delaying %d seconds...\n", delay)
-		time.Sleep(time.Duration(delay) * time.Second)
-		e := newEntry()
-		e.prev = lim.last
-		lim.last = e
+		lim.Pass(ctx)
 	}
 }
