@@ -1,5 +1,5 @@
 
-# Gospel: GO SPEcial Library (v1.2.29)
+# Gospel: GO SPEcial Library (v1.2.33)
 
 Copyright (c) 2011-present, Bernd Fix <brf@hoi-polloi.org>   >Y<
 
@@ -29,6 +29,7 @@ SPDX-License-Identifier: AGPL3.0-or-later
   - packet handling
   - SOCKS5 connection handler
   - SMTP/POP3 mail handling
+  - rate limiter
 - gospel/network/p2p:
   - P2P core library
 - gospel/network/tor:
@@ -53,6 +54,8 @@ SPDX-License-Identifier: AGPL3.0-or-later
 - gospel/math: Mathematical helpers
   - Fast Fourier Transformation
   - Arbitrary precision integers with chainable methods
+  - k-nacci sequences
+  - large integer factorization
 - gospel/crypto: cryptographic helpers
   - secret sharing
   - prime fields
@@ -75,11 +78,11 @@ SPDX-License-Identifier: AGPL3.0-or-later
 
 ## Install
 
-This version (`v1.2.29`) is designed for the Go1.22+ release to make use
+This version (`v1.2.33`) is designed for the Go1.22+ release to make use
 of new language features.
 
 If you only want to use the library in your projects, you don't have to
-install anything. Just include `github.com/bfix/gospel v1.2.29` in your
+install anything. Just include `github.com/bfix/gospel v1.2.33` in your
 `go.mod` file and do a `go mod tidy`.
 
 You can install Gospel locally if desired. Make sure that your Go
