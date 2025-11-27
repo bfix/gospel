@@ -5,8 +5,8 @@ go 1.25
 require (
 	github.com/ProtonMail/go-crypto v1.3.0
 	github.com/huin/goupnp v1.3.0
-	golang.org/x/crypto v0.43.0
-	golang.org/x/text v0.30.0
+	golang.org/x/crypto v0.45.0
+	golang.org/x/text v0.31.0
 )
 
 require (
