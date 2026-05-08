@@ -18,18 +18,20 @@
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
-package math
+package data
 
 import (
 	"bytes"
 	"fmt"
 	"slices"
 	"testing"
+
+	"github.com/bfix/gospel/math"
 )
 
 func TestFibIO(t *testing.T) {
 
-	kn1 := NewKnacci(8, NewInt(1048573))
+	kn1 := NewKnacci(8, math.NewInt(1048573))
 	for range 10000 {
 		kn1.Next()
 	}
@@ -38,7 +40,7 @@ func TestFibIO(t *testing.T) {
 	b1 := d1.Bytes()
 
 	d2 := new(bytes.Buffer)
-	kn2 := NewKnacci(8, NewInt(1048573))
+	kn2 := NewKnacci(8, math.NewInt(1048573))
 	var err error
 	for range 10000 {
 		step, _ := kn2.Next()
@@ -60,13 +62,13 @@ func TestFibIO(t *testing.T) {
 }
 
 func TestFib1(t *testing.T) {
-	N := NewInt(1048573)
-	d := NewIntRndRange(THREE, N)
-	init := []*Int{
+	N := math.NewInt(1048573)
+	d := math.NewIntRndRange(math.THREE, N)
+	init := []*math.Int{
 		d,
-		NewInt(2),
-		NewInt(3),
-		NewInt(5),
+		math.NewInt(2),
+		math.NewInt(3),
+		math.NewInt(5),
 	}
 	kn := NewKnacciInt(N, init...)
 	f2, p1, p2 := kn.Recurrence(1e9, "")
