@@ -136,12 +136,13 @@ func ParseCSExpr(buf []byte) (root *SExpr, err error) {
 			err = x
 			return
 		case uint8:
-			if x == '(' {
+			switch x {
+			case '(':
 				child := NewSExpr()
 				child.parent = curr
 				curr.atoms = append(curr.atoms, child)
 				curr = child
-			} else if x == ')' {
+			case ')':
 				curr = curr.parent
 				if curr == nil {
 					return
@@ -203,12 +204,13 @@ func ParseSExpr(line string) (root *SExpr, err error) {
 			err = x
 			return
 		case uint8:
-			if x == '(' {
+			switch x {
+			case '(':
 				child := NewSExpr()
 				child.parent = curr
 				curr.atoms = append(curr.atoms, child)
 				curr = child
-			} else if x == ')' {
+			case ')':
 				curr = curr.parent
 				if curr == nil {
 					return
