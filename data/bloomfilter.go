@@ -31,10 +31,10 @@ import (
 // BloomFilterBase for custom bloom filter implementations
 // (e.g. simple, salted, counting, ...)
 type BloomFilterBase struct {
-	NumBits    int64 `size:"big" json:"numBits"` // number of bits in filter
-	NumIdx     uint8 `size:"big" json:"numIdx"`  // number of indices
-	NumIdxBits uint8 `json:"numIdxBits"`         // number of bits per index
-	NumHash    uint8 `json:"numHash"`            // number of SHA256 hashes needed
+	NumBits    int64 `json:"numBits"`    // number of bits in filter ('m')
+	NumIdx     uint8 `json:"numIdx"`     // number of indices ('k')
+	NumIdxBits uint8 `json:"numIdxBits"` // number of bits per index
+	NumHash    uint8 `json:"numHash"`    // number of SHA256 hashes needed
 }
 
 // Helper method to extract the list of indices for an entry.
@@ -76,8 +76,7 @@ type BloomFilter struct {
 
 // NewBloomFilterDirect creates a new BloomFilter based on the number of bits
 // in the filter and the number of indices to be used.
-func NewBloomFilterDirect(numBits int64, numIdx int) *BloomFilter {
-	numIdxBits := int(math.Ceil(math.Log2(float64(numBits))))
+func NewBloomFilterDirect(numBits int64, numIdx, numIdxBits int) *BloomFilter {
 	return &BloomFilter{
 		BloomFilterBase: BloomFilterBase{
 			NumBits:    numBits,
@@ -92,12 +91,13 @@ func NewBloomFilterDirect(numBits int64, numIdx int) *BloomFilter {
 // NewBloomFilter creates a new BloomFilter based on the upper-bounds for the
 // number of entries and the "false-positive" rate.
 func NewBloomFilter(numExpected int64, falsePositiveRate float64) *BloomFilter {
-	// do some math and calculate the number of indices and number of bits
+	// calculate the number of indices and number of bits
 	// in the new BloomFilter given an upper-bound for the number of entries
 	// and the "false-positive" rate.
 	numIdx := int(math.Ceil(-math.Log2(falsePositiveRate)))
 	numBits := int64(float64(int64(numIdx)*numExpected) / math.Ln2)
-	return NewBloomFilterDirect(numBits, numIdx)
+	numIdxBits := int((numBits + numExpected - 1) / numExpected)
+	return NewBloomFilterDirect(numBits, numIdx, numIdxBits)
 }
 
 // BitsSize returns the size of the byte array representing the filter bits.
@@ -183,10 +183,10 @@ type SaltedBloomFilter struct {
 
 // NewSaltedBloomFilterDirect creates a new salted BloomFilter based on
 // the number of bits in the filter and the number of indices to be used.
-func NewSaltedBloomFilterDirect(salt uint32, numBits int64, numIdx int) *SaltedBloomFilter {
+func NewSaltedBloomFilterDirect(salt uint32, numBits int64, numIdx, numIdxBits int) *SaltedBloomFilter {
 	bf := &SaltedBloomFilter{
 		Salt:        make([]byte, 4),
-		BloomFilter: *NewBloomFilterDirect(numBits, numIdx),
+		BloomFilter: *NewBloomFilterDirect(numBits, numIdx, numIdxBits),
 	}
 	bf.setSalt(salt)
 	return bf
@@ -263,8 +263,7 @@ type CountingBloomFilter struct {
 
 // NewCoutingBloomFilterDirect creates a new BloomFilter based on the
 // number of bits in the filter and the number of indices to be used.
-func NewCountingBloomFilterDirect(numBits int64, numIdx int) *CountingBloomFilter {
-	numIdxBits := int(math.Ceil(math.Log2(float64(numBits))))
+func NewCountingBloomFilterDirect(numBits int64, numIdx, numIdxBits int) *CountingBloomFilter {
 	return &CountingBloomFilter{
 		BloomFilterBase: BloomFilterBase{
 			NumBits:    numBits,
@@ -284,7 +283,8 @@ func NewCountingBloomFilter(numExpected int64, falsePositiveRate float64) *Count
 	// and the "false-positive" rate.
 	numIdx := int(math.Ceil(-math.Log2(falsePositiveRate)))
 	numBits := int64(float64(int64(numIdx)*numExpected) / math.Ln2)
-	return NewCountingBloomFilterDirect(numBits, numIdx)
+	numIdxBits := int((numBits + numExpected - 1) / numExpected)
+	return NewCountingBloomFilterDirect(numBits, numIdx, numIdxBits)
 }
 
 // Size returns the size of the binary representation
