@@ -271,7 +271,7 @@ func (hd *HD) Private(path string) (prv *ExtendedPrivateKey, err error) {
 		return nil, ErrHDPath
 	}
 	prv = hd.m
-	for _, id := range strings.Split(path[2:], "/") {
+	for id := range strings.SplitSeq(path[2:], "/") {
 		var (
 			j int64
 			i uint32
@@ -339,7 +339,7 @@ func (hd *HDPublic) Public(path string) (pub *ExtendedPublicKey, err error) {
 	}
 	// follow the path...
 	pub = hd.m
-	for _, id := range strings.Split(path, "/") {
+	for id := range strings.SplitSeq(path, "/") {
 		var j int64
 		j, err = strconv.ParseInt(id, 10, 32)
 		if err != nil {
