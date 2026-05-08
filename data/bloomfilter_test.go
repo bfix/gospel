@@ -44,12 +44,13 @@ func (list EntryList) Contains(e Entry) bool {
 
 func TestBloomfilter(t *testing.T) {
 
-	n := 500
+	var n int64 = 500
+	var i int64
 	fpRate := 0.0001
 
 	// generate positives (entries in the set)
 	positives := make(EntryList, n)
-	for i := 0; i < n; i++ {
+	for i = 0; i < n; i++ {
 		data := make(Entry, 32)
 		if _, err := rand.Read(data); err != nil {
 			t.Fatal(err)
@@ -60,7 +61,7 @@ func TestBloomfilter(t *testing.T) {
 
 	// generate negatives (entries outside the set)
 	negatives := make(EntryList, n)
-	for i := 0; i < n; {
+	for i = 0; i < n; {
 		data := make(Entry, 32)
 		if _, err := rand.Read(data); err != nil {
 			t.Fatal(err)
@@ -105,12 +106,13 @@ func TestBloomfilter(t *testing.T) {
 
 func TestSaltedBloomfilter(t *testing.T) {
 
-	n := 500
+	var n int64 = 500
+	var i int64
 	fpRate := 0.0001
 
 	// generate positives (entries in the set)
 	positives := make(EntryList, n)
-	for i := 0; i < n; i++ {
+	for i = 0; i < n; i++ {
 		data := make(Entry, 32)
 		if _, err := rand.Read(data); err != nil {
 			t.Fatal(err)
@@ -121,7 +123,7 @@ func TestSaltedBloomfilter(t *testing.T) {
 
 	// generate negatives (entries outside the set)
 	negatives := make(EntryList, n)
-	for i := 0; i < n; {
+	for i = 0; i < n; {
 		data := make(Entry, 32)
 		if _, err := rand.Read(data); err != nil {
 			t.Fatal(err)
@@ -167,12 +169,13 @@ func TestSaltedBloomfilter(t *testing.T) {
 
 func TestCountingBloomfilter(t *testing.T) {
 
-	n := 500
+	var n int64 = 500
+	var i int64
 	fpRate := 0.0001
 
 	// generate positives (entries in the set)
 	positives := make(EntryList, n)
-	for i := 0; i < n; i++ {
+	for i = 0; i < n; i++ {
 		data := make(Entry, 32)
 		if _, err := rand.Read(data); err != nil {
 			t.Fatal(err)
@@ -183,7 +186,7 @@ func TestCountingBloomfilter(t *testing.T) {
 
 	// generate negatives (entries outside the set)
 	negatives := make(EntryList, n)
-	for i := 0; i < n; {
+	for i = 0; i < n; {
 		data := make(Entry, 32)
 		if _, err := rand.Read(data); err != nil {
 			t.Fatal(err)
