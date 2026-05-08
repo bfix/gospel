@@ -34,6 +34,19 @@ func NewPermutation[T any](in []T) *Permutation[T] {
 	}
 }
 
+// Num returns the number of permutations
+func (p *Permutation[T]) Num() (n int64) {
+	if len(p.base) > 20 {
+		panic("too many permutations")
+	}
+	n = 1
+	for i := range len(p.base) {
+		n = n * int64(i+1)
+	}
+	return n
+}
+
+// Next returns the next permutation
 func (p *Permutation[T]) Next() (out []T, done bool) {
 	n := len(p.idx)
 	for i := n - 1; i >= 0; i-- {
