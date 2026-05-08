@@ -25,6 +25,7 @@ import (
 	"crypto/rand"
 	mrand "math/rand"
 	"sort"
+	"strconv"
 	"testing"
 )
 
@@ -242,4 +243,40 @@ func TestCountingBloomfilter(t *testing.T) {
 	if sum != 0 {
 		t.Fatal("bf not empty")
 	}
+}
+
+func TestBigBloomfilter(t *testing.T) {
+
+	var n int64 = 1e9
+	fpRate := 1e-6
+
+	// create BloomFilter
+	bf := NewBloomFilter(n, fpRate)
+
+	// add positives to bloomfilter
+	for i := range int(1e6) {
+		bf.Add([]byte(strconv.Itoa(i)))
+	}
+
+	// check lookup of positives
+	count := 0
+	for i := range int(1e6) {
+		if !bf.Contains([]byte(strconv.Itoa(i))) {
+			count++
+		}
+	}
+	if count > 0 {
+		t.Fatalf("FAILED with %d false-negatives", count)
+	}
+
+	// check lookup of negatives
+	count = 0
+	num := int(1e7)
+	for i := range num {
+		if bf.Contains([]byte(strconv.Itoa(1e7 + i))) {
+			count++
+		}
+	}
+	fpReal := float64(count) / float64(num)
+	t.Logf("false-positives: %d,  rate: %f (< %f)", count, fpReal, fpRate)
 }
