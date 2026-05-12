@@ -27,29 +27,28 @@ import (
 	"time"
 )
 
-// Dispatchable interface
+// Dispatchable interface implemented by custom work handlers
 type Dispatchable[T, R any] interface {
 
 	// Worker using channels to read task and write results.
+	// N.B.: every task received on taskCh must send a work result on resCh!
 	Worker(ctx context.Context, n int, taskCh chan T, resCh chan R)
 
-	// Eval receives results from workers
+	// Eval processes results from workers
 	Eval(result R) bool
-
-	// Busy returns the number of busy workes
-	Busy() int
 }
 
 // Dispatcher managing worker go-routines
 type Dispatcher[T, R any] struct {
-	taskCh chan T
-	resCh  chan R
-	ctrl   chan int
-	state  atomic.Int32
+	taskCh  chan T
+	resCh   chan R
+	ctrl    chan int
+	state   atomic.Int32 // -1: done, 0: shutdown, 1: active,
+	pending atomic.Int32 // number of pending results
 }
 
 // NewDispatcher runs a new dispatcher with given number of workers and
-// a Dispatchanle implementation.
+// a Dispatchable implementation.
 func NewDispatcher[T, R any](ctx context.Context, numWorker int, disp Dispatchable[T, R]) *Dispatcher[T, R] {
 	d := new(Dispatcher[T, R])
 	d.taskCh = make(chan T)
@@ -58,7 +57,7 @@ func NewDispatcher[T, R any](ctx context.Context, numWorker int, disp Dispatchab
 
 	// start worker go-routines
 	wg := new(sync.WaitGroup)
-	for n := 0; n < numWorker; n++ {
+	for n := range numWorker {
 		wg.Add(1)
 		go func(num int) {
 			defer wg.Done()
@@ -67,18 +66,20 @@ func NewDispatcher[T, R any](ctx context.Context, numWorker int, disp Dispatchab
 	}
 
 	// run dispatcher loop
+	d.pending.Store(0)
 	d.state.Store(1)
 	go func() {
 		// clean-up on exit
 		defer func() {
 			// no new tasks possible
 			d.state.Store(0)
-			// wait while workers are busy
-			for disp.Busy() > 0 {
-				time.Sleep(time.Second)
+			// empty result channel
+			for d.pending.Load() > 0 {
+				<-d.resCh
+				d.pending.Add(-1)
 			}
-			close(d.taskCh)
 			close(d.resCh)
+			close(d.taskCh)
 			wg.Wait()
 			d.state.Store(-1)
 		}()
@@ -96,6 +97,7 @@ func NewDispatcher[T, R any](ctx context.Context, numWorker int, disp Dispatchab
 
 			// handle result
 			case x := <-d.resCh:
+				d.pending.Add(-1)
 				if disp.Eval(x) {
 					cancel()
 					return
@@ -112,6 +114,7 @@ func (d *Dispatcher[T, R]) Process(task T) bool {
 		return false
 	}
 	d.taskCh <- task
+	d.pending.Add(1)
 	return true
 }
 
