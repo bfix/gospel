@@ -64,6 +64,11 @@ func (bf *BloomFilterBase) indexList(entry []byte) []int64 {
 	return list
 }
 
+// Size of the binary representation
+func (bf *BloomFilterBase) Size() uint {
+	return 11 // 3x uint8 + 1x int64
+}
+
 //----------------------------------------------------------------------
 // Generic bloomfilter
 //----------------------------------------------------------------------
@@ -114,7 +119,7 @@ func (bf *BloomFilter) BitsSize() uint {
 
 // Size returns the size of the binary representation
 func (bf *BloomFilter) Size() uint {
-	return uint(11 + len(bf.Bits))
+	return bf.BloomFilterBase.Size() + uint(len(bf.Bits))
 }
 
 // SameKind checks if two BloomFilter have the same parameters.
@@ -296,7 +301,7 @@ func NewCountingBloomFilter(numExpected int64, falsePositiveRate float64) *Count
 
 // Size returns the size of the binary representation
 func (bf *CountingBloomFilter) Size() uint {
-	return uint(7 + 4*bf.NumBits)
+	return bf.BloomFilterBase.Size() + uint(4*bf.NumBits)
 }
 
 // Add an entry to the BloomFilter.
@@ -360,4 +365,78 @@ func (bf *CountingBloomFilter) Remove(entry []byte) bool {
 		bf.Counts[idx]--
 	}
 	return true
+}
+
+//----------------------------------------------------------------------
+// Sliding bloomfilter
+//----------------------------------------------------------------------
+
+// SlidingBloomFilter allows to add an unlimited number of entries to the
+// BloomFilter, but only the last 'numExpected' entries are kept in the
+// filter. The filter is composed of multiple shards that hold a portion of
+// the added entries. If a shard is "full", a new shard is inserted and the
+// oldes shard is dropped.
+type SlidingBloomFilter struct {
+	NumShards uint8          `json:"numShards"`
+	NumIdx    uint8          `json:"numIdx"`
+	NumDiv    int64          `json:"numDiv"`
+	NumBits   int64          `json:"numBits"`
+	Count     int64          `json:"Count"`
+	Shards    []*BloomFilter `json:"shards"`
+}
+
+// NewSlidingBloomFilter creates a new BloomFilter based on the upper-bounds
+// for the number of entries and the "false-positive" rate.
+func NewSlidingBloomFilter(numShards int, numExpected int64, falsePositiveRate float64) *SlidingBloomFilter {
+	// calculate the number of indices and number of bits
+	// in the new BloomFilter given an upper-bound for the number of entries
+	// and the "false-positive" rate.
+	numIdx := int64(math.Ceil(-math.Log2(falsePositiveRate)))
+	n := (numExpected + int64(numShards) - 1) / int64(numShards)
+	bf := &SlidingBloomFilter{
+		NumShards: uint8(numShards + 1),
+		Shards:    make([]*BloomFilter, numShards+1),
+		NumIdx:    uint8(numIdx),
+		NumDiv:    n,
+		NumBits:   int64(math.Ceil(float64(numIdx*n) / math.Ln2)),
+	}
+	bf.Shards[0] = NewBloomFilterDirect(bf.NumBits, int(bf.NumIdx))
+	return bf
+}
+
+// Size returns the size of the binary representation
+func (bf *SlidingBloomFilter) Size() (s uint) {
+	s = 26
+	for _, f := range bf.Shards {
+		if f != nil {
+			s += f.Size()
+		}
+	}
+	return
+}
+
+// Add an entry to the BloomFilter.
+// If the number of entries in the primary shard is reached, a new
+// shard is insert at the beginning (to become the new primary shard) and
+// the oldest shard is removed.
+func (bf *SlidingBloomFilter) Add(entry []byte) {
+	bf.Shards[0].Add(entry)
+	if bf.Count++; bf.Count == bf.NumDiv {
+		copy(bf.Shards[1:], bf.Shards[0:])
+		bf.Shards[0] = NewBloomFilterDirect(bf.NumBits, int(bf.NumIdx))
+		bf.Count = 0
+	}
+}
+
+// Contains returns true if the BloomFilter contains the given entry, and
+// false otherwise. If an entry was added to the set, this function will
+// always return 'true'. It can return 'true' for entries not in the set
+// ("false-positives").
+func (bf *SlidingBloomFilter) Contains(entry []byte) bool {
+	for _, f := range bf.Shards {
+		if f.Contains(entry) {
+			return true
+		}
+	}
+	return false
 }
