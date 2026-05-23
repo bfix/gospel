@@ -263,6 +263,21 @@ func (i *Int) Lsh(n uint) *Int {
 	return &Int{v: new(big.Int).Lsh(i.v, n)}
 }
 
+// Abs returns the unsigned value of an Int.
+func (i *Int) Abs() *Int {
+	return &Int{v: new(big.Int).Abs(i.v)}
+}
+
+// Neg flips the sign of an Int.
+func (i *Int) Neg() *Int {
+	return &Int{v: new(big.Int).Neg(i.v)}
+}
+
+// Int64 returns the int64 value of an Int.
+func (i *Int) Int64() int64 {
+	return i.v.Int64()
+}
+
 // NthRoot computes the n.th root of an Int. If upper is set, the
 // result is raised to the next highest value.
 func (i *Int) NthRoot(n int, upper bool) *Int {
@@ -282,17 +297,22 @@ func (i *Int) NthRoot(n int, upper bool) *Int {
 	return r
 }
 
-// Legendre computes (i\p)
-func (i *Int) Legendre(p *Int) int {
+// Euler evaluates the Euler criteria: i^((p-1)/n) == 1
+func (i *Int) Euler(n, p *Int) int {
 	if i.Mod(p).Equals(ZERO) {
 		return 0
 	}
-	k := p.Sub(ONE).Div(TWO)
+	k := p.Sub(ONE).Div(n)
 	x := i.ModPow(k, p)
 	if x.Equals(ONE) {
 		return 1
 	}
 	return -1
+}
+
+// Legendre computes (i\p)
+func (i *Int) Legendre(p *Int) int {
+	return i.Euler(TWO, p)
 }
 
 // ExtendedEuclid computes the factors (x,y) for (a,b) where the
@@ -319,67 +339,59 @@ func (i *Int) ExtendedEuclid(j *Int) [2]*Int {
 	return impl(i, j)
 }
 
-// Abs returns the unsigned value of an Int.
-func (i *Int) Abs() *Int {
-	return &Int{v: new(big.Int).Abs(i.v)}
-}
-
-// Neg flips the sign of an Int.
-func (i *Int) Neg() *Int {
-	return &Int{v: new(big.Int).Neg(i.v)}
-}
-
-// Int64 returns the int64 value of an Int.
-func (i *Int) Int64() int64 {
-	return i.v.Int64()
-}
-
 // SqrtModP computes the square root of a quadratic residue mod p
-// It uses the Shanks-Tonelli algorithm to compute the square root
+func (i *Int) SqrtModP(p *Int) (*Int, error) {
+	return i.ShanksTonelli(TWO, p)
+}
+
+// CbrtModP computes the cubic root of a cubic residue mod p
+func (i *Int) CbrtModP(n, p *Int) (*Int, error) {
+	return i.ShanksTonelli(THREE, p)
+}
+
+// Shanks-Tonelli algorithm to compute the k.th root of n mod p
 // see (http://en.wikipedia.org/wiki/Shanks%E2%80%93Tonelli_algorithm)
-func SqrtModP(n, p *Int) (*Int, error) {
+func (i *Int) ShanksTonelli(k, p *Int) (*Int, error) {
 	// check if a solution is possible
-	if n.Legendre(p) != 1 {
-		return nil, errors.New("no quadratic residue")
+	if i.Euler(k, p) != 1 {
+		return nil, errors.New("no residue")
 	}
-	// 1. Factor out powers of 2 from p − 1, defining Q and S as:
-	//    p − 1 = Q*2^S with Q odd
+	// 1. Factor out powers of k from p − 1, defining Q and S as:
+	//    p − 1 = Q*k^S with Q odd
 	S := 0
 	Q := p.Sub(ONE)
-	for Q.Bit(0) == 0 {
+	for Q.Mod(k).Equals(ZERO) {
 		S++
-		Q = Q.Div(TWO)
+		Q = Q.Div(k)
 	}
-	if S == 1 {
-		return n.ModPow(p.Add(ONE).Div(FOUR), p), nil
-	}
-	// 2. Select a z such that the Legendre(z/p) = − 1 (that is, z is a
-	//    quadratic non-residue modulo p), and set c ≡ z^Q
+	// 2. Select a z such that the Euler(k,p) = − 1 (that is, z is a
+	//    non-residue modulo p), and set c ≡ z^Q
 	z := ONE
-	for z.Legendre(p) != -1 {
+	for z.Euler(k, p) != -1 {
 		z = z.Add(ONE)
 	}
 	c := z.ModPow(Q, p)
-	// 3. Let R ≡ n^((Q+1)/2), t ≡ n^Q, M = S.
-	R := n.ModPow(Q.Add(ONE).Div(TWO), p)
-	t := n.ModPow(Q, p)
+
+	// 3. Let R ≡ n^((Q+1)/k), t ≡ n^Q, M = S.
+	R := i.ModPow(Q.Add(ONE).Div(k), p)
+	t := i.ModPow(Q, p)
 	M := S
 	// 4. Loop...
 	for {
 		// 4.1. If t ≡ 1, return R.
-		if t.Mod(p).Equals(ONE) {
+		if t.Equals(ONE) {
 			break
 		}
-		// 4.2. Otherwise, find the lowest i, 0 < i < M, such that t^(2^i) ≡ 1;
+		// 4.2. Otherwise, find the lowest i, 0 < i < M, such that t^(k^i) ≡ 1;
 		//      e.g. via repeated squaring.
 		for i := 1; i < M; i++ {
-			if t.ModPow(TWO.Pow(i), p).Equals(ONE) {
-				// 4.3. Let b ≡ c^(2^(M-i-1)), and set R ≡ R*b, t ≡ t*b^2,
-				//      c ≡ b^2 and M = i
-				b := c.ModPow(TWO.Pow(M-i-1), p)
+			if t.ModPow(k.Pow(i), p).Equals(ONE) {
+				// 4.3. Let b ≡ c^(k^(M-i-1)), and set R ≡ R*b, t ≡ t*b^k,
+				//      c ≡ b^k and M = i
+				b := c.ModPow(k.Pow(M-i-1), p)
 				R = R.Mul(b).Mod(p)
-				t = t.Mul(b.Pow(2)).Mod(p)
-				c = b.ModPow(TWO, p)
+				t = t.Mul(b.ModPow(k, p)).Mod(p)
+				c = b.ModPow(k, p)
 				M = i
 				break
 			}

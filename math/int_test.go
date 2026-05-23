@@ -67,7 +67,7 @@ func TestSqrt(t *testing.T) {
 		g := NewIntRnd(p)
 		if g.Legendre(p) == 1 {
 			count++
-			h, err := SqrtModP(g, p)
+			h, err := g.SqrtModP(p)
 			if err != nil {
 				t.Fatal(err)
 			}

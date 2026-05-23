@@ -72,7 +72,7 @@ func MultBase(k *math.Int) *Point {
 func Solve(x *math.Int) (*math.Int, bool) {
 	// compute 'y = +√(x³ + 7)'
 	y2 := pAdd(pCub(x), math.SEVEN)
-	y, err := math.SqrtModP(y2, c.P)
+	y, err := y2.SqrtModP(c.P)
 	return y, err == nil
 }
 
@@ -340,7 +340,7 @@ func coordAsBytes(v *math.Int) []byte {
 // helper: reconstruct y-coordinate of Point
 func computeY(x *math.Int, m uint) (y *math.Int, err error) {
 	y2 := pAdd(pCub(x), c.B)
-	y, err = math.SqrtModP(y2, c.P)
+	y, err = y2.SqrtModP(c.P)
 	if err == nil {
 		if y.Bit(0) != m {
 			y = c.P.Sub(y)

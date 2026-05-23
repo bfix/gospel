@@ -140,7 +140,7 @@ func (fb *FactorBaseImpl) Init(m *math.Int) bool {
 		// only primes where m is a quadratic residue (mod p)
 		if m.Legendre(pf) == 1 {
 			// store the quadratic residue...
-			fb.fbSqrt[n], _ = math.SqrtModP(m, pf)
+			fb.fbSqrt[n], _ = m.SqrtModP(pf)
 			// ...and the prime for later use.
 			fb.fbData[n] = pf
 			n++
