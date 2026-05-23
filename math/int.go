@@ -345,7 +345,7 @@ func (i *Int) SqrtModP(p *Int) (*Int, error) {
 }
 
 // CbrtModP computes the cubic root of a cubic residue mod p
-func (i *Int) CbrtModP(n, p *Int) (*Int, error) {
+func (i *Int) CbrtModP(p *Int) (*Int, error) {
 	return i.ShanksTonelli(THREE, p)
 }
 

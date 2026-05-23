@@ -61,17 +61,32 @@ func TestExtendedEuclid(t *testing.T) {
 }
 
 func TestSqrt(t *testing.T) {
-	p := NewIntRndPrimeBits(10)
-	count := 0
+	p := NewIntRndPrimeBits(128)
 	for range 1000 {
 		g := NewIntRnd(p)
 		if g.Legendre(p) == 1 {
-			count++
 			h, err := g.SqrtModP(p)
 			if err != nil {
 				t.Fatal(err)
 			}
 			gg := h.ModPow(TWO, p)
+			if !gg.Equals(g) {
+				t.Fatalf("result error: %v != %v", g, gg)
+			}
+		}
+	}
+}
+
+func TestCbrt(t *testing.T) {
+	p := NewIntRndPrimeBits(128)
+	for range 1000 {
+		g := NewIntRnd(p)
+		if g.Euler(THREE, p) == 1 {
+			h, err := g.CbrtModP(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			gg := h.ModPow(THREE, p)
 			if !gg.Equals(g) {
 				t.Fatalf("result error: %v != %v", g, gg)
 			}
