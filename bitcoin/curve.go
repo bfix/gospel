@@ -68,6 +68,25 @@ func MultBase(k *math.Int) *Point {
 	return GetBasePoint().Mult(k)
 }
 
+// RndPoint creates a random point p with scalar d
+func RndPoint() (d *math.Int, p *Point) {
+	d = math.NewIntRndRange(math.THREE, c.N)
+	p = MultBase(d)
+	return
+}
+
+// RndPoint creates a random point p with scalar d of given parity
+func RndPointParity(even bool) (d *math.Int, p *Point) {
+	d = math.NewIntRndRange(math.THREE, c.N)
+	if even {
+		d = d.SetBit(0, 0)
+	} else {
+		d = d.SetBit(0, 1)
+	}
+	p = MultBase(d)
+	return
+}
+
 // Solve the curve equation for given x-ccordinate (returns positive y)
 func Solve(x *math.Int) (*math.Int, bool) {
 	// compute 'y = +√(x³ + 7)'
@@ -222,6 +241,11 @@ func (p *Point) Bytes(compressed bool) []byte {
 		res = append(res, coordAsBytes(p.y)...)
 	}
 	return res
+}
+
+// IsNull returns true if the point is Inf
+func (p *Point) IsNull() bool {
+	return p.x.Equals(math.ZERO) && p.y.Equals(math.ZERO)
 }
 
 // JacPoint is a point on the curve that is represented internally in
