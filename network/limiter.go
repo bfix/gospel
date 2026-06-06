@@ -139,7 +139,7 @@ func (lim *RateLimiter) Pass(ctx context.Context) {
 	stats := lim.Stats()
 	// delay for given time
 	if wait := time.Duration(stats.Wait()) * time.Second; wait > 0 {
-		logger.Printf(logger.DBG, "RateLimit: Delaying for %s", delay)
+		logger.Printf(logger.DBG, "RateLimit: Delaying for %s", wait)
 		if !lim.Delay(ctx, wait) {
 			logger.Println(logger.DBG, "RateLimit: aborted wait")
 			return
