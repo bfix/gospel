@@ -34,13 +34,30 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// Address constants
 const (
 	// Mainnet/Testnet/Regnet
 	NetwMain = 0
 	NetwTest = 1
 	NetwReg  = 2
+	NetwSig  = 3
+)
 
+// GetNetwork returns the identifier of a named network
+func GetNetwork(label string) int {
+	switch label {
+	case "main":
+		return NetwMain
+	case "test":
+		return NetwTest
+	case "reg":
+		return NetwReg
+	case "sig":
+		return NetwSig
+	}
+	return -1
+}
+
+const (
 	// Address usage
 	AddrP2PKH        = 0
 	AddrP2SH         = 1
@@ -48,13 +65,6 @@ const (
 	AddrP2WSH        = 3
 	AddrP2WPKHinP2SH = 4
 	AddrP2WSHinP2SH  = 5
-)
-
-// Errors
-var (
-	ErrMkAddrPrefix         = errors.New("unknown address prefix")
-	ErrMkAddrVersion        = errors.New("unknown address version")
-	ErrMkAddrNotImplemented = errors.New("address not implemented")
 )
 
 // GetAddrMode returns the numeric value for mode (P2PKH, P2SH, ...)
@@ -75,6 +85,13 @@ func GetAddrMode(label string) int {
 	}
 	return -1
 }
+
+// Errors
+var (
+	ErrMkAddrPrefix         = errors.New("unknown address prefix")
+	ErrMkAddrVersion        = errors.New("unknown address version")
+	ErrMkAddrNotImplemented = errors.New("address not implemented")
+)
 
 // Addresser is a function prototype for address conversion functions
 type Addresser func(pk *bitcoin.PublicKey, coin, version, network, prefix int) (string, error)

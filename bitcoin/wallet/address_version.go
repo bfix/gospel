@@ -86,6 +86,19 @@ type AddrSpec struct {
 	Conv    Addresser
 }
 
+// GetHrp returns the Bech32 prefix for coin on a network
+func GetHrp(coin, netw int) string {
+	for _, addr := range AddrList {
+		if addr.CoinID == coin {
+			v := addr.Formats[netw]
+			if v != nil {
+				return v.Bech32
+			}
+		}
+	}
+	return ""
+}
+
 var (
 	// AddrList for selected coins
 	// (see page source for "https://iancoleman.io/bip39/")

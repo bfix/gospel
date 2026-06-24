@@ -32,7 +32,7 @@ func TestVerifyBitcoinMsg(t *testing.T) {
 	b64Sig := "H0OFI1thq9kJXYGQ3E2lDc4dlD1o0XDM0mgaf6oKDq/vrAKERrV76P6kAejZzoSL9MOIgUoxqG3MQg1EpaT/0Jg="
 
 	// verify signature
-	ok, err := VerifyBitcoinMsg(addr, b64Sig, msg)
+	ok, err := VerifyBitcoinMsg(addr, b64Sig, msg, "bc")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestSignVerifyBitcoinMsg(t *testing.T) {
 	t.Logf("b64sig = '%s'", b64Sig)
 
 	// verify signature
-	ok, err := VerifyBitcoinMsg(addr, b64Sig, msg)
+	ok, err := VerifyBitcoinMsg(addr, b64Sig, msg, "bc")
 	if err != nil {
 		t.Fatal(err)
 	}

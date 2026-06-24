@@ -44,7 +44,7 @@ var (
 // of the header byte values, all possible signing keys are tested independent
 // from the actual value of the header byte; only the lower two bits (recID)
 // are used. They are handled correctly by all wallets generating signatures.
-func VerifyBitcoinMsg(addr, b64sig, msg string) (ok bool, err error) {
+func VerifyBitcoinMsg(addr, b64sig, msg, hrp string) (ok bool, err error) {
 
 	// handle signature format ("trezor"/"electrum")
 	b64sig = strings.TrimPrefix(b64sig, "trezor:")
@@ -126,7 +126,7 @@ func VerifyBitcoinMsg(addr, b64sig, msg string) (ok bool, err error) {
 		}
 
 		// (3) ECDSA verification, P2WPKH compressed address
-		da = Bech32("bc", ah_c)
+		da = Bech32(hrp, ah_c)
 		if da == addr {
 			return true
 		}
