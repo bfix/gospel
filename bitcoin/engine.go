@@ -1,5 +1,3 @@
-package bitcoin
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -19,6 +17,8 @@ package bitcoin
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package bitcoin
 
 import (
 	"encoding/asn1"
@@ -130,7 +130,7 @@ func Verify(key *PublicKey, hash []byte, sig *Signature) bool {
 	return rr.Cmp(sig.R) == 0
 }
 
-// convert hash value to integer
+// ConvertHash to integer
 // [http://www.secg.org/download/aid-780/sec1-v2.pdf]
 func ConvertHash(hash []byte) *math.Int {
 	// trim hash value (if required)

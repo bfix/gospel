@@ -115,7 +115,7 @@ func NewSExpr() *SExpr {
 
 //----------------------------------------------------------------------
 
-// ParseCSecpr parses a canonical S-expression into a tree of nodes.
+// ParseCSExpr parses a canonical S-expression into a tree of nodes.
 func ParseCSExpr(buf []byte) (root *SExpr, err error) {
 
 	// check for correct S-expr start

@@ -1,5 +1,3 @@
-package network
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -19,6 +17,8 @@ package network
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package network
 
 import (
 	"crypto/tls"

@@ -1,5 +1,3 @@
-package wallet
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -19,6 +17,8 @@ package wallet
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package wallet
 
 import (
 	"crypto/sha256"

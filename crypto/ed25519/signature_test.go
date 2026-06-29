@@ -1,5 +1,3 @@
-package ed25519
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -19,6 +17,8 @@ package ed25519
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package ed25519
 
 import (
 	"bytes"

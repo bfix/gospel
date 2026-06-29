@@ -1,5 +1,3 @@
-package data
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -20,8 +18,5 @@ package data
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
-/*
- * --------------------------------------------------------------------
- * Data structures:
- * --------------------------------------------------------------------
- */
+// Package data provides custom data structures
+package data

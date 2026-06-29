@@ -18,15 +18,5 @@
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
-// Package crypto implements custom crypto primitives
-package crypto
-
-/*
- * --------------------------------------------------------------------
- * Cryptographic functionality:
- *     - Shared Secret Scheme based on polynominals (Shamir)
- *     - Cryptographically strong random number generation
- *     - Paillier cryptographic counters
- *     - OpenPGP helper functions
- * --------------------------------------------------------------------
- */
+// Package p2p provides peer-to-peer network components
+package p2p

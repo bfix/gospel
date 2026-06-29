@@ -1,5 +1,3 @@
-package bitcoin
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -19,6 +17,9 @@ package bitcoin
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+// Package bitcoin implements the basic components for Bitcoin processing
+package bitcoin
 
 /*
  * ====================================================================

@@ -78,14 +78,14 @@ type Callback func(mode int, param *Parameter) bool
 //nolint:gocyclo // complex
 func Parser(rdr *bufio.Reader, cb Callback) error {
 
-	state := 1                  // current state in state machine
-	skip := true                // skip white spaces (outside string)?
-	escaped := false            // last character was escape?
-	comment := false            // we are inside commnent
-	buf := ""                   // buffer for string assembly
-	param := new(Parameter)     // parameter instance
-	stack := data.NewIntStack() // stack for nested values
-	line, offset := 1, 0        // line/offset in current stream
+	state := 1                    // current state in state machine
+	skip := true                  // skip white spaces (outside string)?
+	escaped := false              // last character was escape?
+	comment := false              // we are inside commnent
+	buf := ""                     // buffer for string assembly
+	param := new(Parameter)       // parameter instance
+	stack := data.NewStack[int]() // stack for nested values
+	line, offset := 1, 0          // line/offset in current stream
 
 	// execute state machine
 	param.reset()
@@ -162,7 +162,8 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 				handled := false
 				// operations on unnamed lists outside of string values
 				if skip && !escaped {
-					if r == '{' {
+					switch r {
+					case '{':
 						// check for pending empty parameter
 						if stack.IsTop(EMPTY) {
 							stack.Pop()
@@ -175,7 +176,7 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 						}
 						state = 3 // read value
 						handled = true
-					} else if r == '}' {
+					case '}':
 						// check for pending empty parameter
 						if stack.IsTop(EMPTY) {
 							stack.Pop()
@@ -189,7 +190,7 @@ func Parser(rdr *bufio.Reader, cb Callback) error {
 						}
 						state = 5 // read delimiter
 						handled = true
-					} else if r == ',' {
+					case ',':
 						// end unnamed empty parameter
 						if !stack.IsTop(EMPTY) {
 							stack.Push(EMPTY)

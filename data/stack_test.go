@@ -1,5 +1,3 @@
-package data
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -20,25 +18,27 @@ package data
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
+package data
+
 import (
 	"testing"
 )
 
 func TestIntStack(t *testing.T) {
-	is := NewIntStack()
+	is := NewStack[int]()
 	if is.Len() != 0 {
 		t.Fatal("new stack not empty")
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		is.Push(i)
-		if !is.IsTop(i) {
-			t.Fatal("push/istop failed")
+		if is.Peek() != i {
+			t.Fatalf("push/istop failed at %d", i)
 		}
 	}
 	if is.Len() != 10 {
 		t.Fatal("length mismatch")
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		j := 9 - i
 		if is.Peek() != j {
 			t.Fatal("peek failed")
@@ -57,7 +57,7 @@ func TestStringStack(t *testing.T) {
 		"aa", "bb", "cc", "dd", "ee",
 		"ff", "gg", "hh", "ii", "kk",
 	}
-	ss := NewStack()
+	ss := NewStack[string]()
 	if ss.Len() != 0 {
 		t.Fatal("new stack not empty")
 	}
@@ -67,12 +67,12 @@ func TestStringStack(t *testing.T) {
 	if ss.Len() != 10 {
 		t.Fatal("length mismatch")
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		j := 9 - i
-		if ss.Peek().(string) != list[j] {
+		if ss.Peek() != list[j] {
 			t.Fatal("peek failed")
 		}
-		if ss.Pop().(string) != list[j] {
+		if ss.Pop() != list[j] {
 			t.Fatal("pop failed")
 		}
 		if ss.Len() != j {

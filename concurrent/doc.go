@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------
 // This file is part of Gospel.
-// Copyright (C) 2011-present, Bernd Fix  >Y<
+// Copyright (C) 2011-2024 Bernd Fix  >Y<
 //
 // Gospel is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
@@ -18,15 +18,5 @@
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
-// Package crypto implements custom crypto primitives
-package crypto
-
-/*
- * --------------------------------------------------------------------
- * Cryptographic functionality:
- *     - Shared Secret Scheme based on polynominals (Shamir)
- *     - Cryptographically strong random number generation
- *     - Paillier cryptographic counters
- *     - OpenPGP helper functions
- * --------------------------------------------------------------------
- */
+// Package concurrent provides utilities for concurrent processing
+package concurrent

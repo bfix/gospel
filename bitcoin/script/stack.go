@@ -1,5 +1,3 @@
-package script
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -19,6 +17,8 @@ package script
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package script
 
 import (
 	"github.com/bfix/gospel/math"
@@ -51,7 +51,7 @@ func (s *Stack) Values() []*math.Int {
 // Push an object onto the stack.
 // Objects can be of type int, []byte, *math.Int or bool; other types return
 // a result code 'RcInvalidStackType'.
-func (s *Stack) Push(v interface{}) int {
+func (s *Stack) Push(v any) int {
 	var i *math.Int
 	switch x := v.(type) {
 	case bool:

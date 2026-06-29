@@ -1,5 +1,3 @@
-package bitcoin
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -19,6 +17,8 @@ package bitcoin
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package bitcoin
 
 import (
 	"errors"
@@ -75,7 +75,7 @@ func RndPoint() (d *math.Int, p *Point) {
 	return
 }
 
-// RndPoint creates a random point p with scalar d of given parity
+// RndPointParity creates a random point p with scalar d of given parity
 func RndPointParity(even bool) (d *math.Int, p *Point) {
 	d = math.NewIntRndRange(math.THREE, c.N)
 	if even {

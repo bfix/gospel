@@ -256,7 +256,7 @@ func (kn *KnacciInt) Solve(f1, f2 []*math.Int) *math.Int {
 	return kn.Knacci.Solve(f1, f2, kn.init[1:])
 }
 
-// compute the current value of the sequence.
+// Value computes the current value of the sequence.
 func (kn *KnacciInt) Value(f []*math.Int) (n *math.Int) {
 	n = math.ZERO
 	for i, v := range f {
@@ -312,7 +312,7 @@ type KnacciECC struct {
 	pnts []Point     // list of points
 }
 
-// KnacciECC creates a k-nacci sequence over an elliptic
+// NewKnacciECC creates a k-nacci sequence over an elliptic
 func NewKnacciECC(c Curve, d Point, r []*math.Int) *KnacciECC {
 	k := len(r) + 1
 	kn := &KnacciECC{
@@ -335,7 +335,7 @@ func (kn *KnacciECC) Solve(f1, f2 []*math.Int) *math.Int {
 	return kn.Knacci.Solve(f1, f2, kn.r)
 }
 
-// compute point on E(p)
+// Value computes a point on E(p)
 func (kn *KnacciECC) Value(f []*math.Int) (n Point) {
 	n = kn.c.Inf()
 	for i, v := range f {

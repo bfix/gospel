@@ -1,5 +1,3 @@
-package data
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -20,80 +18,49 @@ package data
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
+package data
+
 // Stack for generic data types.
-type Stack struct {
-	data [](interface{}) // list of stack elements
+type Stack[T comparable] struct {
+	data []T // list of stack elements
 }
 
 // NewStack instantiates a new generic Stack object.
-func NewStack() *Stack {
-	return &Stack{
-		data: make([](interface{}), 0),
+func NewStack[T comparable]() *Stack[T] {
+	return &Stack[T]{
+		data: make([]T, 0),
 	}
 }
 
 // Pop last entry from stack and return it to caller.
-func (s *Stack) Pop() (v interface{}) {
+func (s *Stack[T]) Pop() (v T) {
 	pos := len(s.data) - 1
 	v, s.data = s.data[pos], s.data[:pos]
 	return
 }
 
 // Push generic entry to stack.
-func (s *Stack) Push(v interface{}) {
+func (s *Stack[T]) Push(v T) {
 	s.data = append(s.data, v)
 }
 
 // Len returns the number of elements on stack.
-func (s *Stack) Len() int {
+func (s *Stack[T]) Len() int {
 	return len(s.data)
 }
 
 // Peek at the last element pushed to stack without dropping it.
-func (s *Stack) Peek() (v interface{}) {
+func (s *Stack[T]) Peek() (v T) {
 	pos := len(s.data) - 1
 	if pos < 0 {
-		return nil
+		var null T
+		return null
 	}
 	return s.data[pos]
 }
 
-// IntStack is an Integer-based Stack type and implementation.
-type IntStack struct {
-	data []int // list of stack elements
-}
-
-// NewIntStack instantiates a new integer-based Stack object.
-func NewIntStack() *IntStack {
-	return &IntStack{
-		data: make([]int, 0),
-	}
-}
-
-// Pop last entry from stack and return it to caller.
-func (s *IntStack) Pop() (v int) {
-	pos := len(s.data) - 1
-	v, s.data = s.data[pos], s.data[:pos]
-	return
-}
-
-// Push entry to stack.
-func (s *IntStack) Push(v int) {
-	s.data = append(s.data, v)
-}
-
-// Len returns the number of elements on stack.
-func (s *IntStack) Len() int {
-	return len(s.data)
-}
-
-// Peek at the last element pushed to stack without dropping it.
-func (s *IntStack) Peek() (v int) {
-	return s.data[len(s.data)-1]
-}
-
-// IsTop compares last element with given value.
-func (s *IntStack) IsTop(v int) bool {
+// IsTop compares the last element with given value.
+func (s *Stack[T]) IsTop(v T) bool {
 	pos := len(s.data) - 1
 	if pos < 0 {
 		return false

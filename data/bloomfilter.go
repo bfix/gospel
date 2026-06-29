@@ -1,5 +1,3 @@
-package data
-
 //----------------------------------------------------------------------
 // This file is part of Gospel.
 // Copyright (C) 2011-present, Bernd Fix  >Y<
@@ -19,6 +17,8 @@ package data
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package data
 
 import (
 	"bytes"
@@ -273,7 +273,7 @@ type CountingBloomFilter struct {
 	Counts []uint32 `size:"(NumBits)" json:"bits"` // counter storage
 }
 
-// NewCoutingBloomFilterDirect creates a new BloomFilter based on the
+// NewCountingBloomFilterDirect creates a new BloomFilter based on the
 // number of bits in the filter and the number of indices to be used.
 func NewCountingBloomFilterDirect(numBits int64, numIdx int) *CountingBloomFilter {
 	numIdxBits := int(math.Ceil(math.Log2(float64(numBits))))
@@ -288,12 +288,12 @@ func NewCountingBloomFilterDirect(numBits int64, numIdx int) *CountingBloomFilte
 	}
 }
 
-// NewCoutingBloomFilter creates a new BloomFilter based on the upper-bounds
+// NewCountingBloomFilter creates a new BloomFilter based on the upper-bounds
 // for the number of entries and the "false-positive" rate.
 func NewCountingBloomFilter(numExpected int64, falsePositiveRate float64) *CountingBloomFilter {
-	// do some math and calculate the number of indices and number of bits
-	// in the new BloomFilter given an upper-bound for the number of entries
-	// and the "false-positive" rate.
+	// calculate the number of indices and number of bits in the new
+	// BloomFilter given an upper-bound for the number of entries and the
+	// "false-positive" rate.
 	numIdx := int(math.Ceil(-math.Log2(falsePositiveRate)))
 	numBits := int64(math.Ceil(float64(int64(numIdx)*numExpected) / math.Ln2))
 	return NewCountingBloomFilterDirect(numBits, numIdx)

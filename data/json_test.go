@@ -28,11 +28,11 @@ import (
 func TestJsonCompare(t *testing.T) {
 
 	var x1 map[string]any
-	if err := json.Unmarshal([]byte(testdataJson[0]), &x1); err != nil {
+	if err := json.Unmarshal([]byte(testdataJSON[0]), &x1); err != nil {
 		t.Fatal(err)
 	}
 	var x2 map[string]any
-	if err := json.Unmarshal([]byte(testdataJson[1]), &x2); err != nil {
+	if err := json.Unmarshal([]byte(testdataJSON[1]), &x2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -45,7 +45,7 @@ func TestJsonCompare(t *testing.T) {
 	}
 }
 
-var testdataJson = []string{`
+var testdataJSON = []string{`
 {
   "metadata": {
     "file_id": "982b-410a",

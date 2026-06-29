@@ -86,7 +86,7 @@ type AddrSpec struct {
 	Conv    Addresser
 }
 
-// GetHrp returns the Bech32 prefix for coin on a network
+// GetHrp returns the human-readable prefix for Bech32 addresses on a network
 func GetHrp(coin, netw int) string {
 	for _, addr := range AddrList {
 		if addr.CoinID == coin {
@@ -134,6 +134,15 @@ var (
 				{0xc4, 0x044a5262, 0x044a4e28}, // P2WPKHinP2SH
 				{0xc4, 0x024289ef, 0x024285b5}, // P2WSHinP2SH
 			}},
+			// Signet
+			{"tb", 0xef, []*AddrVersion{
+				{0x6f, 0x043587cf, 0x04358394}, // P2PKH
+				{0xc4, 0x044a5262, 0x044a4e28}, // P2SH
+				{0x00, 0x045f1cf6, 0x045f18bc}, // P2WPKH
+				{0x05, 0x02575410, 0x02575048}, // P2WSH
+				{0xc4, 0x044a5262, 0x044a4e28}, // P2WPKHinP2SH
+				{0xc4, 0x024289ef, 0x024285b5}, // P2WSHinP2SH
+			}},
 		}, nil},
 		//--------------------------------------------------------------
 		// LTC (Litecoin)
@@ -158,6 +167,8 @@ var (
 				{0x6f, 0x043587cf, 0x04358394}, // P2WSHinP2SH
 			}},
 			// Regnet
+			nil,
+			// Signet
 			nil,
 		}, nil},
 		//--------------------------------------------------------------
@@ -184,6 +195,8 @@ var (
 			}},
 			// Regnet
 			nil,
+			// Signet
+			nil,
 		}, nil},
 		//--------------------------------------------------------------
 		// DASH
@@ -209,6 +222,8 @@ var (
 			}},
 			// Regnet
 			nil,
+			// Signet
+			nil,
 		}, nil},
 		//--------------------------------------------------------------
 		// NMC (Namecoin)
@@ -226,6 +241,8 @@ var (
 			// Testnet
 			nil,
 			// Regnet
+			nil,
+			// Signet
 			nil,
 		}, nil},
 		//--------------------------------------------------------------
@@ -245,6 +262,8 @@ var (
 			nil,
 			// Regnet
 			nil,
+			// Signet
+			nil,
 		}, nil},
 		//--------------------------------------------------------------
 		// VTC (Vertcoin)
@@ -263,6 +282,8 @@ var (
 			nil,
 			// Regnet
 			nil,
+			// Signet
+			nil,
 		}, nil},
 		//--------------------------------------------------------------
 		// ETH (Ethereum)
@@ -274,6 +295,8 @@ var (
 			nil,
 			// Regnet
 			nil,
+			// Signet
+			nil,
 		}, makeAddressETH},
 		//--------------------------------------------------------------
 		// ETC (Ethereum Classic)
@@ -284,6 +307,8 @@ var (
 			// Testnet
 			nil,
 			// Regnet
+			nil,
+			// Signet
 			nil,
 		}, makeAddressETH},
 		//--------------------------------------------------------------
@@ -302,6 +327,8 @@ var (
 			// Testnet
 			nil,
 			// Regnet
+			nil,
+			// Signet
 			nil,
 		}, nil},
 		//--------------------------------------------------------------
@@ -335,6 +362,8 @@ var (
 				{0xc4, 0x044a5262, 0x044a4e28}, // P2WPKHinP2SH
 				{0xc4, 0x024289ef, 0x024285b5}, // P2WSHinP2SH
 			}},
+			// Signet
+			nil,
 		}, makeAddressBCH},
 		//--------------------------------------------------------------
 		// BTG
@@ -352,6 +381,8 @@ var (
 			// Testnet
 			nil,
 			// Regnet
+			nil,
+			// Signet
 			nil,
 		}, nil},
 	}

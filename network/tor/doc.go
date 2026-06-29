@@ -18,15 +18,5 @@
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
-// Package crypto implements custom crypto primitives
-package crypto
-
-/*
- * --------------------------------------------------------------------
- * Cryptographic functionality:
- *     - Shared Secret Scheme based on polynominals (Shamir)
- *     - Cryptographically strong random number generation
- *     - Paillier cryptographic counters
- *     - OpenPGP helper functions
- * --------------------------------------------------------------------
- */
+// Package tor provides utilities for using the Tor network
+package tor

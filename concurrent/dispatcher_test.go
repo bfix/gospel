@@ -85,7 +85,7 @@ func TestWorker(t *testing.T) {
 
 	// run dispatcher
 	ctx, cancel := context.WithCancel(context.Background())
-	d := NewDispatcher[int64, int64](ctx, 8, NewTestDispatchable())
+	d := NewDispatcher(ctx, 8, NewTestDispatchable())
 	defer cancel()
 
 	// process tasks until finished

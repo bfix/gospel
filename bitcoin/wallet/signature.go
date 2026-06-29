@@ -92,12 +92,12 @@ func VerifyBitcoinMsg(addr, b64sig, msg, hrp string) (ok bool, err error) {
 	}
 
 	// ignore the header value and generate all possible addresses:
-	ah_u := bitcoin.Hash160(pk.Q.Bytes(false))
-	ah_c := bitcoin.Hash160(pk.Q.Bytes(true))
+	ahU := bitcoin.Hash160(pk.Q.Bytes(false))
+	ahC := bitcoin.Hash160(pk.Q.Bytes(true))
 
 	ok = func() bool {
 		// (1) ECDSA verification, uncompressed P2PKH address
-		a := append([]byte{0}, ah_u...)
+		a := append([]byte{0}, ahU...)
 		cs := bitcoin.Hash256(a)
 		a = append(a, cs[:4]...)
 		da := bitcoin.Base58Encode(a)
@@ -106,7 +106,7 @@ func VerifyBitcoinMsg(addr, b64sig, msg, hrp string) (ok bool, err error) {
 		}
 
 		// (2) ECDSA verification, compressed P2PKH address
-		a = append([]byte{0}, ah_c...)
+		a = append([]byte{0}, ahC...)
 		cs = bitcoin.Hash256(a)
 		a = append(a, cs[:4]...)
 		da = bitcoin.Base58Encode(a)
@@ -115,7 +115,7 @@ func VerifyBitcoinMsg(addr, b64sig, msg, hrp string) (ok bool, err error) {
 		}
 
 		// (3) ECDSA verification, P2WPKH-P2SH compressed address
-		rs := append([]byte{0x00, 0x14}, ah_c...)
+		rs := append([]byte{0x00, 0x14}, ahC...)
 		rh := bitcoin.Hash160(rs)
 		a = append([]byte{5}, rh...)
 		cs = bitcoin.Hash256(a)
@@ -126,7 +126,7 @@ func VerifyBitcoinMsg(addr, b64sig, msg, hrp string) (ok bool, err error) {
 		}
 
 		// (3) ECDSA verification, P2WPKH compressed address
-		da = Bech32(hrp, ah_c)
+		da = Bech32(hrp, ahC)
 		if da == addr {
 			return true
 		}
@@ -151,19 +151,19 @@ func SignBitcoinMsg(pk *bitcoin.PrivateKey, msg string) (b64sig string, err erro
 	sig := bitcoin.Sign(pk, hash)
 
 	// compute recovery ID for the signature
-	var recId, i byte = 0xff, 0
-	for i = 0; i < 4; i++ {
+	var recID, i byte = 0xff, 0
+	for i = range byte(4) {
 		k, ok := recoverFromSignatureHash(i, sig, hash, pk.IsCompressed)
 		if ok && k.Q.Equals(pk.Q) {
-			recId = i
+			recID = i
 			break
 		}
 	}
-	if recId == 0xff {
+	if recID == 0xff {
 		err = ErrSigFailed
 		return
 	}
-	hdr := recId + 27
+	hdr := recID + 27
 	if pk.IsCompressed {
 		hdr += 4
 	}
@@ -181,20 +181,20 @@ func SignBitcoinMsg(pk *bitcoin.PrivateKey, msg string) (b64sig string, err erro
 
 // recoverFromSignature returns the public key of the signing key used to
 // generate the Bitcoin signature for a message.
-func recoverFromSignature(recId byte, sig *bitcoin.Signature, msg string, compr bool) (pk *bitcoin.PublicKey, ok bool) {
+func recoverFromSignature(recID byte, sig *bitcoin.Signature, msg string, compr bool) (pk *bitcoin.PublicKey, ok bool) {
 	hash := bitcoin.Hash256(formatMessageForSigning(msg))
-	return recoverFromSignatureHash(recId, sig, hash, compr)
+	return recoverFromSignatureHash(recID, sig, hash, compr)
 }
 
 // recoverFromSignatureHash returns the public key of the signing key used to
 // generate the Bitcoin signature for a message hash.
-func recoverFromSignatureHash(recId byte, sig *bitcoin.Signature, hash []byte, compr bool) (pk *bitcoin.PublicKey, ok bool) {
+func recoverFromSignatureHash(recID byte, sig *bitcoin.Signature, hash []byte, compr bool) (pk *bitcoin.PublicKey, ok bool) {
 	// reconstruct public key from signature
 	n := bitcoin.GetCurve().N
 	p := bitcoin.GetCurve().P
 
 	x := sig.R
-	if recId&2 != 0 {
+	if recID&2 != 0 {
 		x = x.Add(n)
 	}
 	if x.Cmp(p) >= 0 {
@@ -206,7 +206,7 @@ func recoverFromSignatureHash(recId byte, sig *bitcoin.Signature, hash []byte, c
 		return
 	}
 	yp := y.Bit(0)
-	if uint(recId&1) != yp {
+	if uint(recID&1) != yp {
 		y = p.Sub(y)
 	}
 	R := bitcoin.NewPoint(x, y)
@@ -217,9 +217,9 @@ func recoverFromSignatureHash(recId byte, sig *bitcoin.Signature, hash []byte, c
 	e := bitcoin.ConvertHash(hash).Mod(n)
 	ei := math.ZERO.Sub(e).Mod(n)
 	ri := sig.R.ModInverse(n)
-	s_ri := ri.Mul(sig.S).Mod(n)
-	ei_ri := ri.Mul(ei).Mod(n)
-	Q := bitcoin.MultBase(ei_ri).Add(R.Mult(s_ri))
+	sRi := ri.Mul(sig.S).Mod(n)
+	eiRi := ri.Mul(ei).Mod(n)
+	Q := bitcoin.MultBase(eiRi).Add(R.Mult(sRi))
 
 	pk = &bitcoin.PublicKey{Q: Q, IsCompressed: compr}
 	ok = true
